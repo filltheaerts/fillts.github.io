@@ -1105,14 +1105,28 @@ a {
   color: var(--black);
 }
 
+/* Privacy corner link (Home, Careers) */
+.privacy-corner-link {
+  position: absolute;
+  right: clamp(28px, 5vw, 72px);
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.03em;
+  color: var(--gray-200);
+  transition: color 0.3s;
+}
+
+.privacy-corner-link:hover {
+  color: var(--gray-400);
+}
+
 /* Footer links */
-.home-footer-link,
 .contact-footer-link {
   color: var(--gray-400);
   transition: color 0.3s;
 }
 
-.home-footer-link:hover,
 .contact-footer-link:hover {
   color: var(--red);
 }
@@ -1329,6 +1343,10 @@ a {
 
 /* ============ Mobile ============ */
 @media (max-width: 768px) {
+  .privacy-corner-link {
+    display: none;
+  }
+
   .nav-toggle {
     display: flex;
   }
