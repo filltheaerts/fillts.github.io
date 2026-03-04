@@ -881,57 +881,64 @@ a {
 }
 
 .form-row-phone {
-  gap: 0 !important;
-}
-
-.phone-prefix {
   display: flex;
-  align-items: center;
-  padding: 14px 10px;
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: var(--gray-400);
-  border: 1px solid var(--gray-200);
-  border-right: none;
-  border-radius: 0;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  -webkit-appearance: none;
-  appearance: none;
-  height: auto;
-  flex-shrink: 0;
+  gap: 0 !important;
+  align-items: stretch;
 }
 
-.phone-area {
+.form-row-phone .phone-prefix,
+.form-row-phone .phone-area,
+.form-row-phone input[type="tel"] {
+  box-sizing: border-box;
   font-family: var(--font-sans);
   font-size: 0.82rem;
   font-weight: 300;
-  padding: 14px 6px;
   border: 1px solid var(--gray-200);
-  border-right: none;
   border-radius: 0;
   background: transparent;
-  color: var(--gray-600);
-  cursor: pointer;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  height: auto;
+  margin: 0;
+  padding: 0 10px;
+  line-height: 46px;
+  height: 46px;
+}
+
+.form-row-phone .phone-prefix {
+  color: var(--gray-400);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-right: none;
+}
+
+.form-row-phone .phone-area {
+  color: var(--gray-600);
+  cursor: pointer;
   flex-shrink: 0;
   width: 64px;
   min-width: 64px;
-}
-
-.form-row-phone {
-  display: flex;
+  border-right: none;
+  padding: 0 6px;
 }
 
 .form-row-phone input[type="tel"] {
-  border-radius: 0;
-  -webkit-appearance: none;
-  appearance: none;
   flex: 1;
   min-width: 0;
+  color: var(--black);
+  letter-spacing: 0.02em;
+}
+
+.form-row-phone input[type="tel"]::placeholder {
+  color: var(--gray-400);
+  font-weight: 300;
+}
+
+.form-row-phone input[type="tel"]:focus,
+.form-row-phone .phone-area:focus {
+  border-color: var(--black);
 }
 
 .form-select {
@@ -1512,28 +1519,24 @@ a {
     font-size: 0.68rem;
   }
 
-  /* 전화번호: prefix+area 좁게, 번호칸 넓게 */
-  .form-row-phone {
-    display: flex;
+  /* 전화번호 모바일 */
+  .form-row-phone .phone-prefix,
+  .form-row-phone .phone-area,
+  .form-row-phone input[type="tel"] {
+    font-size: 0.75rem;
+    height: 42px;
+    line-height: 42px;
+    padding: 0 6px;
   }
 
   .form-row-phone .phone-prefix {
-    padding: 12px 8px;
-    font-size: 0.75rem;
-    flex-shrink: 0;
+    padding: 0 8px;
   }
 
   .form-row-phone .phone-area {
-    padding: 12px 4px;
-    font-size: 0.75rem;
-    flex-shrink: 0;
     width: 52px;
     min-width: 52px;
-  }
-
-  .form-row-phone input[type="tel"] {
-    flex: 1;
-    min-width: 0;
+    padding: 0 4px;
   }
 }
 
