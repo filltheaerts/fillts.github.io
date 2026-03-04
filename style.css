@@ -561,7 +561,8 @@ a {
 }
 
 .apply-form input,
-.apply-form textarea {
+.apply-form textarea,
+.apply-form select {
   width: 100%;
   font-family: var(--font-sans);
   font-size: 0.82rem;
@@ -569,10 +570,13 @@ a {
   color: var(--black);
   background: transparent;
   border: 1px solid var(--gray-200);
+  border-radius: 0;
   padding: 14px 16px;
   outline: none;
   transition: border-color 0.3s var(--ease);
   letter-spacing: 0.02em;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .apply-form input::placeholder,
