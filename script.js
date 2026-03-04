@@ -249,8 +249,45 @@
     const hasFile = document.getElementById('applyFile').files.length > 0;
     const hasLink = document.getElementById('portfolioLink').value.trim() !== '';
     if (!hasFile && !hasLink) { alert('PDF 첨부 또는 포트폴리오 링크 중 하나는 필수입니다.'); return; }
-    const formData = new FormData(applyForm);
-    fetch(applyForm.action, { method: 'POST', body: formData }).catch(() => {});
+
+    // Collect SNS data
+    var snsList = [];
+    document.querySelectorAll('.apply-sns-row').forEach(function (row) {
+      var type = row.querySelector('select') ? row.querySelector('select').value : '';
+      var url = row.querySelector('input[type="url"]') ? row.querySelector('input[type="url"]').value : '';
+      if (type && url) snsList.push(type + ': ' + url);
+    });
+
+    // Save to Firestore
+    var applyData = {
+      date: new Date().toISOString(),
+      position: document.getElementById('applyPosition').textContent,
+      name: applyForm.querySelector('[name="name"]').value,
+      email: applyForm.querySelector('[name="email"]').value,
+      phone: '+82 ' + applyForm.querySelector('[name="phone_area"]').value + '-' + applyForm.querySelector('[name="phone"]').value,
+      message: applyForm.querySelector('[name="message"]').value,
+      sns: snsList.join(' | '),
+      portfolio: document.getElementById('portfolioLink').value || '(PDF 첨부)'
+    };
+    db.collection('applications').add(applyData).catch(function () {});
+
+    // Send via Formsubmit (JSON)
+    fetch('https://formsubmit.co/ajax/kjw@fillts.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: 'fillts 지원 — ' + applyData.position,
+        _cc: 'info@fillts.com',
+        name: applyData.name,
+        email: applyData.email,
+        phone: applyData.phone,
+        position: applyData.position,
+        message: applyData.message,
+        sns: applyData.sns || '없음',
+        portfolio: applyData.portfolio
+      })
+    }).catch(function () {});
+
     applyForm.reset();
     document.getElementById('fileLabel').textContent = 'PDF 첨부 (포트폴리오)';
     showSuccess('지원이 완료되었습니다', '검토 후 연락드리겠습니다.<br>감사합니다.', function () { goTo('careers'); });
@@ -273,9 +310,20 @@
       // Save to Firestore
       db.collection('inquiries').add(data).catch(function () {});
 
-      // Submit to Formsubmit.co
-      var formData = new FormData(contactForm);
-      fetch(contactForm.action, { method: 'POST', body: formData }).catch(function () {});
+      // Submit to Formsubmit.co (JSON AJAX)
+      fetch('https://formsubmit.co/ajax/kjw@fillts.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: 'fillts.com 문의',
+          _cc: 'info@fillts.com',
+          category: data.category,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          message: data.message
+        })
+      }).catch(function () {});
 
       contactForm.reset();
       showSuccess('문의가 전달되었습니다', '확인 후 빠르게 연락드리겠습니다.<br>감사합니다.');
