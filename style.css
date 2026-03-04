@@ -1046,12 +1046,33 @@ a {
 }
 
 .privacy-consent input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 11px;
   height: 11px;
-  accent-color: var(--red);
+  border: 1px solid var(--gray-400);
+  border-radius: 1px;
   cursor: pointer;
   flex-shrink: 0;
   margin: 0;
+  position: relative;
+  background: transparent;
+}
+
+.privacy-consent input[type="checkbox"]:checked {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.privacy-consent input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: var(--white);
+  line-height: 1;
 }
 
 .privacy-consent a {
@@ -1470,6 +1491,10 @@ a {
   .privacy-consent input[type="checkbox"] {
     width: 9px;
     height: 9px;
+  }
+
+  .privacy-consent input[type="checkbox"]:checked::after {
+    font-size: 6px;
   }
 
   .privacy-consent {
