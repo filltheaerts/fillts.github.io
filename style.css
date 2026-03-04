@@ -889,20 +889,35 @@ a {
   color: var(--gray-400);
   border: 1px solid var(--gray-200);
   border-right: none;
+  border-radius: 0;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  -webkit-appearance: none;
+  appearance: none;
+  height: auto;
 }
 
 .phone-area {
   font-family: var(--font-sans);
   font-size: 0.82rem;
+  font-weight: 300;
   padding: 14px 8px;
   border: 1px solid var(--gray-200);
   border-right: none;
+  border-radius: 0;
   background: transparent;
   color: var(--gray-600);
   cursor: pointer;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  height: auto;
+}
+
+.form-row-phone input[type="tel"] {
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .form-select {
@@ -934,7 +949,8 @@ a {
 }
 
 .contact-form input,
-.contact-form textarea {
+.contact-form textarea,
+.contact-form select {
   width: 100%;
   font-family: var(--font-sans);
   font-size: 0.82rem;
@@ -942,10 +958,13 @@ a {
   color: var(--black);
   background: transparent;
   border: 1px solid var(--gray-200);
+  border-radius: 0;
   padding: 14px 16px;
   outline: none;
   transition: border-color 0.3s var(--ease);
   letter-spacing: 0.02em;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .contact-form input::placeholder,
@@ -1014,8 +1033,8 @@ a {
 .privacy-consent {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.75rem;
+  gap: 5px;
+  font-size: 0.72rem;
   font-weight: 300;
   color: var(--gray-600);
   cursor: pointer;
@@ -1023,11 +1042,12 @@ a {
 }
 
 .privacy-consent input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 13px;
+  height: 13px;
   accent-color: var(--red);
   cursor: pointer;
   flex-shrink: 0;
+  margin: 0;
 }
 
 .privacy-consent a {
