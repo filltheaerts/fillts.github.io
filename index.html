@@ -367,6 +367,7 @@
       <button class="modal-close" id="modalClose">&times;</button>
       <h3 class="modal-title">관리자 로그인</h3>
       <form class="modal-form" id="adminForm">
+        <input type="email" id="adminEmail" placeholder="Email" autocomplete="email">
         <input type="password" id="adminPw" placeholder="Password" autocomplete="current-password">
         <button type="submit" class="form-submit">Login</button>
       </form>
@@ -374,6 +375,9 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

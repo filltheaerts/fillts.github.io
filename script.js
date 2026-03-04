@@ -1,18 +1,20 @@
-// fillts — Full-viewport page transitions + Admin + Job Detail
+// fillts — Firebase Auth + Firestore
 
 (function () {
   'use strict';
 
-  const ADMIN_PW = 'fillts2026';
-  const STORAGE_KEY = 'fillts_inquiries';
-
-  const pages = document.querySelectorAll('.page');
-  const navLinks = document.querySelectorAll('[data-page]');
-  const nav = document.querySelector('.nav');
-  const toggle = document.getElementById('navToggle');
-  const menu = document.getElementById('navLinks');
-
-  const darkPages = new Set([]);
+  // ---- Firebase Init ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyB5ONDHz2O4XcQb6VI5zzbm4x4NOwH6OW4",
+    authDomain: "fillts-web.firebaseapp.com",
+    projectId: "fillts-web",
+    storageBucket: "fillts-web.firebasestorage.app",
+    messagingSenderId: "298865968239",
+    appId: "1:298865968239:web:5f89939196d30765c4799a"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
   // ---- Job Data ----
   const jobs = {
@@ -114,53 +116,40 @@
   };
 
   // ---- Page Navigation ----
+  const pages = document.querySelectorAll('.page');
+  const navLinks = document.querySelectorAll('[data-page]');
+  const nav = document.querySelector('.nav');
+  const toggle = document.getElementById('navToggle');
+  const menu = document.getElementById('navLinks');
+  const darkPages = new Set([]);
+
   function goTo(id) {
     const target = document.getElementById(id);
     if (!target || target.classList.contains('active')) return;
-
     pages.forEach(p => p.classList.remove('active'));
     target.classList.add('active');
-
-    navLinks.forEach(a => {
-      a.classList.toggle('active', a.dataset.page === id);
-    });
-
+    navLinks.forEach(a => a.classList.toggle('active', a.dataset.page === id));
     nav.classList.toggle('inverted', darkPages.has(id));
-
     toggle.classList.remove('open');
     menu.classList.remove('open');
   }
 
-  // All [data-page] links
   document.addEventListener('click', e => {
     const link = e.target.closest('[data-page]');
-    if (link) {
-      e.preventDefault();
-      goTo(link.dataset.page);
-    }
+    if (link) { e.preventDefault(); goTo(link.dataset.page); }
   });
 
-  // Mobile toggle
   toggle.addEventListener('click', () => {
     toggle.classList.toggle('open');
     menu.classList.toggle('open');
   });
 
-  // Keyboard navigation
   const pageIds = ['home', 'about', 'alpha', 'work', 'careers', 'contact'];
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    const current = pageIds.findIndex(
-      id => document.getElementById(id).classList.contains('active')
-    );
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      goTo(pageIds[Math.min(current + 1, pageIds.length - 1)]);
-    }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      goTo(pageIds[Math.max(current - 1, 0)]);
-    }
+    const current = pageIds.findIndex(id => document.getElementById(id).classList.contains('active'));
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goTo(pageIds[Math.min(current + 1, pageIds.length - 1)]); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(pageIds[Math.max(current - 1, 0)]); }
   });
 
   // ---- Career Accordion ----
@@ -169,11 +158,8 @@
     const detail = item.querySelector('.career-detail');
     const job = jobs[item.dataset.job];
     if (!job) return;
-
-    // Pre-fill detail content
     detail.innerHTML = '<div class="career-detail-inner">' + job.body +
-      '<a href="#" class="career-detail-apply" data-page="contact">지원하기</a></div>';
-
+      '<a href="#" class="career-detail-apply" data-page="apply">지원하기</a></div>';
     row.addEventListener('click', () => {
       const wasOpen = item.classList.contains('open');
       document.querySelectorAll('.career-item').forEach(i => i.classList.remove('open'));
@@ -182,14 +168,12 @@
   });
 
   // ---- Apply Page ----
-  // "지원하기" buttons in accordion -> open apply page
   document.addEventListener('click', e => {
     const applyBtn = e.target.closest('.career-detail-apply');
     if (applyBtn) {
       e.preventDefault();
       const item = applyBtn.closest('.career-item');
-      const jobKey = item ? item.dataset.job : null;
-      const job = jobKey ? jobs[jobKey] : null;
+      const job = item ? jobs[item.dataset.job] : null;
       if (job) {
         document.getElementById('applyPosition').textContent = job.title;
         document.getElementById('applySubject').value = 'fillts 지원 — ' + job.title;
@@ -198,15 +182,9 @@
     }
   });
 
-  // Back to careers
-  document.getElementById('applyBack').addEventListener('click', e => {
-    e.preventDefault();
-    goTo('careers');
-  });
+  document.getElementById('applyBack').addEventListener('click', e => { e.preventDefault(); goTo('careers'); });
 
-  // Add / Remove SNS row
   let snsCount = 1;
-
   function makeSnsOptions() {
     return '<option value="" selected>선택 안함</option>' +
       '<option value="Instagram">Instagram</option>' +
@@ -226,63 +204,45 @@
     row.innerHTML =
       '<button type="button" class="apply-sns-remove">&times;</button>' +
       '<select name="sns_type_' + snsCount + '" class="form-select form-select-sm">' +
-      makeSnsOptions() +
-      '</select>' +
+      makeSnsOptions() + '</select>' +
       '<input type="url" name="sns_url_' + snsCount + '" placeholder="URL 입력">';
     group.appendChild(row);
   });
 
-  // Remove SNS row (delegated)
   document.getElementById('snsGroup').addEventListener('click', e => {
     const btn = e.target.closest('.apply-sns-remove');
-    if (btn) {
-      btn.closest('.apply-sns-row').remove();
-      snsCount = Math.max(1, snsCount - 1);
-    }
+    if (btn) { btn.closest('.apply-sns-row').remove(); snsCount = Math.max(1, snsCount - 1); }
   });
 
-  // File label update
   document.getElementById('applyFile').addEventListener('change', function () {
-    const label = document.getElementById('fileLabel');
-    label.textContent = this.files.length ? this.files[0].name : 'PDF 첨부 (포트폴리오)';
+    document.getElementById('fileLabel').textContent = this.files.length ? this.files[0].name : 'PDF 첨부 (포트폴리오)';
   });
 
-  // Apply form submit
   const applyForm = document.getElementById('applyForm');
   applyForm.addEventListener('submit', function (e) {
     e.preventDefault();
-
-    // Validate: PDF or portfolio link required
     const hasFile = document.getElementById('applyFile').files.length > 0;
     const hasLink = document.getElementById('portfolioLink').value.trim() !== '';
-    if (!hasFile && !hasLink) {
-      alert('PDF 첨부 또는 포트폴리오 링크 중 하나는 필수입니다.');
-      return;
-    }
-
+    if (!hasFile && !hasLink) { alert('PDF 첨부 또는 포트폴리오 링크 중 하나는 필수입니다.'); return; }
     const formData = new FormData(applyForm);
     fetch(applyForm.action, { method: 'POST', body: formData }).catch(() => {});
-
     const btn = applyForm.querySelector('.form-submit');
     btn.textContent = '지원 완료';
     btn.style.background = 'var(--black)';
     btn.style.color = 'var(--white)';
     setTimeout(() => {
-      btn.textContent = '지원하기';
-      btn.style.background = '';
-      btn.style.color = '';
+      btn.textContent = '지원하기'; btn.style.background = ''; btn.style.color = '';
       applyForm.reset();
       document.getElementById('fileLabel').textContent = 'PDF 첨부 (포트폴리오)';
       goTo('careers');
     }, 2000);
   });
 
-  // ---- Contact Form: Save + Submit ----
+  // ---- Contact Form: Firestore + Formsubmit ----
   const contactForm = document.querySelector('.contact-form');
   if (contactForm) {
     contactForm.addEventListener('submit', function (e) {
       e.preventDefault();
-
       const data = {
         date: new Date().toISOString(),
         category: contactForm.querySelector('[name="category"]').value,
@@ -292,109 +252,112 @@
         message: contactForm.querySelector('[name="message"]').value
       };
 
-      // Save to localStorage
-      const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      list.unshift(data);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      // Save to Firestore
+      db.collection('inquiries').add(data).catch(function () {});
 
       // Submit to Formsubmit.co
-      const formData = new FormData(contactForm);
-      fetch(contactForm.action, {
-        method: 'POST',
-        body: formData
-      }).catch(() => {});
+      var formData = new FormData(contactForm);
+      fetch(contactForm.action, { method: 'POST', body: formData }).catch(function () {});
 
-      const btn = contactForm.querySelector('.form-submit');
+      var btn = contactForm.querySelector('.form-submit');
       btn.textContent = 'Sent';
       btn.style.background = 'var(--black)';
       btn.style.color = 'var(--white)';
-      setTimeout(() => {
-        btn.textContent = 'Send';
-        btn.style.background = '';
-        btn.style.color = '';
+      setTimeout(function () {
+        btn.textContent = 'Send'; btn.style.background = ''; btn.style.color = '';
         contactForm.reset();
       }, 2000);
     });
   }
 
-  // ---- Admin Modal ----
+  // ---- Admin: Firebase Auth ----
   const modal = document.getElementById('adminModal');
   const loginLink = document.getElementById('adminLoginLink');
   const modalClose = document.getElementById('modalClose');
   const adminForm = document.getElementById('adminForm');
+  const adminEmail = document.getElementById('adminEmail');
   const adminPw = document.getElementById('adminPw');
   const modalError = document.getElementById('modalError');
 
-  loginLink.addEventListener('click', e => {
+  loginLink.addEventListener('click', function (e) {
     e.preventDefault();
+    // If already logged in, go straight to admin
+    if (auth.currentUser) { renderAdmin(); goTo('admin'); return; }
     modal.classList.add('open');
-    adminPw.focus();
+    adminEmail.focus();
   });
 
-  modalClose.addEventListener('click', () => {
-    modal.classList.remove('open');
+  modalClose.addEventListener('click', function () {
+    modal.classList.remove('open'); modalError.textContent = ''; adminPw.value = ''; adminEmail.value = '';
+  });
+
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) { modal.classList.remove('open'); modalError.textContent = ''; adminPw.value = ''; adminEmail.value = ''; }
+  });
+
+  adminForm.addEventListener('submit', function (e) {
+    e.preventDefault();
     modalError.textContent = '';
-    adminPw.value = '';
+    auth.signInWithEmailAndPassword(adminEmail.value, adminPw.value)
+      .then(function () {
+        modal.classList.remove('open');
+        adminPw.value = ''; adminEmail.value = '';
+        renderAdmin();
+        goTo('admin');
+      })
+      .catch(function (err) {
+        modalError.textContent = '로그인 실패: 이메일 또는 비밀번호를 확인하세요.';
+      });
   });
 
-  modal.addEventListener('click', e => {
-    if (e.target === modal) {
-      modal.classList.remove('open');
-      modalError.textContent = '';
-      adminPw.value = '';
-    }
-  });
-
-  adminForm.addEventListener('submit', e => {
+  document.getElementById('adminLogout').addEventListener('click', function (e) {
     e.preventDefault();
-    if (adminPw.value === ADMIN_PW) {
-      modal.classList.remove('open');
-      adminPw.value = '';
-      modalError.textContent = '';
-      renderAdmin();
-      goTo('admin');
-    } else {
-      modalError.textContent = '비밀번호가 일치하지 않습니다.';
-    }
+    auth.signOut().then(function () { goTo('contact'); });
   });
 
-  document.getElementById('adminLogout').addEventListener('click', e => {
-    e.preventDefault();
-    goTo('contact');
-  });
-
-  // ---- Render Admin List ----
+  // ---- Render Admin: Read from Firestore ----
   function renderAdmin() {
-    const container = document.getElementById('adminList');
-    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    var container = document.getElementById('adminList');
+    container.innerHTML = '<p class="admin-empty">불러오는 중...</p>';
 
-    if (list.length === 0) {
-      container.innerHTML = '<p class="admin-empty">문의 내역이 없습니다.</p>';
-      return;
-    }
+    db.collection('inquiries').orderBy('date', 'desc').get()
+      .then(function (snapshot) {
+        if (snapshot.empty) {
+          container.innerHTML = '<p class="admin-empty">문의 내역이 없습니다.</p>';
+          return;
+        }
+        container.innerHTML = '';
+        snapshot.forEach(function (doc) {
+          var item = doc.data();
+          var d = new Date(item.date);
+          var dateStr = d.getFullYear() + '.' +
+            String(d.getMonth() + 1).padStart(2, '0') + '.' +
+            String(d.getDate()).padStart(2, '0') + ' ' +
+            String(d.getHours()).padStart(2, '0') + ':' +
+            String(d.getMinutes()).padStart(2, '0');
 
-    container.innerHTML = list.map(item => {
-      const d = new Date(item.date);
-      const dateStr = d.getFullYear() + '.' +
-        String(d.getMonth() + 1).padStart(2, '0') + '.' +
-        String(d.getDate()).padStart(2, '0') + ' ' +
-        String(d.getHours()).padStart(2, '0') + ':' +
-        String(d.getMinutes()).padStart(2, '0');
-
-      return '<div class="admin-row">' +
-        '<div><span class="admin-date">' + dateStr + '</span></div>' +
-        '<div class="admin-info">' +
-          '<span class="admin-category">' + (item.category || '') + '</span>' +
-          '<span class="admin-name">' + escHtml(item.name) + '</span>' +
-          '<span class="admin-contact">' + escHtml(item.email) + (item.phone && item.phone.trim() !== '+82' ? ' · ' + escHtml(item.phone) : '') + '</span>' +
-          '<span class="admin-msg">' + escHtml(item.message) + '</span>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+          var row = document.createElement('div');
+          row.className = 'admin-row';
+          row.innerHTML =
+            '<div><span class="admin-date">' + dateStr + '</span></div>' +
+            '<div class="admin-info">' +
+              '<span class="admin-category">' + escHtml(item.category || '') + '</span>' +
+              '<span class="admin-name">' + escHtml(item.name) + '</span>' +
+              '<span class="admin-contact">' + escHtml(item.email) +
+                (item.phone && item.phone.trim() !== '+82' ? ' · ' + escHtml(item.phone) : '') +
+              '</span>' +
+              '<span class="admin-msg">' + escHtml(item.message) + '</span>' +
+            '</div>';
+          container.appendChild(row);
+        });
+      })
+      .catch(function () {
+        container.innerHTML = '<p class="admin-empty">데이터를 불러올 수 없습니다.</p>';
+      });
   }
 
   function escHtml(str) {
-    const d = document.createElement('div');
+    var d = document.createElement('div');
     d.textContent = str || '';
     return d.innerHTML;
   }
