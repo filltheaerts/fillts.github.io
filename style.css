@@ -1046,8 +1046,8 @@ a {
 }
 
 .privacy-consent input[type="checkbox"] {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   accent-color: var(--red);
   cursor: pointer;
   flex-shrink: 0;
@@ -1464,6 +1464,41 @@ a {
   .admin-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  /* 체크박스 모바일 축소 (PC 14px → 모바일 9px, ~35% 축소) */
+  .privacy-consent input[type="checkbox"] {
+    width: 9px;
+    height: 9px;
+  }
+
+  .privacy-consent {
+    gap: 4px;
+    font-size: 0.68rem;
+  }
+
+  /* 전화번호: prefix+area 좁게, 번호칸 넓게 */
+  .form-row-phone {
+    display: flex;
+  }
+
+  .form-row-phone .phone-prefix {
+    padding: 12px 8px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .form-row-phone .phone-area {
+    padding: 12px 4px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    width: 52px;
+    min-width: 52px;
+  }
+
+  .form-row-phone input[type="tel"] {
+    flex: 1;
+    min-width: 0;
   }
 }
 
