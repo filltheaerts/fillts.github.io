@@ -144,7 +144,7 @@
     menu.classList.toggle('open');
   });
 
-  const pageIds = ['home', 'about', 'alpha', 'work', 'careers', 'contact'];
+  const pageIds = ['home', 'about', 'alpha', 'work', 'careers', 'contact', 'privacy'];
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     const current = pageIds.findIndex(id => document.getElementById(id).classList.contains('active'));
@@ -183,6 +183,7 @@
   });
 
   document.getElementById('applyBack').addEventListener('click', e => { e.preventDefault(); goTo('careers'); });
+  document.getElementById('privacyBack').addEventListener('click', e => { e.preventDefault(); history.back ? goTo('home') : goTo('home'); });
 
   let snsCount = 1;
   function makeSnsOptions() {
