@@ -881,13 +881,13 @@ a {
 }
 
 .form-row-phone {
-  gap: 0;
+  gap: 0 !important;
 }
 
 .phone-prefix {
   display: flex;
   align-items: center;
-  padding: 14px 14px;
+  padding: 14px 10px;
   font-size: 0.82rem;
   font-weight: 400;
   color: var(--gray-400);
@@ -899,13 +899,14 @@ a {
   -webkit-appearance: none;
   appearance: none;
   height: auto;
+  flex-shrink: 0;
 }
 
 .phone-area {
   font-family: var(--font-sans);
   font-size: 0.82rem;
   font-weight: 300;
-  padding: 14px 8px;
+  padding: 14px 6px;
   border: 1px solid var(--gray-200);
   border-right: none;
   border-radius: 0;
@@ -916,12 +917,21 @@ a {
   -webkit-appearance: none;
   appearance: none;
   height: auto;
+  flex-shrink: 0;
+  width: 64px;
+  min-width: 64px;
+}
+
+.form-row-phone {
+  display: flex;
 }
 
 .form-row-phone input[type="tel"] {
   border-radius: 0;
   -webkit-appearance: none;
   appearance: none;
+  flex: 1;
+  min-width: 0;
 }
 
 .form-select {
