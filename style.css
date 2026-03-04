@@ -1046,8 +1046,8 @@ a {
 }
 
 .privacy-consent input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   accent-color: var(--red);
   cursor: pointer;
   flex-shrink: 0;
@@ -1466,7 +1466,7 @@ a {
     gap: 8px;
   }
 
-  /* 체크박스 모바일 축소 (PC 14px → 모바일 9px, ~35% 축소) */
+  /* 체크박스 모바일 축소 */
   .privacy-consent input[type="checkbox"] {
     width: 9px;
     height: 9px;
