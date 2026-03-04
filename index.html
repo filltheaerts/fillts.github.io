@@ -275,7 +275,16 @@
           </div>
           <div class="form-row form-row-phone required-wrap">
             <span class="phone-prefix">+82</span>
-            <input type="tel" name="phone" placeholder="10-0000-0000" required>
+            <select name="phone_area" class="phone-area">
+              <option value="010" selected>010</option>
+              <option value="011">011</option>
+              <option value="016">016</option>
+              <option value="017">017</option>
+              <option value="018">018</option>
+              <option value="019">019</option>
+              <option value="02">02</option>
+            </select>
+            <input type="tel" name="phone" placeholder="0000-0000" maxlength="9" required>
           </div>
           <div class="apply-sns-group" id="snsGroup">
             <div class="apply-sns-row">
@@ -335,7 +344,16 @@
           </div>
           <div class="form-row form-row-phone">
             <span class="phone-prefix">+82</span>
-            <input type="tel" name="phone" placeholder="10-0000-0000">
+            <select name="phone_area" class="phone-area">
+              <option value="010" selected>010</option>
+              <option value="011">011</option>
+              <option value="016">016</option>
+              <option value="017">017</option>
+              <option value="018">018</option>
+              <option value="019">019</option>
+              <option value="02">02</option>
+            </select>
+            <input type="tel" name="phone" placeholder="0000-0000" maxlength="9">
           </div>
           <div class="required-wrap"><textarea name="message" placeholder="Message" rows="4" required></textarea></div>
           <button type="submit" class="form-submit">Send</button>

@@ -856,6 +856,18 @@ a {
   white-space: nowrap;
 }
 
+.phone-area {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  padding: 14px 8px;
+  border: 1px solid var(--gray-200);
+  border-right: none;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  outline: none;
+}
+
 .form-select {
   width: 100%;
   font-family: var(--font-sans);

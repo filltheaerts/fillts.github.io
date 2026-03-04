@@ -266,7 +266,7 @@
         category: contactForm.querySelector('[name="category"]').value,
         name: contactForm.querySelector('[name="name"]').value,
         email: contactForm.querySelector('[name="email"]').value,
-        phone: '+82 ' + contactForm.querySelector('[name="phone"]').value,
+        phone: '+82 ' + contactForm.querySelector('[name="phone_area"]').value + '-' + contactForm.querySelector('[name="phone"]').value,
         message: contactForm.querySelector('[name="message"]').value
       };
 
