@@ -218,6 +218,31 @@
     document.getElementById('fileLabel').textContent = this.files.length ? this.files[0].name : 'PDF 첨부 (포트폴리오)';
   });
 
+  // ---- Success Modal ----
+  const successModal = document.getElementById('successModal');
+  const successTitle = document.getElementById('successTitle');
+  const successMsg = document.getElementById('successMsg');
+  document.getElementById('successClose').addEventListener('click', function () {
+    successModal.classList.remove('open');
+  });
+  successModal.addEventListener('click', function (e) {
+    if (e.target === successModal) successModal.classList.remove('open');
+  });
+
+  function showSuccess(title, msg, callback) {
+    successTitle.textContent = title;
+    successMsg.innerHTML = msg;
+    successModal.classList.add('open');
+    if (callback) {
+      var handler = function () {
+        successModal.classList.remove('open');
+        document.getElementById('successClose').removeEventListener('click', handler);
+        callback();
+      };
+      document.getElementById('successClose').addEventListener('click', handler);
+    }
+  }
+
   const applyForm = document.getElementById('applyForm');
   applyForm.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -226,16 +251,9 @@
     if (!hasFile && !hasLink) { alert('PDF 첨부 또는 포트폴리오 링크 중 하나는 필수입니다.'); return; }
     const formData = new FormData(applyForm);
     fetch(applyForm.action, { method: 'POST', body: formData }).catch(() => {});
-    const btn = applyForm.querySelector('.form-submit');
-    btn.textContent = '지원 완료';
-    btn.style.background = 'var(--black)';
-    btn.style.color = 'var(--white)';
-    setTimeout(() => {
-      btn.textContent = '지원하기'; btn.style.background = ''; btn.style.color = '';
-      applyForm.reset();
-      document.getElementById('fileLabel').textContent = 'PDF 첨부 (포트폴리오)';
-      goTo('careers');
-    }, 2000);
+    applyForm.reset();
+    document.getElementById('fileLabel').textContent = 'PDF 첨부 (포트폴리오)';
+    showSuccess('지원이 완료되었습니다', '검토 후 연락드리겠습니다.<br>감사합니다.', function () { goTo('careers'); });
   });
 
   // ---- Contact Form: Firestore + Formsubmit ----
@@ -259,14 +277,8 @@
       var formData = new FormData(contactForm);
       fetch(contactForm.action, { method: 'POST', body: formData }).catch(function () {});
 
-      var btn = contactForm.querySelector('.form-submit');
-      btn.textContent = 'Sent';
-      btn.style.background = 'var(--black)';
-      btn.style.color = 'var(--white)';
-      setTimeout(function () {
-        btn.textContent = 'Send'; btn.style.background = ''; btn.style.color = '';
-        contactForm.reset();
-      }, 2000);
+      contactForm.reset();
+      showSuccess('문의가 전달되었습니다', '확인 후 빠르게 연락드리겠습니다.<br>감사합니다.');
     });
   }
 
