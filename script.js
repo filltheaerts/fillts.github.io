@@ -214,9 +214,6 @@
     if (btn) { btn.closest('.apply-sns-row').remove(); snsCount = Math.max(1, snsCount - 1); }
   });
 
-  document.getElementById('applyFile').addEventListener('change', function () {
-    document.getElementById('fileLabel').textContent = this.files.length ? this.files[0].name : 'PDF 첨부 (포트폴리오)';
-  });
 
   // ---- Success Modal ----
   const successModal = document.getElementById('successModal');
@@ -246,9 +243,8 @@
   const applyForm = document.getElementById('applyForm');
   applyForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    const hasFile = document.getElementById('applyFile').files.length > 0;
     const hasLink = document.getElementById('portfolioLink').value.trim() !== '';
-    if (!hasFile && !hasLink) { alert('PDF 첨부 또는 포트폴리오 링크 중 하나는 필수입니다.'); return; }
+    if (!hasLink) { alert('포트폴리오 링크를 입력해 주세요.'); return; }
 
     // Collect SNS data
     var snsList = [];
@@ -267,7 +263,7 @@
       phone: '+82 ' + applyForm.querySelector('[name="phone_area"]').value + '-' + applyForm.querySelector('[name="phone"]').value,
       message: applyForm.querySelector('[name="message"]').value,
       sns: snsList.join(' | '),
-      portfolio: document.getElementById('portfolioLink').value || '(PDF 첨부)'
+      portfolio: document.getElementById('portfolioLink').value
     };
     db.collection('applications').add(applyData).catch(function () {});
 
@@ -289,7 +285,6 @@
     }).catch(function () {});
 
     applyForm.reset();
-    document.getElementById('fileLabel').textContent = 'PDF 첨부 (포트폴리오)';
     showSuccess('지원이 완료되었습니다', '검토 후 연락드리겠습니다.<br>감사합니다.', function () { goTo('careers'); });
   });
 

@@ -636,6 +636,13 @@ a {
   letter-spacing: 0.02em;
 }
 
+.apply-file-note {
+  font-size: 0.72rem;
+  font-weight: 300;
+  color: var(--gray-600);
+  margin-top: 4px;
+}
+
 .apply-form .required-wrap,
 .contact-form .required-wrap {
   position: relative;
