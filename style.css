@@ -377,6 +377,13 @@ a {
 #careers {
   background: var(--white);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+}
+
+#careers .page-inner {
+  padding-top: 100px;
+  padding-bottom: 80px;
 }
 
 .careers-list {
@@ -983,6 +990,14 @@ a {
 /* ============ Admin ============ */
 #admin {
   background: var(--white);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  align-items: flex-start;
+}
+
+#admin .page-inner {
+  padding-top: 100px;
+  padding-bottom: 80px;
 }
 
 .admin-header {
