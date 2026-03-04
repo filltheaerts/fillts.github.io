@@ -318,7 +318,7 @@
           <input type="hidden" name="_subject" value="fillts.com 문의">
           <input type="hidden" name="_captcha" value="false">
           <input type="hidden" name="_next" value="https://fillts.com">
-          <select name="category" class="form-select" required>
+          <div class="required-wrap"><select name="category" class="form-select" required>
             <option value="" disabled selected>문의 항목 선택</option>
             <option value="Brand">Brand — Identity · Naming · Direction</option>
             <option value="Technology">Technology — AI · Data · Automation</option>
@@ -326,16 +326,16 @@
             <option value="Consulting">Consulting — Strategy · Growth · Transformation</option>
             <option value="Alpha">Alpha — Trend · Intelligence · Market Signal</option>
             <option value="Other">기타 문의</option>
-          </select>
+          </select></div>
           <div class="form-row">
-            <input type="text" name="name" placeholder="Name" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <div class="required-wrap"><input type="text" name="name" placeholder="Name" required></div>
+            <div class="required-wrap"><input type="email" name="email" placeholder="Email" required></div>
           </div>
           <div class="form-row form-row-phone">
             <span class="phone-prefix">+82</span>
             <input type="tel" name="phone" placeholder="10-0000-0000">
           </div>
-          <textarea name="message" placeholder="Message" rows="4" required></textarea>
+          <div class="required-wrap"><textarea name="message" placeholder="Message" rows="4" required></textarea></div>
           <button type="submit" class="form-submit">Send</button>
         </form>
         <div class="contact-footer">

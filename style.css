@@ -636,11 +636,13 @@ a {
   letter-spacing: 0.02em;
 }
 
-.apply-form .required-wrap {
+.apply-form .required-wrap,
+.contact-form .required-wrap {
   position: relative;
 }
 
-.apply-form .required-wrap::before {
+.apply-form .required-wrap::before,
+.contact-form .required-wrap::before {
   content: '*';
   position: absolute;
   left: 8px;
@@ -653,8 +655,19 @@ a {
 }
 
 .apply-form .required-wrap input,
-.apply-form .required-wrap .phone-prefix {
+.apply-form .required-wrap .phone-prefix,
+.contact-form .required-wrap input,
+.contact-form .required-wrap select {
   padding-left: 20px;
+}
+
+.contact-form .required-wrap textarea {
+  padding-left: 20px;
+}
+
+.contact-form .required-wrap:has(textarea)::before {
+  top: 14px;
+  transform: none;
 }
 
 .apply-attach-required::before {
