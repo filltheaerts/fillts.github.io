@@ -875,6 +875,14 @@ a {
   margin-bottom: 40px;
 }
 
+.contact-form .form-row > .required-wrap:first-child {
+  flex: 0 0 160px;
+}
+
+.contact-form .form-row > .required-wrap:last-child {
+  flex: 1;
+}
+
 .form-row {
   display: flex;
   gap: 12px;
