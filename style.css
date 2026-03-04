@@ -1155,11 +1155,21 @@ a {
   .page {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
   }
 
   .page .page-inner {
     padding-top: 100px;
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Home stays centered */
+  #home {
+    align-items: center;
+  }
+
+  #home .page-inner {
+    padding-top: 72px;
   }
 
   .work-row {
