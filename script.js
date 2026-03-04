@@ -59,7 +59,7 @@
     },
     job3: {
       label: '정규직 · Remote',
-      title: 'AI 구조 · 유지보수 설계 전문가',
+      title: 'AI 아키텍트(AI Architect)',
       body: '<h3>역할</h3><ul>' +
         '<li>AI 시스템 아키텍처 설계 및 인프라 구축</li>' +
         '<li>LLM 기반 에이전트 · 자동화 파이프라인 운영 및 최적화</li>' +
