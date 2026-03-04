@@ -370,11 +370,39 @@
     auth.signOut().then(function () { goTo('contact'); });
   });
 
+  // ---- Admin Tabs ----
+  var currentTab = 'inquiries';
+  document.querySelectorAll('.admin-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.admin-tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab;
+      renderAdmin();
+    });
+  });
+
   // ---- Render Admin: Read from Firestore ----
   function renderAdmin() {
     var container = document.getElementById('adminList');
     container.innerHTML = '<p class="admin-empty">불러오는 중...</p>';
 
+    if (currentTab === 'inquiries') {
+      renderInquiries(container);
+    } else {
+      renderApplications(container);
+    }
+  }
+
+  function formatDate(dateStr) {
+    var d = new Date(dateStr);
+    return d.getFullYear() + '.' +
+      String(d.getMonth() + 1).padStart(2, '0') + '.' +
+      String(d.getDate()).padStart(2, '0') + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' +
+      String(d.getMinutes()).padStart(2, '0');
+  }
+
+  function renderInquiries(container) {
     db.collection('inquiries').orderBy('date', 'desc').get()
       .then(function (snapshot) {
         if (snapshot.empty) {
@@ -384,17 +412,10 @@
         container.innerHTML = '';
         snapshot.forEach(function (doc) {
           var item = doc.data();
-          var d = new Date(item.date);
-          var dateStr = d.getFullYear() + '.' +
-            String(d.getMonth() + 1).padStart(2, '0') + '.' +
-            String(d.getDate()).padStart(2, '0') + ' ' +
-            String(d.getHours()).padStart(2, '0') + ':' +
-            String(d.getMinutes()).padStart(2, '0');
-
           var row = document.createElement('div');
           row.className = 'admin-row';
           row.innerHTML =
-            '<div><span class="admin-date">' + dateStr + '</span></div>' +
+            '<div><span class="admin-date">' + formatDate(item.date) + '</span></div>' +
             '<div class="admin-info">' +
               '<span class="admin-category">' + escHtml(item.category || '') + '</span>' +
               '<span class="admin-name">' + escHtml(item.name) + '</span>' +
@@ -402,6 +423,38 @@
                 (item.phone && item.phone.trim() !== '+82' ? ' · ' + escHtml(item.phone) : '') +
               '</span>' +
               '<span class="admin-msg">' + escHtml(item.message) + '</span>' +
+            '</div>';
+          container.appendChild(row);
+        });
+      })
+      .catch(function () {
+        container.innerHTML = '<p class="admin-empty">데이터를 불러올 수 없습니다.</p>';
+      });
+  }
+
+  function renderApplications(container) {
+    db.collection('applications').orderBy('date', 'desc').get()
+      .then(function (snapshot) {
+        if (snapshot.empty) {
+          container.innerHTML = '<p class="admin-empty">지원 내역이 없습니다.</p>';
+          return;
+        }
+        container.innerHTML = '';
+        snapshot.forEach(function (doc) {
+          var item = doc.data();
+          var row = document.createElement('div');
+          row.className = 'admin-row';
+          row.innerHTML =
+            '<div><span class="admin-date">' + formatDate(item.date) + '</span></div>' +
+            '<div class="admin-info">' +
+              '<span class="admin-category">' + escHtml(item.position || '') + '</span>' +
+              '<span class="admin-name">' + escHtml(item.name) + '</span>' +
+              '<span class="admin-contact">' + escHtml(item.email) +
+                (item.phone ? ' · ' + escHtml(item.phone) : '') +
+              '</span>' +
+              (item.portfolio ? '<span class="admin-link"><a href="' + escHtml(item.portfolio) + '" target="_blank" style="color:var(--red);font-size:0.75rem;">포트폴리오</a></span>' : '') +
+              (item.sns ? '<span class="admin-sns" style="font-size:0.72rem;color:var(--gray-400);">' + escHtml(item.sns) + '</span>' : '') +
+              (item.message ? '<span class="admin-msg">' + escHtml(item.message) + '</span>' : '') +
             '</div>';
           container.appendChild(row);
         });

@@ -992,8 +992,36 @@ a {
   margin-bottom: 32px;
 }
 
-.admin-header .page-title {
-  margin-bottom: 0;
+.admin-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.admin-tab {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 400;
+  padding: 10px 24px;
+  border: 1px solid var(--gray-200);
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-tab:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.admin-tab:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.admin-tab.active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
 }
 
 .admin-logout {
