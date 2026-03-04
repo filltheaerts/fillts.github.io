@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>260304 Fillts Strength Narrative Result</title>
+  
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #fff;
+    color: #222;
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    line-height: 1.7;
+    padding: 0;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 36px 80px;
+  }
+  h1 {
+    font-size: 1.85em;
+    font-weight: 700;
+    border-bottom: 2px solid #222;
+    padding-bottom: 10px;
+    margin: 36px 0 18px;
+    color: #000;
+  }
+  h2 {
+    font-size: 1.4em;
+    font-weight: 700;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+    margin: 28px 0 10px;
+    color: #111;
+  }
+  h3 {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin: 22px 0 6px;
+    color: #222;
+  }
+  h4 {
+    font-size: 1.05em;
+    font-weight: 560;
+    margin: 16px 0 5px;
+    color: #333;
+  }
+  p {
+    margin: 7px 0;
+    font-size: 1em;
+    color: #222;
+  }
+  a { color: #1a6dca; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { color: #000; font-weight: 700; font-size: 1.05em; }
+  em { color: #555; }
+  blockquote {
+    border-left: 3px solid #bbb;
+    background: #f5f5f5;
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 0;
+    color: #222;
+    font-size: 0.97em;
+    line-height: 1.75;
+  }
+  blockquote p { margin: 3px 0; }
+  ul, ol {
+    padding-left: 22px;
+    margin: 6px 0;
+  }
+  li {
+    margin: 3px 0;
+    font-size: 1em;
+    color: #222;
+  }
+  li::marker { color: #444; }
+  .table-wrap {
+    overflow-x: auto;
+    margin: 12px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 100%;
+    width: max-content;
+    border-collapse: collapse;
+    font-size: 0.93em;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+  }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #222;
+    border-bottom: 1px solid #bbb;
+    background: #f8f8f8;
+    font-size: 0.95em;
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #e8e8e8;
+    color: #333;
+    font-size: 0.97em;
+    white-space: nowrap;
+  }
+  /* 마지막 열(판단/핵심)은 줄바꿈 허용 */
+  td:last-child, th:last-child { white-space: normal; min-width: 120px; }
+  tr:last-child td { border-bottom: none; }
+  code {
+    background: #f3f3f3;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.88em;
+    color: #333;
+  }
+  pre {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 22px;
+    overflow-x: auto;
+    margin: 18px 0;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #222;
+    font-size: 0.88em;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 28px 0;
+  }
+  img { max-width: 100%; border-radius: 6px; }
+  .footer {
+    text-align: center;
+    color: #999;
+    font-size: 0.82em;
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+  }
+  td:first-child, th:first-child { text-align: center; }  /* 순위/No. 열 가운데 정렬 */
+  @media (max-width: 768px) {
+    body { font-size: 16px; }
+    .container { padding: 24px 16px 40px; }
+    h1 { font-size: 1.7em; }
+    h2 { font-size: 1.4em; }
+    table { font-size: 0.85em; }
+    th, td { padding: 8px 10px; }
+  }
+  @media print {
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif !important;
+      color: #000 !important;
+      font-weight: 500 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .container { max-width: 100%; padding: 20px; }
+    p, li, td, th, span, blockquote, blockquote p {
+      color: #000 !important;
+      font-weight: 500 !important;
+    }
+    h1, h2, h3, h4, strong { color: #000 !important; }
+    pre, pre code, code { color: #000 !important; }
+    em { color: #000 !important; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+</head>
+<body>
+  <div class="container">
+    <h1 id="we-fill-our-business-with-unique-strengths">"We fill our business with unique strengths."</h1>
+<h2 id="_1">철학적 기반 분석 &amp; 홈페이지 내러티브 통찰</h2>
+<hr />
+<h2 id="1">1. 철학적 기반 분석: "고유한 강점"의 뿌리</h2>
+<h3 id="_2">심리학적 뿌리</h3>
+<p><strong>칼 융(Carl Jung)의 개성화(Individuation)</strong></p>
+<p>융은 인간의 궁극적 과업을 "자기 자신이 되는 것(Selbstwerdung)"이라 했다. 이것은 단순히 잘하는 것을 찾는 행위가 아니다. 페르소나(사회적 가면)와 그림자(억압된 자아)를 통합하여, 세상에 단 하나뿐인 "자기(Selbst)"를 완성하는 여정이다. 융의 관점에서 "고유한 강점"이란 곧 <strong>개성화를 통해 도달한 자기 자신의 가장 진실한 표현</strong>이다. 이것은 스킬이 아니라 존재의 방식이다.</p>
+<p><strong>도널드 클리프턴(Donald Clifton)의 강점 혁명</strong></p>
+<p>클리프턴은 40년간 200만 명을 연구한 끝에 하나의 결론에 도달했다. "약점을 고치는 데 쓰는 에너지는 평범함을 만들고, 강점에 쏟는 에너지는 탁월함을 만든다." 그가 발견한 34가지 강점 테마는 인간의 재능이 얼마나 다양하고 고유한지를 보여준다. 같은 "전략적 사고" 강점도 사람마다 전혀 다른 방식으로 발현된다. 클리프턴이 던진 핵심 질문은 이것이다: <strong>"당신이 매일 가장 잘하는 것을 할 기회가 있습니까?"</strong> 이 질문에 "그렇다"고 답한 사람들은 몰입도가 6배, 생산성이 8% 높았다.</p>
+<p><strong>마틴 셀리그먼(Martin Seligman)의 긍정심리학</strong></p>
+<p>셀리그먼은 심리학이 100년간 "무엇이 인간을 아프게 하는가"만 물었다고 비판하며, "무엇이 인간을 번영하게 하는가"를 물었다. 그의 PERMA 모델에서 강점의 활용은 '몰입(Engagement)'과 '의미(Meaning)' 두 축을 동시에 관통한다. <strong>자신의 대표 강점(Signature Strengths)을 사용하는 순간, 인간은 시간을 잊고 몰입하며 동시에 삶의 의미를 느낀다.</strong> 이것이 단순한 능력과 "강점"의 결정적 차이다.</p>
+<p><strong>사이먼 사이넥(Simon Sinek)의 WHY</strong></p>
+<p>사이넥의 골든서클에서 WHY는 존재의 이유, 믿음, 대의다. 대부분의 조직은 WHAT(무엇을 하는가)에서 시작하지만, 위대한 조직은 WHY에서 시작한다. "강점으로 비즈니스를 채운다"는 것은 곧 <strong>WHY를 발견한 사람들이 모여 하나의 목적을 향해 각자의 방식으로 기여하는 구조</strong>다. 이것은 채용이 아니라 소명의 연결이다.</p>
+<h3 id="_3">왜 사람들은 "자신만의 강점"이라는 메시지에 감동하는가?</h3>
+<p>세 가지 근원적 이유가 있다.</p>
+<p><strong>첫째, 인정받음의 갈망.</strong> 인간은 태어나면서부터 "나는 특별한가?"라는 질문을 안고 산다. 매슬로우의 존중 욕구(Esteem Needs)이자, 에릭 에릭슨이 말한 정체성 형성의 핵심이다. "당신에게는 고유한 강점이 있다"는 말은 이 오래된 질문에 <strong>"그렇다"</strong>라고 대답해주는 것이다. 그것만으로 사람의 눈이 빛난다.</p>
+<p><strong>둘째, 쓸모있음의 확인.</strong> 강점이 있다는 것만으로는 부족하다. 그 강점이 "어딘가에 필요하다"는 확인이 있어야 한다. 빅터 프랭클은 아우슈비츠에서 살아남은 사람들의 공통점이 "삶이 자신에게 기대하는 것이 있다는 믿음"이었다고 했다. <strong>"우리는 당신의 강점으로 비즈니스를 채운다"는 곧 "당신이 필요하다"는 선언</strong>이다.</p>
+<p><strong>셋째, 완전함에의 동경.</strong> 플라톤이 말한 이데아, 융이 말한 전체성(Wholeness), 아리스토텔레스가 말한 에우다이모니아(eudaimonia). 인간은 자신의 잠재력이 온전히 실현된 상태를 본능적으로 갈망한다. "강점을 채운다(fill)"는 이미지는 이 완전함의 감각을 촉발한다.</p>
+<h3 id="_4">촉발되는 근원적 욕구와 감정</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>욕구</th>
+<th>감정</th>
+<th>메시지와의 연결</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>자기실현 (매슬로우 5단계)</td>
+<td>고양감, 전율</td>
+<td>"내 강점이 세상에 쓰인다"</td>
+</tr>
+<tr>
+<td>소속감 (3단계)</td>
+<td>안도감, 따뜻함</td>
+<td>"이곳이 내 자리다"</td>
+</tr>
+<tr>
+<td>존중 (4단계)</td>
+<td>자부심, 당당함</td>
+<td>"나는 대체불가능하다"</td>
+</tr>
+<tr>
+<td>의미 추구 (프랭클)</td>
+<td>숭고함, 헌신</td>
+<td>"이것이 내 소명이다"</td>
+</tr>
+<tr>
+<td>자기결정 (Deci &amp; Ryan)</td>
+<td>자유로움, 주도성</td>
+<td>"내 방식으로 기여한다"</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="2">2. 강점에서 비즈니스로의 전환 메커니즘</h2>
+<h3 id="_5">개인의 강점이 조직의 경쟁력이 되는 구조</h3>
+<p><strong>1단계: 발견 (Discovery)</strong><br />
+개인이 자신의 강점을 인식한다. 클리프턴의 표현으로는 "재능(talent) x 투자(investment) = 강점(strength)"이다. 재능은 반복적으로 나타나는 사고, 감정, 행동의 자연스러운 패턴이다. 투자란 연습과 지식이다. 이 둘이 만날 때 강점이 된다.</p>
+<p><strong>2단계: 배치 (Alignment)</strong><br />
+강점을 가진 사람이 그 강점이 빛나는 자리에 놓인다. 피터 드러커는 이를 "강점을 생산적으로 만드는 것이 경영의 유일한 목적"이라 했다. 잘못된 배치는 천재를 범인으로 만들고, 올바른 배치는 평범한 사람을 천재로 만든다.</p>
+<p><strong>3단계: 상호보완 (Complementarity)</strong><br />
+한 사람의 강점은 다른 사람의 약점을 덮는다. 이것은 동정이 아니라 구조적 설계다. 워렌 버핏과 찰리 멍거, 스티브 잡스와 스티브 워즈니악. 위대한 파트너십은 언제나 강점의 상호보완 위에 세워졌다. <strong>조직은 개인의 강점이 겹치지 않고 맞물릴 때 톱니바퀴처럼 돌아간다.</strong></p>
+<p><strong>4단계: 증폭 (Amplification)</strong><br />
+개인의 강점이 조직의 시스템, 문화, 프로세스를 만나면 증폭된다. 한 사람의 통찰력이 팀의 실행력을 만나고, 팀의 실행력이 시장의 기회를 만나면서, 개인의 강점은 비즈니스의 경쟁력으로 변환된다. 이것이 "fill"의 과정이다.</p>
+<h3 id="fill">"Fill"의 다층적 은유</h3>
+<p>이 단어 하나에 세 겹의 의미가 있다.</p>
+<p><strong>제1층: 빈 곳을 채운다 (To Complete)</strong><br />
+모든 비즈니스에는 빈 곳이 있다. 해결되지 않은 문제, 충족되지 않은 욕구, 도달하지 못한 시장. "Fill"은 그 빈 곳을 정확히 발견하고 채우는 행위다. 이것은 문제 해결의 언어다. <strong>시장의 틈새를 보는 눈, 그 틈새를 메우는 강점.</strong> 이 조합이 비즈니스의 출발점이다.</p>
+<p><strong>제2층: 완성한다 (To Fulfill)</strong><br />
+Fill에서 Fulfill로. 빈 곳을 채우는 것을 넘어, 무언가를 완성하고 성취하는 것이다. "Fulfill a promise(약속을 이행하다)", "Fulfill a dream(꿈을 이루다)". 이 층위에서 fill은 단순한 보충이 아니라 <strong>약속의 이행이자 꿈의 실현</strong>이다. 비즈니스가 단순한 돈벌이가 아니라 비전의 완성이 된다.</p>
+<p><strong>제3층: 충만하게 한다 (To Be Filled)</strong><br />
+가장 깊은 층위다. 그릇에 물이 차오르듯, 비즈니스가 강점으로 가득 차는 이미지. 이것은 풍요와 넘침의 감각이다. 비어 있던 것이 가득 차는 전환. <strong>결핍에서 충만으로, 불안에서 확신으로.</strong> 이 감각이 사람들을 끌어당긴다.</p>
+<p>그리고 회사명 "fillts"는 fill + ts(strengths)의 결합으로, 이 모든 의미를 하나의 이름에 담고 있다. <strong>강점으로 채우는 사람들.</strong> 이름 자체가 철학의 선언이다.</p>
+<h3 id="_6">이 서사가 주는 신뢰감의 심리적 근거</h3>
+<p><strong>자기일치 효과 (Self-Concordance Effect):</strong> 셀리그먼과 데시(Deci)의 연구에 따르면, 자신의 가치와 일치하는 목표를 추구하는 사람은 더 오래 노력하고, 더 높은 성과를 낸다. "강점 기반 비즈니스"를 표방하는 조직은 구성원들이 자기일치 상태에 있을 가능성이 높다. 이것이 외부에서 보기에는 <strong>진정성(authenticity)</strong>으로 느껴진다. 진정성은 신뢰의 가장 강력한 원천이다.</p>
+<p><strong>역량 신호 (Competence Signal):</strong> "우리는 각자의 강점에 집중합니다"라는 메시지는 암묵적으로 "우리는 자신이 무엇을 잘하는지 정확히 알고 있습니다"를 의미한다. 자기인식이 높은 조직은 <strong>겸손하면서도 날카롭다</strong>는 인상을 준다. 이것은 고객에게 "이 사람들은 자신의 영역에서 최고다"라는 확신을 준다.</p>
+<hr />
+<h2 id="3">3. 감동을 주는 내러티브 패턴</h2>
+<h3 id="_7">꿈꾸게 만드는 서사 구조</h3>
+<p><strong>소명의 발견 (The Call)</strong></p>
+<p>조셉 캠벨의 '영웅의 여정'에서 첫 단계는 '모험의 소명(Call to Adventure)'이다. 그러나 fillts의 서사는 전통적 영웅 서사와 다른 점이 있다. 전통적 영웅은 외부의 적과 싸우지만, fillts의 영웅은 <strong>자기 안에 이미 있는 것을 발견하는 사람</strong>이다. 이것은 더 깊은 서사다. 왜냐하면 적을 물리치는 것보다 자신을 발견하는 것이 더 어렵고, 더 보편적이며, 더 오래 울리기 때문이다.</p>
+<p>서사의 흐름:</p>
+<blockquote>
+<p><strong>혼돈</strong> (나는 무엇을 잘하는가?) → <strong>발견</strong> (이것이 나의 강점이다) → <strong>연결</strong> (같은 믿음을 가진 사람들을 만나다) → <strong>채움</strong> (강점으로 비즈니스의 빈 곳을 채우다) → <strong>충만</strong> (개인도 조직도 완전해지다)</p>
+</blockquote>
+<p>이 서사가 강력한 이유는 <strong>모든 사람이 첫 번째 단계에 있기 때문</strong>이다. "나는 무엇을 잘하는가?"라는 질문을 하지 않는 사람은 없다.</p>
+<h3 id="_8">"나도 함께하고 싶다"를 만드는 심리적 트리거</h3>
+<p><strong>트리거 1: 가능성의 거울</strong><br />
+방문자가 홈페이지에서 "저 사람도 자기 강점을 찾아 비즈니스를 만들었구나"를 볼 때, 그것은 거울이 된다. "나도 할 수 있을까?"에서 "나도 할 수 있겠다"로의 전환. 반두라(Bandura)의 자기효능감 이론에서 이를 '대리 경험(Vicarious Experience)'이라 한다. <strong>타인의 성공 스토리가 나의 가능성으로 전환되는 순간.</strong></p>
+<p><strong>트리거 2: 미완성의 초대</strong><br />
+"We fill our business with unique strengths."에서 핵심은 "our"이다. 이미 완성된 것이 아니라, <strong>함께 채워가는 중</strong>이라는 뉘앙스. 자이가르닉 효과(Zeigarnik Effect)에 따르면, 인간은 완성된 것보다 미완성된 것에 더 끌린다. "아직 채워야 할 곳이 있다"는 메시지는 곧 <strong>"당신의 자리가 있다"</strong>는 초대다.</p>
+<p><strong>트리거 3: 소속의 조건이 '강점'이라는 사실</strong><br />
+대부분의 조직은 소속의 조건으로 학력, 경력, 스펙을 요구한다. 그러나 fillts가 요구하는 것은 "당신만의 고유한 강점"이다. 이 조건은 <strong>모든 사람이 이미 가지고 있는 것</strong>이다. 진입장벽이 낮은 것이 아니라, 진입 조건이 근본적으로 다른 것이다. 이것이 포용과 탁월함을 동시에 느끼게 한다.</p>
+<h3 id="_9">미니멀하면서 깊은 울림을 주는 문장의 조건</h3>
+<p><strong>조건 1: 짧되, 여백이 있을 것</strong><br />
+"Just do it." "Think different." "We fill our business with unique strengths." 짧은 문장의 힘은 말하지 않은 것에서 온다. 여백이 독자의 해석을 초대한다. 읽는 사람이 자신의 경험으로 빈 곳을 채울 때, 그 문장은 비로소 "자기 것"이 된다.</p>
+<p><strong>조건 2: 구체적 행동이 담길 것</strong><br />
+"Fill"은 추상적 가치가 아니라 구체적 행동이다. 채우는 행위. 손으로 무언가를 담는 감각. 좋은 슬로건은 읽는 순간 <strong>신체적 이미지</strong>가 떠오른다.</p>
+<p><strong>조건 3: 두 세계를 연결할 것</strong><br />
+"unique strengths"(개인의 세계)와 "our business"(공동의 세계). 이 두 세계를 "fill"이 연결한다. 위대한 문장은 언제나 <strong>분리되어 있던 두 개의 세계를 하나로 잇는다.</strong></p>
+<hr />
+<h2 id="4-10">4. 활용 가능한 명언/레퍼런스/은유 10선</h2>
+<h3 id="1_1">1. 아리스토텔레스</h3>
+<blockquote>
+<p><em>"당신의 재능과 세상의 필요가 교차하는 곳에 당신의 소명이 있다."</em></p>
+</blockquote>
+<p>fillts의 핵심과 정확히 겹친다. 개인의 강점(재능)이 비즈니스의 필요(세상)를 만나는 접점. 이 교차점이 곧 fillts가 만드는 자리다.</p>
+<h3 id="2_1">2. 칼 융</h3>
+<blockquote>
+<p><em>"나는 빛을 만드는 것이 아니다. 나는 다만 어둠을 의식하게 만드는 거울일 뿐이다."</em></p>
+</blockquote>
+<p>강점의 발견은 새로운 것을 만드는 것이 아니라, 이미 있는 것을 자각하는 것이다. fillts는 거울의 역할 — 사람들이 자신의 강점을 비로소 보게 만드는 존재.</p>
+<h3 id="3_1">3. 피터 드러커</h3>
+<blockquote>
+<p><em>"대부분의 사람은 자신이 무엇을 잘하는지 안다고 생각한다. 대개 틀렸다."</em></p>
+</blockquote>
+<p>도발적이지만 진실이다. 자기 강점을 정확히 아는 것은 생각보다 훨씬 어렵다. 이것이 fillts 같은 존재가 필요한 이유다. <strong>강점을 발견하게 하고, 발견된 강점을 비즈니스로 전환하는 안내자.</strong></p>
+<h3 id="4">4. 빅터 프랭클</h3>
+<blockquote>
+<p><em>"삶의 의미를 찾는 사람에게, 삶은 의미로 응답한다."</em></p>
+</blockquote>
+<p>강점을 찾아 비즈니스에 쏟는 행위 자체가 의미의 추구다. 프랭클의 로고테라피(의미치료)에서 말하는 "창조적 가치" — 세상에 무언가를 만들어 기여하는 것.</p>
+<h3 id="5">5. 마커스 버킹엄 (클리프턴의 제자)</h3>
+<blockquote>
+<p><em>"강점은 당신을 강하게 만드는 것이다. 약점은 당신을 약하게 만드는 것이다. 이것이 전부다."</em></p>
+</blockquote>
+<p>강점의 정의를 이보다 명쾌하게 할 수는 없다. 잘하는 것이 아니라 <strong>하고 나면 에너지가 차오르는 것.</strong></p>
+<h3 id="6">6. 사이먼 사이넥</h3>
+<blockquote>
+<p><em>"사람들은 당신이 하는 일을 사는 것이 아니다. 당신이 그 일을 하는 이유를 산다."</em></p>
+</blockquote>
+<p>fillts의 고객은 서비스를 사는 것이 아니라, <strong>"강점으로 비즈니스를 채운다"는 믿음</strong>을 산다.</p>
+<h3 id="7">7. 미켈란젤로</h3>
+<blockquote>
+<p><em>"나는 대리석 안에 천사를 보았고, 천사가 자유로워질 때까지 조각했을 뿐이다."</em></p>
+</blockquote>
+<p>fillts 철학의 가장 아름다운 은유. 강점은 밖에서 가져오는 것이 아니라, <strong>이미 안에 있는 것을 깎아내어 드러내는 것</strong>이다.</p>
+<h3 id="8-13">8. 루미 (13세기 페르시아 시인)</h3>
+<blockquote>
+<p><em>"당신은 바다에 떨어진 한 방울이 아니다. 한 방울 안에 담긴 바다다."</em></p>
+</blockquote>
+<p>한 사람의 고유한 강점 안에 전체 비즈니스의 가능성이 들어 있다. <strong>작은 것 안에 거대한 것이 있다는 프랙탈적 세계관.</strong></p>
+<h3 id="9">9. 앨버트 아인슈타인</h3>
+<blockquote>
+<p><em>"모든 사람은 천재다. 그러나 물고기를 나무 오르기로 판단하면, 그 물고기는 평생 자신이 멍청하다고 믿으며 살 것이다."</em></p>
+</blockquote>
+<p>강점 기반 철학의 가장 대중적이고 강력한 비유. <strong>잘못된 기준으로 자신을 판단하는 것을 멈추고, 자신만의 물을 찾아 헤엄치라는 것.</strong></p>
+<h3 id="10">10. 퍼즐 한 조각 (커스텀 은유)</h3>
+<blockquote>
+<p><em>"당신은 퍼즐의 한 조각이다. 당신 없이는 그림이 완성되지 않는다. 그러나 당신의 모양 그대로여야만 맞는다. 깎이면 들어가지 않는다."</em></p>
+</blockquote>
+<p>각자의 강점은 퍼즐 한 조각의 고유한 모양과 같다. 그 모양을 바꾸면(약점을 고치면) 오히려 맞지 않는다. <strong>원래의 모양 그대로, 정확한 자리에 놓일 때 전체 그림이 완성된다.</strong> "Fill"은 바로 그 조각을 제자리에 놓는 행위다.</p>
+<hr />
+<h2 id="_10">종합 통찰: 홈페이지 내러티브 적용</h2>
+<p>"We fill our business with unique strengths."</p>
+<p>이 한 문장은 다음의 모든 것을 담고 있다:</p>
+<ul>
+<li><strong>존재론적 선언</strong>: 모든 사람에게는 고유한 강점이 있다</li>
+<li><strong>방법론적 선언</strong>: 그 강점을 비즈니스에 채워 넣는다</li>
+<li><strong>관계적 선언</strong>: "our" — 우리가 함께 한다</li>
+<li><strong>미학적 선언</strong>: fill — 빈 곳이 차오르는 충만의 이미지</li>
+<li><strong>윤리적 선언</strong>: 사람을 부품이 아닌 고유한 존재로 대한다</li>
+</ul>
+<p>홈페이지의 내러티브는 이 다섯 층위를 순서대로 펼쳐 보여주면 된다. 첫 화면에서 슬로건으로 직관을 건드리고, 스크롤하면서 각 층위가 하나씩 드러나며, 마지막에 방문자가 스스로 묻게 만드는 것이다.</p>
+<p><strong>"나의 강점은 무엇인가? 그리고 그것으로 무엇을 채울 수 있는가?"</strong></p>
+<p>이 질문이 떠오르는 순간, 방문자는 이미 fillts의 세계 안에 들어와 있다. 감동은 대단한 수사에서 오지 않는다. <strong>자기 안에 이미 있는 것을 처음으로 알아봐 주는 시선에서 온다.</strong> fillts의 홈페이지가 해야 할 일은 딱 하나다. 방문자에게 그 시선을 건네는 것.</p>
+    <div class="footer">
+      Generated from 260304_fillts_strength_narrative_result.md | Finviz Elite Analysis System
+    </div>
+  </div>
+</body>
+</html>
