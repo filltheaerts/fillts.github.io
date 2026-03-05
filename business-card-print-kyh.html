@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>fillts 명함 — 김유희</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --print-black: #222222;
+      --print-red: #c8102e;
+      --print-gray-dark: #555555;
+      --print-gray-mid: #888888;
+      --print-gray-light: #bbbbbb;
+      --print-gray-pale: #dddddd;
+      --font-sans: 'Inter', 'Noto Sans KR', -apple-system, sans-serif;
+    }
+
+    @page {
+      size: 94mm 54mm;
+      margin: 0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 94mm;
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .card {
+      width: 94mm;
+      height: 54mm;
+      background: #f7f6f4;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
+
+    .card:last-child {
+      page-break-after: auto;
+    }
+
+    .safe-zone {
+      position: absolute;
+      top: 5mm;
+      left: 5mm;
+      right: 5mm;
+      bottom: 5mm;
+      display: flex;
+    }
+
+    /* ======== FRONT ======== */
+    .front .safe-zone {
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .front .tagline {
+      font-size: 12.5pt;
+      font-weight: 300;
+      color: var(--print-black);
+      letter-spacing: 0.08em;
+      line-height: 2.1;
+    }
+
+    .front .tagline .accent {
+      color: var(--print-red);
+      font-weight: 500;
+    }
+
+    .front .front-company {
+      font-size: 5.5pt;
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      color: #cccccc;
+      margin-top: 12px;
+    }
+
+    /* ======== BACK ======== */
+    .back .safe-zone {
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .back .name-kr {
+      font-size: 12pt;
+      font-weight: 600;
+      color: var(--print-black);
+      letter-spacing: -0.01em;
+    }
+
+    .back .title {
+      font-size: 6.5pt;
+      font-weight: 400;
+      color: var(--print-gray-mid);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .back .divider {
+      width: 16px;
+      height: 1px;
+      background: var(--print-red);
+      margin: 3.5mm 0;
+    }
+
+    .back .contact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5px;
+    }
+
+    .back .contact-item {
+      font-size: 7pt;
+      font-weight: 300;
+      color: var(--print-gray-dark);
+      letter-spacing: 0.02em;
+      line-height: 1.7;
+    }
+
+    .back .contact-item .label {
+      display: inline-block;
+      width: 12px;
+      font-size: 6pt;
+      font-weight: 500;
+      color: var(--print-gray-mid);
+      letter-spacing: 0.04em;
+    }
+
+    .back .back-logo {
+      position: absolute;
+      bottom: 5mm;
+      right: 5mm;
+      font-size: 8pt;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--print-gray-pale);
+    }
+
+    .back .back-logo .dot {
+      color: var(--print-red);
+      font-size: 3pt;
+      vertical-align: baseline;
+      opacity: 0.4;
+    }
+
+    /* ======== Screen Preview ======== */
+    @media screen {
+      html, body {
+        width: 100%;
+        background: #e0e0e0;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 20px;
+        gap: 32px;
+      }
+
+      .page-label {
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #999;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+
+      .card-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .card {
+        box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      }
+
+      .guide-text {
+        margin-top: 48px;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      .guide-text h3 {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #888;
+        margin-bottom: 12px;
+      }
+
+      .guide-text p {
+        font-size: 11px;
+        font-weight: 300;
+        color: #999;
+        line-height: 1.8;
+      }
+
+      .guide-text code {
+        background: #d5d5d5;
+        padding: 1px 5px;
+        border-radius: 2px;
+        font-size: 10px;
+      }
+    }
+
+    @media print {
+      .page-label, .guide-text { display: none; }
+
+      body {
+        display: block;
+        padding: 0;
+        gap: 0;
+        background: none;
+      }
+
+      .card-wrap {
+        display: contents;
+      }
+
+      .card {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======== FRONT ======== -->
+  <div class="card-wrap">
+    <div class="page-label">Front</div>
+    <div class="card front">
+      <div class="safe-zone">
+        <div class="tagline">
+          We <span class="accent">fill</span> our business<br>
+          with unique strengths<span class="accent">.</span>
+        </div>
+        <div class="front-company">(주)필츠</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== BACK ======== -->
+  <div class="card-wrap">
+    <div class="page-label">Back</div>
+    <div class="card back">
+      <div class="safe-zone">
+        <span class="name-kr">김유희</span>
+        <span class="title">Product Manager</span>
+        <div class="divider"></div>
+        <div class="contact-list">
+          <div class="contact-item"><span class="label">E</span>kyj@fillts.com</div>
+          <div class="contact-item"><span class="label">T</span>010-3398-2606</div>
+          <div class="contact-item"><span class="label">A</span>서울 성동구 연무장5가길 25, 3층 320호</div>
+        </div>
+      </div>
+      <div class="back-logo">fillts<span class="dot">&#9679;</span></div>
+    </div>
+  </div>
+
+  <!-- Guide -->
+  <div class="guide-text">
+    <h3>Print Guide</h3>
+    <p>
+      재단 사이즈 <code>90 × 50 mm</code><br>
+      도련(bleed) 포함 <code>94 × 54 mm</code><br>
+      안전영역 재단선 안쪽 <code>3mm</code><br><br>
+      <code>Ctrl + P</code> → PDF로 저장<br>
+      용지 크기: <code>사용자 지정 94×54mm</code><br>
+      여백: <code>없음</code> · 배경 그래픽: <code>ON</code><br><br>
+      인쇄소 업로드 시 앞면/뒷면 2페이지 PDF
+    </p>
+  </div>
+
+</body>
+</html>
