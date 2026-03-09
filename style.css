@@ -149,11 +149,13 @@ a {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.6s var(--ease), visibility 0.6s;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page.active {
@@ -164,7 +166,7 @@ a {
 .page .page-inner {
   width: 100%;
   max-width: 960px;
-  padding: 72px clamp(28px, 5vw, 72px);
+  padding: 100px clamp(28px, 5vw, 72px) 80px;
 }
 
 .page .page-inner > * {
@@ -189,6 +191,13 @@ a {
 #home {
   background: var(--white);
   text-align: center;
+  align-items: center;
+  overflow-y: hidden;
+}
+
+#home .page-inner {
+  padding-top: 72px;
+  padding-bottom: 72px;
 }
 
 #home .page-inner {
@@ -326,7 +335,6 @@ a {
 /* ============ Alpha ============ */
 #alpha {
   background: var(--white);
-  overflow-y: auto;
 }
 
 .process-list {
@@ -376,14 +384,6 @@ a {
 /* ============ Careers ============ */
 #careers {
   background: var(--white);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  align-items: flex-start;
-}
-
-#careers .page-inner {
-  padding-top: 100px;
-  padding-bottom: 80px;
 }
 
 .careers-list {
@@ -538,7 +538,6 @@ a {
 /* ============ Apply ============ */
 #apply {
   background: var(--white);
-  overflow-y: auto;
 }
 
 .apply-inner {
@@ -1004,21 +1003,16 @@ a {
 }
 
 .contact-footer {
-  position: absolute;
-  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
+  margin-top: 40px;
   font-size: 0.7rem;
   color: var(--gray-400);
   letter-spacing: 0.05em;
   text-align: center;
-  padding: 0 clamp(28px, 5vw, 72px);
 }
 
 .admin-login-link {
-  position: absolute;
-  right: clamp(28px, 5vw, 72px);
-  bottom: 28px;
+  display: block;
+  margin-top: 24px;
   font-size: 0.65rem;
   color: var(--gray-200);
   letter-spacing: 0.05em;
@@ -1085,14 +1079,6 @@ a {
 /* ============ Privacy Page ============ */
 #privacy {
   background: var(--white);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  align-items: flex-start;
-}
-
-#privacy .page-inner {
-  padding-top: 100px;
-  padding-bottom: 80px;
 }
 
 .privacy-inner {
@@ -1147,11 +1133,11 @@ a {
   color: var(--black);
 }
 
-/* Privacy corner link (Home, Careers) */
+/* Privacy corner link (Careers) */
 .privacy-corner-link {
-  position: absolute;
-  right: clamp(28px, 5vw, 72px);
-  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  display: block;
+  text-align: right;
+  padding: 0 clamp(28px, 5vw, 72px) calc(28px + env(safe-area-inset-bottom, 0px));
   font-size: 0.62rem;
   font-weight: 300;
   letter-spacing: 0.03em;
@@ -1181,14 +1167,6 @@ a {
 /* ============ Admin ============ */
 #admin {
   background: var(--white);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  align-items: flex-start;
-}
-
-#admin .page-inner {
-  padding-top: 100px;
-  padding-bottom: 80px;
 }
 
 .admin-header {
@@ -1421,25 +1399,8 @@ a {
     letter-spacing: 0.12em;
   }
 
-  /* Allow scroll on content pages */
-  .page {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    align-items: flex-start;
-  }
-
   .page .page-inner {
-    padding-top: 100px;
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* Home stays centered */
-  #home {
-    align-items: center;
-  }
-
-  #home .page-inner {
-    padding-top: 72px;
   }
 
   .work-row {

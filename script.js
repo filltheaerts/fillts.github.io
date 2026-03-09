@@ -126,7 +126,7 @@
   function goTo(id) {
     const target = document.getElementById(id);
     if (!target || target.classList.contains('active')) return;
-    pages.forEach(p => p.classList.remove('active'));
+    pages.forEach(p => { p.classList.remove('active'); p.scrollTop = 0; });
     target.classList.add('active');
     navLinks.forEach(a => a.classList.toggle('active', a.dataset.page === id));
     nav.classList.toggle('inverted', darkPages.has(id));
