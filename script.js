@@ -123,21 +123,55 @@
   const menu = document.getElementById('navLinks');
   const darkPages = new Set([]);
 
-  function goTo(id) {
+  function goTo(id, opts) {
+    opts = opts || {};
     const target = document.getElementById(id);
-    if (!target || target.classList.contains('active')) return;
+    if (!target) return;
+    if (target.classList.contains('active') && !opts.force) return;
     pages.forEach(p => { p.classList.remove('active'); p.scrollTop = 0; });
     target.classList.add('active');
     navLinks.forEach(a => a.classList.toggle('active', a.dataset.page === id));
     nav.classList.toggle('inverted', darkPages.has(id));
     toggle.classList.remove('open');
     menu.classList.remove('open');
+    if (!opts.noHash) {
+      var hash = id === 'home' ? '' : id;
+      if (opts.sub) hash += '/' + opts.sub;
+      history.replaceState(null, '', hash ? '#' + hash : window.location.pathname);
+    }
+  }
+
+  function openJob(jobId) {
+    var item = document.querySelector('.career-item[data-job="' + jobId + '"]');
+    if (item) {
+      document.querySelectorAll('.career-item').forEach(i => i.classList.remove('open'));
+      item.classList.add('open');
+    }
+  }
+
+  function routeFromHash() {
+    var hash = window.location.hash.replace('#', '');
+    if (!hash) { goTo('home', { noHash: true }); return; }
+    var parts = hash.split('/');
+    var page = parts[0];
+    var sub = parts[1] || null;
+    if (document.getElementById(page)) {
+      goTo(page, { noHash: true, force: true });
+      if (page === 'careers' && sub && jobs[sub]) {
+        openJob(sub);
+      }
+    } else {
+      goTo('home', { noHash: true });
+    }
   }
 
   document.addEventListener('click', e => {
     const link = e.target.closest('[data-page]');
     if (link) { e.preventDefault(); goTo(link.dataset.page); }
   });
+
+  window.addEventListener('hashchange', routeFromHash);
+  routeFromHash();
 
   toggle.addEventListener('click', () => {
     toggle.classList.toggle('open');
@@ -163,7 +197,12 @@
     row.addEventListener('click', () => {
       const wasOpen = item.classList.contains('open');
       document.querySelectorAll('.career-item').forEach(i => i.classList.remove('open'));
-      if (!wasOpen) item.classList.add('open');
+      if (!wasOpen) {
+        item.classList.add('open');
+        history.replaceState(null, '', '#careers/' + item.dataset.job);
+      } else {
+        history.replaceState(null, '', '#careers');
+      }
     });
   });
 
