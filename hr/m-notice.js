@@ -241,15 +241,26 @@
         cur || diaryDraft.touched ? ui.btn('닫기', function () { diaryDraft = null; HR.refresh(); }, 'btn-line') : null));
   }
   // 인사이트 본문: ## 소제목 · > 강조 · - 목록 · 빈 줄 = 문단 (텍스트 노드만)
+  // 「## 위협 …」 바로 뒤 「## 대응 …」은 한 묶음(위협 → 대응)으로, 대응은 초록 톤으로 보인다
   function essay(text) {
-    var out = h('div', { class: 'ins-body' }), ul = null;
+    var out = h('div', { class: 'ins-body' }), box = out, ul = null, pair = null;
     String(text || '').split('\n').forEach(function (l) {
       var t = l.trim();
       if (!t) { ul = null; return; }
-      if (/^##\s/.test(t)) { ul = null; out.appendChild(h('h4', { text: t.replace(/^##\s*/, '') })); return; }
-      if (/^>\s?/.test(t)) { ul = null; out.appendChild(h('blockquote', { text: t.replace(/^>\s?/, '') })); return; }
-      if (/^[-·•]\s/.test(t)) { if (!ul) { ul = h('ul'); out.appendChild(ul); } ul.appendChild(h('li', { text: t.replace(/^[-·•]\s*/, '') })); return; }
-      ul = null; out.appendChild(h('p', { text: t }));
+      if (/^##\s/.test(t)) {
+        ul = null; var title = t.replace(/^##\s*/, '');
+        var kind = /^위협/.test(title) ? 'threat' : /^(필츠의\s*)?대응/.test(title) ? 'sol' : '';
+        if (kind === 'threat') { pair = h('div', { class: 'ins-pair' }); out.appendChild(pair); }
+        else if (kind === 'sol' && pair) pair.appendChild(h('div', { class: 'ins-arrow', text: '↓ 필츠의 대응' }));
+        else pair = null;
+        box = h('section', { class: 'ins-sec' + (kind ? ' ' + kind : '') }, h('h4', { text: title }));
+        (kind && pair ? pair : out).appendChild(box);
+        if (kind === 'sol') pair = null;
+        return;
+      }
+      if (/^>\s?/.test(t)) { ul = null; box.appendChild(h('blockquote', { text: t.replace(/^>\s?/, '') })); return; }
+      if (/^[-·•]\s/.test(t)) { if (!ul) { ul = h('ul'); box.appendChild(ul); } ul.appendChild(h('li', { text: t.replace(/^[-·•]\s*/, '') })); return; }
+      ul = null; box.appendChild(h('p', { text: t }));
     });
     return out;
   }

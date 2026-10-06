@@ -1296,3 +1296,22 @@ a.tl-label:hover { background: var(--gray-100); }
 @media (max-width: 760px) { .mk-pgroup { grid-template-columns: 1fr; gap: 4px; } .mk-pgname { padding-top: 0; } }
 .mk-sp-fields { display: flex; flex-direction: column; gap: 10px; }
 .mk-speaker textarea { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; line-height: 1.6; }
+
+/* 인사이트 — 위협 → 대응 묶음 (대응은 초록 톤) */
+.ins-sec { display: flex; flex-direction: column; gap: 10px; }
+.ins-body > .ins-sec > h4 { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+.ins-pair { border: 1px solid var(--gray-200); margin-top: 18px; }
+.ins-pair .ins-sec { padding: 16px 20px; }
+.ins-pair h4 { margin: 0 !important; padding: 0 !important; border: 0 !important; font-size: 17px; }
+.ins-sec.threat { background: #fff7f7; }
+.ins-sec.threat h4 { color: #9f1239; }
+.ins-sec.threat h4::before { content: '⚠ '; }
+.ins-sec.threat blockquote { border-left-color: #9f1239; background: #ffe4e6; }
+.ins-arrow { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: #047857; background: linear-gradient(#fff7f7, #effaf5); padding: 6px 0; }
+.ins-sec.sol { background: #effaf5; border-top: 3px solid #059669; }
+.ins-sec.sol h4 { color: #047857; }
+.ins-sec.sol h4::before { content: '✓ '; }
+.ins-sec.sol p, .ins-sec.sol li { color: #064e3b; }
+.ins-sec.sol li::marker { color: #059669; }
+.ins-sec.sol blockquote { border-left-color: #059669; background: #d1fae5; }
+@media (max-width: 760px) { .ins-pair .ins-sec { padding: 14px; } }
