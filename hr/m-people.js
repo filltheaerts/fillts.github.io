@@ -112,7 +112,6 @@
     });
     var root = h('div', { class: 'pt-root' }, h('div', { class: 'pt-ceo' }, h('div', { class: 'pt-unit-name', text: 'CEO · 대표이사' }),
       h('div', { class: 'pt-unit-desc', text: top.map(function (s) { return s.role; }).filter(function (r) { return r !== '대표이사'; }).join(' · ') + ' 겸직' })));
-    var legend = h('div', { class: 'pt-legend' }, h('span', { class: 'ps is-in' }, h('span', { class: 'ps-dot' }), '재직'), h('span', { class: 'ps is-lead' }, h('span', { class: 'ps-dot' }), '리더 합류 예정'),
       h('span', { class: 'ps is-plus' }, h('span', { class: 'ps-dot' }), '팀원 충원'), h('span', { class: 'ps is-due' }, h('span', { class: 'ps-dot' }), '이번 달 · 시기 도래'), h('span', { class: 'meta', text: '항목에 마우스를 올리면 설명이 보입니다' }));
 
     // 합류 순서 — 연도별 가로 타임라인
@@ -132,7 +131,6 @@
     ui.put(view,
       h('div', { class: 'plan-head' }, h('div', null, h('div', { class: 'label', text: 'Hiring plan · ' + fmt.dot(P.asOf) + ' 편제' }), P.goal ? h('h2', { class: 'plan-goal', text: P.goal }) : null, h('p', { class: 'plan-flow', text: P.flow }))),
       h('ul', { class: 'plain plan-summary' }, P.summary.map(function (x) { return h('li', { text: x }); })),
-      legend,
       h('div', { class: 'org-wrap' }, h('div', { class: 'pt' }, root, cols)),
       ui.panel('합류 순서', next ? h('span', { class: 'meta', text: '다음: ' + next.s.when + ' ' + next.s.role }) : null, h('div', { class: 'org-wrap' }, tl)),
       ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))));
