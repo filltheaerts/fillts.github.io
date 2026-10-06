@@ -251,6 +251,17 @@
       .then(function () { return auth.signInWithEmailAndPassword(email, pw); })
       .then(function () { done(); $('loginPw').value = ''; }).catch(err);
   });
+  // Google Workspace(fillts.com) 로그인 — 이메일 인증이 자동으로 완료된다
+  $('googleBtn').addEventListener('click', function () {
+    var p = new firebase.auth.GoogleAuthProvider();
+    p.setCustomParameters({ hd: 'fillts.com', prompt: 'select_account' });
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+      .then(function () { return auth.signInWithPopup(p); })
+      .catch(function (x) {
+        if (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request') return;
+        ui.err($('loginMsg'), x.code === 'auth/operation-not-allowed' ? 'Google 로그인이 아직 켜져 있지 않습니다. 이메일로 로그인하세요.' : authErr(x));
+      });
+  });
   $('verifyResend').addEventListener('click', function () {
     if (!auth.currentUser) return;
     auth.currentUser.sendEmailVerification({ url: location.origin + '/hr/' })
@@ -282,8 +293,20 @@
     enter(u);
   });
 
+  // 안전장치: HR 보안 규칙이 배포되기 전(정의 안 된 경로를 읽을 수 있는 상태)에는 앱을 열지 않는다
+  function rulesGuard() {
+    return db.doc('hr_rules_canary/probe').get().then(function () { return false; }, function (e) { return e && e.code === 'permission-denied'; });
+  }
   function enter(u) {
     S.user = u;
+    rulesGuard().then(function (ok) {
+      if (ok) return enterChecked(u);
+      showAuth('noaccess'); $('bootstrapForm').hidden = true;
+      $('noAccessTitle').textContent = '보안 규칙 적용 대기';
+      $('noAccessText').textContent = 'HR 보안 규칙이 아직 서버에 적용되지 않았습니다. 개인정보 보호를 위해 적용 전에는 HR을 열지 않습니다. 관리자에게 문의하세요.';
+    });
+  }
+  function enterChecked(u) {
     db.doc('hr_users/' + u.uid).get().then(function (snap) {
       if (snap.exists) return snap.data();
       return db.doc('hr_invites/' + u.email.toLowerCase()).get().then(function (inv) {

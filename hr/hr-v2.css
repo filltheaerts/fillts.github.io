@@ -221,3 +221,5 @@
   .kr-row input:nth-child(4) { display: none; }
   .tab-head { align-items: flex-start; }
 }
+.or { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--gray-400); letter-spacing: 0.08em; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--gray-200); }
