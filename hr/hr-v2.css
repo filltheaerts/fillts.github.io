@@ -1451,3 +1451,7 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .tl-subcaret { color: #a5b4fc; }
 .tl-subadd { color: #1d4ed8 !important; background: transparent !important; border: 1px solid #c7d2fe; padding: 0 6px !important; }
 .tl-subadd:hover { border-color: #1d4ed8; }
+
+.ws-quick-chain { align-items: center; margin-top: 2px; }
+.ws-quick-chain button.chain { border-color: #c7d2fe; color: #1d4ed8; background: #eef2ff; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-dates .field:first-child .ws-quick-chain .meta { font-size: 11px; width: 100%; }

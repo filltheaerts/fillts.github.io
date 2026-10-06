@@ -160,7 +160,7 @@
         x.links.length ? h('div', { class: 'field' }, h('label', { text: '링크' }), linksEditor(x.links))
           : ui.btn('+ 링크 추가 (구글 드라이브 · 시트 · 문서 …)', function () { x.links.push({ t: '', url: '' }); HR.refresh(); }, 'btn-line btn-xs'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: x.done, onchange: function () { x.done = this.checked; this.closest('.ws-sub-edit').classList.toggle('done', this.checked); } }), ' 완료'));
-    }), arr.length < 20 ? ui.btn('+ 서브 프로젝트 추가', function () { arr.push({ t: '', start: '', due: '', body: '', done: false, links: [] }); HR.refresh(); }, 'btn-line btn-sm') : null);
+    }), arr.length < 20 ? ui.btn('+ 서브 프로젝트 추가', function () { arr.push({ t: '', start: chainStart(arr, parent), due: '', body: '', done: false, links: [] }); HR.refresh(); }, 'btn-line btn-sm') : null);
   }
   // 서브 시작일 빠른 입력 — 앞 서브(첫 서브는 상위 프로젝트) 기준
   function prevPresets(prev, x) {
@@ -410,11 +410,16 @@
   function at(el, left, width) { el.style.left = left + '%'; if (width !== undefined) el.style.width = width + '%'; return el; }
   /* ---------- 서브 프로젝트 팝업 — 타임라인에서 눌러 바로 보기 · 고치기 · 추가 ---------- */
   function canEditProject(p) { return inTeam(p.org) && (S.isAdmin || p.createdBy === S.mid || p.kind === 'project'); }
+  function chainStart(subs, parent, skip) {
+    var last = '';
+    subs.forEach(function (x, i) { if (i !== skip && x.due && x.due > last) last = x.due; });
+    return last ? L.addDays(last, 1) : (parent && parent.start) || '';
+  }
   function subModal(p, idx) {
     var old = document.getElementById('subModal'); if (old) old.remove();
     var subs = (p.subs || []).map(function (x) { return Object.assign({}, x, { links: (x.links || []).map(function (l) { return Object.assign({}, l); }) }); });
     var isNew = idx == null, edit = canEditProject(p);
-    var x = isNew ? { t: '', start: '', due: '', body: '', done: false, links: [] } : subs[idx];
+    var x = isNew ? { t: '', start: chainStart(subs, p), due: '', body: '', done: false, links: [] } : subs[idx];
     var prev = isNew ? subs[subs.length - 1] : subs[idx - 1];
     var m = ui.msg();
     var close = function () { wrap.remove(); document.removeEventListener('keydown', esc); };
@@ -441,8 +446,10 @@
     var plus = function (base, n, unit) { if (!base) return ''; return unit === 'm' ? addMonths(base, n) : L.addDays(base, n); };
     var stChips = h('div', { class: 'ws-quick' }, chip('오늘', function () { return fmt.today(); }, st), chip('1주 뒤', function () { return plus(fmt.today(), 7); }, st),
       prev && prev.start ? chip('앞 서브 시작 후 1주', function () { return plus(prev.start, 7); }, st) : null,
-      prev && prev.due ? chip('앞 서브 종료 후', function () { return plus(prev.due, 1); }, st) : null,
-      !prev && p.start ? chip('프로젝트 시작일', function () { return p.start; }, st) : null);
+      p.start ? chip('프로젝트 시작일', function () { return p.start; }, st) : null);
+    var afterOthers = subs.map(function (y, i) { return [y, i]; }).filter(function (yi) { return yi[1] !== idx && yi[0].due && yi[0].t; });
+    var chainChips = afterOthers.length ? h('div', { class: 'ws-quick ws-quick-chain' }, h('span', { class: 'meta', text: '이 일 다음에 시작 →' }),
+      afterOthers.map(function (yi) { var b2 = chip('「' + yi[0].t + '」 종료 후', function () { return plus(yi[0].due, 1); }, st); b2.className = 'chain'; b2.title = fmt.dot(plus(yi[0].due, 1)); return b2; })) : null;
     var duChips = h('div', { class: 'ws-quick' }, [['1주', 7, 'd'], ['2주', 14, 'd'], ['1달', 1, 'm'], ['2달', 2, 'm']].map(function (o) { return chip(o[0], function () { return plus(st.value || fmt.today(), o[1], o[2]); }, du); }),
       h('span', { class: 'ws-quick-sep' }), [['+1주', 7, 'd'], ['+1달', 1, 'm']].map(function (o) { var b = chip(o[0], function () { return plus(du.value || st.value || fmt.today(), o[1], o[2]); }, du); b.className = 'plus'; return b; }),
       p.due ? chip('프로젝트 마감일', function () { return p.due; }, du) : null);
@@ -467,7 +474,7 @@
     var panel = edit ? h('div', { class: 'sm-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': '서브 프로젝트' },
       h('div', { class: 'sm-head' }, h('span', { class: 'sm-kicker', text: (isNew ? 'NEW SUB' : 'SUB ' + (idx + 1)) + ' · ' + p.title }), h('button', { type: 'button', class: 'sm-x', 'aria-label': '닫기', text: '×', onclick: close })),
       title,
-      h('div', { class: 'sm-dates' }, h('div', { class: 'field' }, h('label', { text: '시작일' }), st, stChips), h('div', { class: 'field' }, h('label', { text: '마감 예정일' }), du, duChips)), days,
+      h('div', { class: 'sm-dates' }, h('div', { class: 'field' }, h('label', { text: '시작일' }), st, stChips, chainChips), h('div', { class: 'field' }, h('label', { text: '마감 예정일' }), du, duChips)), days,
       h('div', { class: 'field' }, h('label', { text: '내용' }), body),
       h('div', { class: 'field' }, h('label', { text: '링크' }), linkBox),
       h('label', { class: 'check' }, done, ' 완료'), m,
