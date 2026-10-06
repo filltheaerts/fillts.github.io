@@ -386,12 +386,12 @@
     area = h('div', { id: 'printArea', class: 'print-area' },
       h('div', { class: 'cert' },
         h('div', { class: 'cert-no', text: '발급번호 ' + no }),
-        h('h1', { class: 'cert-title', text: kind.split('').join(' ') }),
+        h('h1', { class: 'cert-title', text: kind }),
         h('table', { class: 'cert-table' }, h('tbody', null, rows.map(function (r) { return h('tr', null, h('th', { text: r[0] }), h('td', { text: r[1] })); }))),
         h('p', { class: 'cert-body', text: '위 사람은 ' + (kind === '재직증명서' ? '현재 당사에 재직 중임을' : '위 기간 동안 당사에서 근무하였음을') + ' 증명합니다.' }),
         h('p', { class: 'cert-date', text: fmt.dateLong(t) }),
-        h('div', { class: 'cert-sign' }, h('div', { text: c.companyName }), c.bizNo ? h('div', { class: 'small', text: '사업자등록번호 ' + c.bizNo }) : null, c.companyAddress ? h('div', { class: 'small', text: c.companyAddress }) : null,
-          h('div', { class: 'cert-ceo', text: '대표이사  ' + c.ceoName + '  (인)' }))),
+        h('div', { class: 'cert-sign' }, h('div', { class: 'cert-co', text: c.companyName }), c.bizNo ? h('div', { text: '사업자등록번호  ' + c.bizNo }) : null, c.companyAddress ? h('div', { text: c.companyAddress }) : null,
+          h('div', { class: 'cert-ceo' }, h('span', { text: '대표이사  ' + c.ceoName }), h('span', { class: 'cert-seal', text: '(인)' })))),
       h('div', { class: 'print-actions' }, ui.btn('인쇄 · PDF 저장', function () { window.print(); }), ui.btn('닫기', function () { area.remove(); }, 'btn-line')));
     document.body.appendChild(area);
     setTimeout(function () { window.print(); }, 300);

@@ -186,24 +186,32 @@
 .kr-row input:focus { outline: none; border-color: var(--black); }
 .kr-table input { max-width: 90px; text-align: right; }
 
-/* 증명서 인쇄 */
+/* 증명서 인쇄 — A4 한 장(210×297mm) 고정 비율 */
 .print-area { position: fixed; inset: 0; z-index: 500; background: rgba(10, 10, 10, 0.6); overflow-y: auto; padding: 32px 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.cert { background: #ffffff; color: #0a0a0a; width: min(210mm, 100%); min-height: 270mm; padding: 28mm 22mm; display: flex; flex-direction: column; gap: 28px; }
-.cert-no { font-size: 11px; color: #525252; }
-.cert-title { text-align: center; font-size: 30px; font-weight: 500; letter-spacing: 0.3em; margin: 20px 0 10px; }
-.cert-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.cert-table th, .cert-table td { border: 1px solid #0a0a0a; padding: 12px 14px; text-align: left; }
-.cert-table th { width: 26%; background: #f5f5f5; font-weight: 500; }
-.cert-body { text-align: center; font-size: 15px; margin-top: 24px; }
-.cert-date { text-align: center; font-size: 15px; }
-.cert-sign { margin-top: auto; text-align: center; display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
-.cert-ceo { font-size: 18px; font-weight: 500; margin-top: 10px; letter-spacing: 0.05em; }
+.cert { flex: none; box-sizing: border-box; background: #ffffff; color: #0a0a0a; width: 210mm; height: 297mm; padding: 24mm 24mm 22mm; display: flex; flex-direction: column; font-family: 'Noto Sans KR', sans-serif; font-size: 11pt; line-height: 1.6; box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25); }
+.cert-no { font-size: 9pt; color: #525252; }
+.cert-title { text-align: center; font-size: 26pt; font-weight: 600; letter-spacing: 0.5em; padding-left: 0.5em; margin: 16mm 0 14mm; line-height: 1.2; }
+.cert-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11pt; border-top: 2px solid #0a0a0a; border-bottom: 2px solid #0a0a0a; }
+.cert-table th, .cert-table td { border-bottom: 1px solid #a3a3a3; padding: 0 5mm; height: 12mm; text-align: left; vertical-align: middle; }
+.cert-table tr:last-child th, .cert-table tr:last-child td { border-bottom: 0; }
+.cert-table th { width: 34mm; background: #f5f5f5; font-weight: 500; white-space: nowrap; letter-spacing: 0.08em; border-right: 1px solid #a3a3a3; }
+.cert-table td { word-break: keep-all; }
+.cert-body { text-align: center; font-size: 13pt; margin: 18mm 0 0; }
+.cert-date { text-align: center; font-size: 12pt; margin: 12mm 0 0; letter-spacing: 0.05em; }
+.cert-sign { margin-top: auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; font-size: 10pt; color: #404040; }
+.cert-sign .cert-co { font-size: 15pt; font-weight: 600; color: #0a0a0a; letter-spacing: 0.1em; margin-bottom: 2mm; }
+.cert-ceo { display: inline-flex; align-items: center; gap: 3mm; font-size: 14pt; font-weight: 500; color: #0a0a0a; margin-top: 6mm; letter-spacing: 0.15em; }
+.cert-seal { display: inline-flex; align-items: center; justify-content: center; width: 18mm; height: 18mm; margin-left: 2mm; font-size: 11pt; color: #a3a3a3; letter-spacing: 0; }
 .print-actions { display: flex; gap: 8px; }
+@media screen and (max-width: 840px) { .cert { zoom: 0.45; } }
+@page { size: A4; margin: 0; }
 @media print {
+  html, body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
   body > *:not(.print-area) { display: none !important; }
-  .print-area { position: static; background: none; padding: 0; overflow: visible; }
+  .print-area { position: static; display: block; background: none; padding: 0; overflow: visible; }
   .print-actions { display: none; }
-  .cert { width: auto; min-height: 0; padding: 18mm 16mm; }
+  .cert { width: 210mm; height: 296mm; box-shadow: none; zoom: 1; page-break-after: avoid; break-inside: avoid; overflow: hidden; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 @media (max-width: 900px) {
