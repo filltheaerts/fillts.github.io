@@ -9,44 +9,20 @@
   var HALF = 13 * 60;          // 오전/오후 반차 경계
   var DAYS_AHEAD = 7;          // 오늘부터 며칠치 캘린더를 가져올지
   var TOK_KEY = 'hrGcalTok', SYNC_EVERY = 15 * 60000;
-  var CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
   var FIELD_RE = /외근|출장|방문|현장|박람회|전시|미팅\s*외부|외부\s*미팅|공장|실사|촬영/;
   var INSIDE_RE = /필츠|fillts|사무실|회의실|zoom|meet|teams|webex|화상|온라인|online|전화|call/i;
 
   /* ---------- Google 캘린더 연동 ---------- */
   var G = { syncing: false, lastAt: 0, err: '' };
   function token() {
-    try { var t = JSON.parse(sessionStorage.getItem(TOK_KEY) || 'null'); return t && t.exp > Date.now() && t.uid === (S.user && S.user.uid) ? t.v : null; } catch (e) { return null; }
+    try { var t = JSON.parse(sessionStorage.getItem(TOK_KEY) || 'null'); return t && t.exp > Date.now() && t.email === ((S.user && S.user.email) || '').toLowerCase() ? t.v : null; } catch (e) { return null; }
   }
-  function saveToken(cred) {
-    if (!cred || !cred.accessToken || !S.user) return;
-    try { sessionStorage.setItem(TOK_KEY, JSON.stringify({ v: cred.accessToken, exp: Date.now() + 55 * 60000, uid: S.user.uid })); } catch (e) { /* 무시 */ }
-  }
-  function provider() {
-    var p = new firebase.auth.GoogleAuthProvider();
-    p.addScope(CAL_SCOPE);
-    p.setCustomParameters({ hd: 'fillts.com', login_hint: (S.user && S.user.email) || '' });
-    return p;
-  }
-  function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
   function connect() {
     var u = firebase.auth().currentUser;
     if (!u) return;
-    if (isMobile()) { try { sessionStorage.setItem('hrGcalPending', '1'); } catch (e) { /* 무시 */ } u.reauthenticateWithRedirect(provider()).catch(fail); return; }
-    u.reauthenticateWithPopup(provider()).then(function (r) { saveToken(r.credential); G.err = ''; sync(true); }).catch(fail);
+    HR.googleRedirect({ calendar: true, hint: u.email });   // 같은 탭에서 Google로 이동했다가 돌아오며 토큰을 받는다 (core.js)
   }
-  function fail(x) {
-    if (x && (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request')) return;
-    G.err = x && x.code === 'auth/user-mismatch' ? '로그인한 회사 계정으로 연결하세요.' : '캘린더를 연결하지 못했습니다.' + (x && x.code ? ' (' + x.code + ')' : '');
-    HR.refresh();
-  }
-  // 모바일 redirect로 돌아온 경우
-  function onRedirect(r) {
-    var pend = false;
-    try { pend = sessionStorage.getItem('hrGcalPending') === '1'; sessionStorage.removeItem('hrGcalPending'); } catch (e) { /* 무시 */ }
-    if (r && r.credential && pend) { var wait = setInterval(function () { if (S.user) { clearInterval(wait); saveToken(r.credential); sync(true); } }, 300); }
-  }
-  if (HR.redirectResult !== undefined) onRedirect(HR.redirectResult); else HR.onRedirectResult = onRedirect;   // 결과는 core.js가 한 번만 받아 넘긴다
+  if (HR.gcalFresh) setTimeout(function wait() { if (S.mid) sync(true); else setTimeout(wait, 500); }, 500);   // 연결하고 돌아온 직후 동기화
 
   // 캘린더 일정 → { kind, date, from, to } (해당 없으면 null)
   function classify(ev) {

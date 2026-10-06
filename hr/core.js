@@ -18,7 +18,7 @@
   var S = HR.S = {
     user: null, mid: null, role: 'employee', isAdmin: false, isLead: false,
     cfg: Object.assign({}, L.DEFAULT_CONFIG), hmap: L.holidayMap(L.DEFAULT_CONFIG),
-    members: {}, orgs: {}, presence: {}, away: [], sched: [], notices: [], feed: [], goals: [],
+    members: {}, orgs: {}, presence: {}, away: [], sched: [], ots: [], notices: [], feed: [], goals: [],
     myPunches: [], myFixes: [], leaves: [], fixes: [], onesM: [], onesL: [], onesAll: [],
     notify: [], priv: null, pay: {}, users: {}, invites: {}, status: null, ready: false
   };
@@ -186,11 +186,18 @@
           if (i == null || o == null) return;
           out[f.date] = { date: f.date, src: 'fix', mode: (out[f.date] || {}).mode, inHM: f.in, outHM: f.out, inMin: i, span: o >= i ? o - i : o + 1440 - i, brk: f.brk === '' || f.brk == null ? null : +f.brk, open: false };
         });
-      // 자동 퇴근: 출근 후 N시간이 지나도 퇴근 기록이 없으면 그 시각으로 처리 (직접 누른 퇴근이 있으면 그 기록 우선)
-      var ao = Math.round((+S.cfg.autoOutHours || 0) * 60), nowMs = Date.now();
-      if (ao) Object.keys(out).forEach(function (k) {
+      // 인정 범위: 출근 후 N시간(기본 8h)에 자동 퇴근. 연장·야간·휴일근무는 관리자가 사전 승인한 시간대만 인정한다.
+      var nowMs = Date.now(), mid = opt.member && opt.member.id;
+      Object.keys(out).forEach(function (k) {
         var r = out[k];
-        if (r.open && r.src === 'punch' && r.inMs + ao * 60000 <= nowMs) { r.open = false; r.autoOut = true; r.span = ao; r.outHM = L.kstHM(new Date(r.inMs + ao * 60000)); }
+        if (r.src !== 'punch') return;   // 승인된 정정 기록은 그대로
+        var lim = HR.att.limit(mid, k, r.inMs);
+        r.ots = lim.ots;
+        if (lim.blocked) { r.blocked = 'hol'; r.open = false; r.span = null; return; }
+        var endMs = r.open ? null : r.inMs + r.span * 60000;
+        if (r.open && lim.end <= nowMs) { r.open = false; r.autoOut = true; endMs = lim.end; }
+        else if (endMs != null && endMs > lim.end) { r.capped = true; endMs = lim.end; }
+        if (endMs != null) { r.span = Math.max(0, Math.round((endMs - r.inMs) / 60000)); r.outHM = L.kstHM(new Date(endMs)); }
       });
       // 기본 근무 시각 (예: 대표 10:00–19:00) — 버튼을 누르지 않은 근무일에만 적용. 직접 누른 기록이 있으면 그 시각이 우선
       var m = opt.member;
@@ -210,15 +217,15 @@
     },
     // 지금 상태: in(근무 중) | out(퇴근) | away(휴가) | none(미출근) | left(퇴사) | rest(휴직)
     live: function (m) {
-      var t = fmt.today(), p = S.presence[m.id], nowMs = Date.now(), ao = (+S.cfg.autoOutHours || 0) * 3600000;
+      var t = fmt.today(), p = S.presence[m.id], nowMs = Date.now();
       if (m.status === '퇴사') return { st: 'left' };
       if (m.status === '휴직') return { st: 'rest' };
       var away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t && (!a.unit || a.unit === 'day'); })[0];
       if (away) return { st: 'away', away: away };
       if (p && p.state === 'in' && p.dk && L.daysBetween(fmt.dkToDate(p.dk), t) <= 1) {
-        var since = p.at && p.at.toDate ? p.at.toDate().getTime() : nowMs;
-        if (!ao || since + ao > nowMs) return { st: 'in', since: since, mode: p.mode, dk: p.dk };
-        return { st: 'out', auto: true, at: since + ao, dk: p.dk, today: fmt.dkToDate(p.dk) === t };
+        var since = p.at && p.at.toDate ? p.at.toDate().getTime() : nowMs, lim = HR.att.limit(m.id, fmt.dkToDate(p.dk), since);
+        if (!lim.blocked && lim.end > nowMs) return { st: 'in', since: since, mode: p.mode, dk: p.dk, until: lim.end };
+        return { st: 'out', auto: true, at: lim.blocked ? since : lim.end, dk: p.dk, today: fmt.dkToDate(p.dk) === t, blocked: lim.blocked };
       }
       if (p && p.state === 'out' && p.dk === fmt.dk(t)) return { st: 'out', at: p.at && p.at.toDate ? p.at.toDate().getTime() : null, today: true };
       if (m.autoIn && m.autoOut && L.isWorkday(t, S.hmap)) {
@@ -232,6 +239,20 @@
       var list = [];
       for (var i = 0; i < 7; i++) { var d = L.addDays(monday, i); list.push({ date: d, calc: days[d] ? days[d].calc : null }); }
       var w = L.calcWeek(list, S.cfg, S.hmap); w.monday = monday; return w;
+    },
+    // 그날 근무로 인정되는 끝 시각(ms)과 승인된 신청 — 기본: 출근 + autoOutHours(8h), 22:00 이후는 야간 승인 필요, 휴무일은 휴일 승인 필요
+    limit: function (mid, date, inMs) {
+      var ots = (S.ots || []).filter(function (o) { return o.memberId === mid && o.date === date && o.status === 'approved'; });
+      var at = function (hm, next) { return new Date((next ? L.addDays(date, 1) : date) + 'T' + hm + ':00+09:00').getTime(); };
+      var endOf = function (o) { return at(o.to, L.hmToMin(o.to) <= L.hmToMin(o.from)); };
+      var ao = Math.round((+S.cfg.autoOutHours || 8) * 60), end = inMs + ao * 60000;
+      var has = function (k) { return ots.filter(function (o) { return o.kind === k; }); };
+      if (!L.isWorkday(date, S.hmap) && !has('hol').length) return { blocked: true, end: inMs, ots: ots };
+      has('hol').concat(has('ot')).forEach(function (o) { end = Math.max(end, endOf(o)); });   // 승인된 연장·휴일 종료 시각까지
+      var nightStart = at('22:00');
+      if (has('night').length) has('night').forEach(function (o) { end = Math.max(end, endOf(o)); });
+      else if (end > nightStart && inMs < nightStart) end = nightStart;   // 야간(22시~) 미승인 → 22시에서 끊는다
+      return { end: end, ots: ots };
     },
     leaveOn: function (leaves, date) { return leaves.filter(function (l) { return l.status === 'approved' && l.start <= date && l.end >= date; })[0]; },
     modeName: function (m) { return { office: '사무실', remote: '재택', field: '외근' }[m] || ''; }
@@ -257,6 +278,7 @@
     $('toSignup').textContent = mode === 'login' ? '초대받은 계정 만들기' : '로그인으로 돌아가기';
     $('toReset').hidden = mode !== 'login';
     var m = $('loginMsg'); m.textContent = mode === 'signup' ? '관리자가 초대한 회사 이메일로만 사용할 수 있습니다. 비밀번호는 10자 이상.' : ''; m.classList.add('ok');
+    if (HR.loginNotice && mode === 'login') { ui.err(m, HR.loginNotice); HR.loginNotice = ''; }   // Google 로그인 실패 사유는 화면 초기화 뒤에도 남긴다
   }
   $('toSignup').addEventListener('click', function (e) { e.preventDefault(); setAuthMode(authMode === 'login' ? 'signup' : 'login'); });
   $('toReset').addEventListener('click', function (e) { e.preventDefault(); setAuthMode('reset'); });
@@ -312,6 +334,44 @@
     return /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|Line\/|NAVER\(inapp|DaumApps|everytimeApp|; wv\)/i.test(navigator.userAgent);
   }
   function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
+  // ── 모바일 Google 로그인: Firebase 처리 페이지(/__/auth/handler)를 거치지 않는 직접 OAuth ──
+  // Safari는 Google을 다녀오는 동안 Firebase 처리 페이지의 시작 정보를 잃어 흰 화면에서 멈춘다("missing initial state").
+  // Google이 결과(id_token)를 https://fillts.com/hr/#... 로 직접 돌려주고, 그 토큰으로 Firebase에 로그인한다.
+  var GCID = '298865968239-m115rlg7spvtegk1ssv2hqb216jhdkkv.apps.googleusercontent.com', GRET = location.origin + '/hr/';
+  var CAL = 'https://www.googleapis.com/auth/calendar.readonly';
+  function rnd() { var a = new Uint8Array(16); crypto.getRandomValues(a); return Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  HR.googleRedirect = function (o) {
+    o = o || {};
+    var st = rnd(), nonce = rnd();
+    try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now() })); } catch (e) { /* 무시 */ }
+    var q = { client_id: GCID, redirect_uri: GRET, response_type: 'id_token token', scope: 'openid email profile' + (o.calendar ? ' ' + CAL : ''),
+      nonce: nonce, state: st, hd: 'fillts.com', prompt: o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
+    if (o.hint) q.login_hint = o.hint;
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
+  };
+  (function oauthReturn() {
+    var hsh = location.hash.slice(1);
+    if (!/(^|&)(id_token|access_token|error)=/.test(hsh)) return;
+    var p = {}; hsh.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) p[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
+    var saved = null; try { saved = JSON.parse(localStorage.getItem('hrOAuth') || 'null'); localStorage.removeItem('hrOAuth'); } catch (e) { /* 무시 */ }
+    history.replaceState(null, '', location.pathname + location.search + '#info');
+    if (!saved || p.state !== saved.st || Date.now() - saved.at > 15 * 60000) { HR.oauthErr = '로그인 요청을 확인하지 못했습니다. 다시 눌러 주세요.'; return; }
+    if (p.error) { HR.oauthErr = p.error === 'access_denied' ? 'Google 로그인을 취소했습니다.' : 'Google 로그인 오류 (' + p.error + ')'; return; }
+    var claims = {};
+    try { claims = JSON.parse(decodeURIComponent(escape(atob(p.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { /* 아래에서 거절 */ }
+    if (claims.nonce !== saved.nonce) { HR.oauthErr = '로그인 응답을 확인하지 못했습니다. 다시 눌러 주세요.'; return; }
+    if (p.access_token && (p.scope || '').indexOf(CAL) >= 0) {
+      try { sessionStorage.setItem('hrGcalTok', JSON.stringify({ v: p.access_token, exp: Date.now() + ((+p.expires_in || 3600) - 120) * 1000, email: (claims.email || '').toLowerCase() })); } catch (e) { /* 무시 */ }
+      HR.gcalFresh = true;
+    }
+    HR.pendingCred = firebase.auth.GoogleAuthProvider.credential(p.id_token, p.access_token);
+  })();
+  if (HR.pendingCred) {
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+      .then(function () { return auth.signInWithCredential(HR.pendingCred); })
+      .catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; HR.loginNotice = t; if ($('loginMsg')) ui.err($('loginMsg'), t); });
+  }
+  if (HR.oauthErr) HR.loginNotice = HR.oauthErr;
   // redirect로 돌아왔을 때 실패 사유를 로그인 화면에 보여 준다 (성공은 onAuthStateChanged가 처리)
   auth.getRedirectResult().then(function (r) { HR.redirectResult = r || null; if (HR.onRedirectResult) HR.onRedirectResult(HR.redirectResult); }).catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   $('googleBtn').addEventListener('click', function () {
@@ -321,18 +381,9 @@
       if (/Android/i.test(ua)) { location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end'; return; }
       return ui.err($('loginMsg'), '앱 안의 브라우저에서는 Google 로그인이 막혀 있습니다. 우측 상단 메뉴에서 "Safari로 열기"를 누른 뒤 다시 시도하세요.');
     }
-    var p = new firebase.auth.GoogleAuthProvider();
-    p.setCustomParameters({ hd: 'fillts.com', prompt: 'select_account' });
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-    // 모바일은 팝업(새 탭)이 Google을 거치며 원래 탭과 연결이 끊긴다 → 같은 탭 redirect.
-    // authDomain이 fillts.com(/__/auth 자체 호스팅)이라 redirect가 저장소 분리에 걸리지 않는다.
-    if (isMobile()) { ui.ok($('loginMsg'), 'Google 로그인으로 이동합니다…'); auth.signInWithRedirect(p).catch(function (x) { ui.err($('loginMsg'), authErr(x)); }); return; }
-    // PC 팝업은 탭과 같은 틱에 열어야 막히지 않는다 — setPersistence를 기다리지 않는다(auth 내부 큐가 순서 보장)
-    auth.signInWithPopup(p)
-      .catch(function (x) {
-        if (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request') return;
-        ui.err($('loginMsg'), authErr(x));
-      });
+    // PC·모바일 모두 같은 탭에서 직접 OAuth (팝업·Firebase 처리 페이지 미사용 — 위 HR.googleRedirect)
+    ui.ok($('loginMsg'), 'Google 로그인으로 이동합니다…');
+    HR.googleRedirect({});
   });
   $('verifyResend').addEventListener('click', function () {
     if (!auth.currentUser) return;
@@ -457,8 +508,10 @@
     if (S.isLead) {
       sub(db.collection('hr_leave'), function (s) { S.leaves = HR.rows(s); });
       sub(db.collection('hr_fix').where('status', '==', 'pending'), function (s) { S.fixes = HR.rows(s); });
+      sub(db.collection('hr_ot'), function (s) { S.ots = HR.rows(s); });   // 연장·야간·휴일근무 신청 (리더·관리자는 전체)
     } else {
       sub(db.collection('hr_leave').where('memberId', '==', S.mid), function (s) { S.leaves = HR.rows(s); });
+      sub(db.collection('hr_ot').where('memberId', '==', S.mid), function (s) { S.ots = HR.rows(s); });
     }
     if (S.isAdmin) {
       sub(db.collection('hr_11'), function (s) { S.onesAll = HR.rows(s); });

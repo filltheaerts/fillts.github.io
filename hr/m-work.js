@@ -26,7 +26,7 @@
     var autoOutToday = live.st === 'out' && live.auto && live.today;
     var td = days[working || autoOutToday ? fmt.dkToDate(live.dk) : t];
     var ah = +S.cfg.autoOutHours || 0;
-    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || live.sinceHM || '' }), ' 출근 · ' + A.modeName(live.mode) + (ah && live.since ? ' · ' + L.kstHM(new Date(live.since + ah * 3600000)) + ' 자동 퇴근' : ''));
+    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || live.sinceHM || '' }), ' 출근 · ' + A.modeName(live.mode) + (live.until ? ' · ' + L.kstHM(new Date(live.until)) + ' 자동 퇴근' : ''));
     else if (autoOutToday) state.append('자동 퇴근 처리 · ', h('b', { text: (td ? td.inHM : '') + ' – ' + L.kstHM(new Date(live.at)) }), ' · 더 일했다면 퇴근을 눌러 실제 시각을 남기세요');
     else if (td && td.outHM) state.append('오늘 ', h('b', { text: td.inHM + ' – ' + td.outHM }), ' · 근로 ' + L.minToHM(td.calc ? td.calc.work : 0));
     else state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '아직 출근 기록이 없습니다');

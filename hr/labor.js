@@ -44,7 +44,7 @@
     monthHours: 209,         // (40 + 주휴 8) × 4.345
     workStart: '09:00',
     workEnd: '18:00',
-    autoOutHours: 7,
+    autoOutHours: 8,         // 출근 후 8시간에 자동 퇴근 (연장·야간·휴일은 사전 승인분만 인정)
     pension: false,          // 퇴직연금(DB·DC) 도입 여부 (기록용)
     annualBasis: 'fiscal',   // fiscal: 회계연도(1/1) 기준 | hire: 입사일 기준
     leavePolicies: DEFAULT_POLICIES,
