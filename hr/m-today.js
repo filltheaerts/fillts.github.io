@@ -86,6 +86,22 @@
   }
   setInterval(function () { sync(false); }, 60000);
 
+  /* ---------- 서버 자동 동기화 (매시 정각 + 이 화면을 열 때) — 개인 연결 없이 회사 계정 캘린더를 서버가 읽는다 ---------- */
+  var SRV_URL = 'https://asia-northeast3-fillts-web.cloudfunctions.net/calSyncNow';
+  var SV = { busy: false, askedAt: 0, res: null };
+  function serverSync() {
+    var u = firebase.auth().currentUser;
+    if (!u || SV.busy || Date.now() - SV.askedAt < 10 * 60000) return;
+    SV.busy = true; SV.askedAt = Date.now();
+    u.getIdToken().then(function (tok) { return fetch(SRV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: '{}' }); })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { SV.res = j; })
+      .catch(function () { SV.res = { error: 'offline' }; })
+      .then(function () { SV.busy = false; HR.refresh(); });
+  }
+  function serverOn() { return SV.res && !SV.res.error && SV.res.n > 0; }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && location.hash.replace(/^#/, '').split('/')[0] === 'info') serverSync(); });
+
   /* ---------- 상태 계산 ---------- */
   function schedOf(mid, d) {
     return (S.sched || []).filter(function (s) { return s.memberId === mid && s.date === d; })
@@ -132,6 +148,13 @@
 
   /* ---------- 화면 ---------- */
   function calBar() {
+    serverSync();
+    if (serverOn() || (SV.busy && !SV.res)) {
+      var r = SV.res;
+      return h('div', { class: 'cal-bar' }, h('span', { class: 'meta', text: !r ? 'Google 캘린더 확인 중…'
+        : 'Google 캘린더 자동 동기화 · 매시 정각 · 이 화면을 열 때 · 마지막 ' + L.kstHM(new Date(r.atMs)) + (r.total > r.n ? ' (' + r.n + '/' + r.total + '명)' : '') }),
+        S.isAdmin && r && r.err ? h('span', { class: 'meta red-text', text: r.err }) : null);
+    }
     var tok = token(), last = G.lastAt;
     if (!last) try { last = +localStorage.getItem('hrGcalLast') || 0; } catch (e) { /* 무시 */ }
     if (tok && !G.lastAt && !G.syncing) setTimeout(function () { sync(true); }, 0);
