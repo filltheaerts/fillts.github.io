@@ -149,8 +149,13 @@
       sec('Words', B.words, h('div', { class: 'br-words' }, B.words.items.map(function (w) { return h('span', { text: w }); }))),
       sec('Stages', B.stages, h('ol', { class: 'br-stages' }, B.stages.items.map(function (x, i) { return h('li', null, h('span', { class: 'br-no', text: ('0' + (i + 1)).slice(-2) }), h('b', { text: x.k }), h('span', { class: 'meta', text: x.d })); }))),
       sec('Tone & Manner', B.tone, h('div', { class: 'br-tone' }, B.tone.items.map(function (x) { return h('div', null, h('b', { text: '# ' + x.k }), h('p', { text: x.d })); }))),
-      sec('Channel', B.channel, h('ol', { class: 'br-channel' }, B.channel.items.map(function (x) { return h('li', null, h('b', { text: x.k }), h('span', { text: x.d })); }))),
-      h('p', { class: 'meta br-src', text: '출처 · ' + B.source }));
+      B.goal ? h('section', { class: 'br-goal' }, h('span', { class: 'br-goal-label', text: B.goal.label }), h('b', { class: 'br-goal-v', text: B.goal.value }), B.goal.d ? h('p', { text: B.goal.d }) : null) : null,
+      (B.logos || []).length ? ui.panel('Logo · 로고 다운로드', null, h('p', { class: 'muted small', text: '외부 전달 · 제작물에는 이 파일만 씁니다. 색 · 비율을 바꾸지 마세요.' }),
+        h('div', { class: 'br-logos' }, B.logos.map(function (x) {
+          return h('div', { class: 'br-logo' + (x.dark ? ' dark' : '') }, h('div', { class: 'br-logo-img' }, h('img', { src: x.src, alt: x.name, loading: 'lazy' })),
+            h('b', { text: x.name }), x.d ? h('span', { class: 'meta', text: x.d }) : null,
+            h('div', { class: 'row' }, (x.files || [{ t: '다운로드', src: x.src }]).map(function (f) { return h('a', { class: 'btn btn-line btn-xs', href: f.src, download: '', text: '↓ ' + f.t }); })));
+        }))) : null);
   }
 
   /* ---------- 일하는 법 (hr_plan/howwework — 노션 「일하는 방식」 정리본) ---------- */
