@@ -9,7 +9,6 @@
   var HALF = 13 * 60;          // 오전/오후 반차 경계
   var DAYS_AHEAD = 7;          // 오늘부터 며칠치 캘린더를 가져올지
   var TOK_KEY = 'hrGcalTok', SYNC_EVERY = 15 * 60000;
-  var FIELD_RE = /외근|출장|방문|현장|박람회|전시|미팅\s*외부|외부\s*미팅|공장|실사|촬영/;
   var INSIDE_RE = /필츠|fillts|사무실|회의실|zoom|meet|teams|webex|화상|온라인|online|전화|call/i;
 
   /* ---------- Google 캘린더 연동 ---------- */
@@ -35,12 +34,9 @@
       var wl = (ev.workingLocationProperties || {}).type;
       return wl === 'homeOffice' ? 'remote' : wl === 'customLocation' ? 'field' : null;
     }
-    var allDay = !!(ev.start && ev.start.date);
-    if (/출장/.test(title)) return 'trip';
-    if (FIELD_RE.test(title)) return 'field';
-    if (allDay) return null;   // 제목에 외근·출장이 없는 종일 일정은 상태로 보지 않는다
-    if (loc && !INSIDE_RE.test(loc)) return 'field';
-    return 'meeting';
+    // 장소를 넣은 일정만 외근(제목에 출장이 있으면 출장)으로 본다. 장소 없는 일정 · 사무실/화상 미팅은 반영하지 않는다 (261006 대표 지시)
+    if (!loc.trim() || INSIDE_RE.test(loc)) return null;
+    return /출장/.test(title) ? 'trip' : 'field';
   }
   function expand(ev, kind, from, to) {
     var out = [];
@@ -141,7 +137,7 @@
     if (tok && !G.lastAt && !G.syncing) setTimeout(function () { sync(true); }, 0);
     return h('div', { class: 'cal-bar' },
       h('span', { class: 'meta', text: G.syncing ? '내 Google 캘린더를 읽는 중…' : tok ? '내 Google 캘린더 연결됨' + (last ? ' · ' + L.kstHM(new Date(last)) + ' 동기화' : '')
-        : last ? '마지막 동기화 ' + fmt.dot(L.kstDate(new Date(last))) + ' ' + L.kstHM(new Date(last)) + ' · 새 일정을 반영하려면 다시 연결하세요' : '내 미팅·외근을 Google 캘린더에서 가져옵니다' }),
+        : last ? '마지막 동기화 ' + fmt.dot(L.kstDate(new Date(last))) + ' ' + L.kstHM(new Date(last)) + ' · 새 일정을 반영하려면 다시 연결하세요' : '장소를 넣은 Google 캘린더 일정을 외근으로 가져옵니다' }),
       tok ? ui.btn('지금 동기화', function () { sync(true); }, 'btn-line btn-xs') : ui.btn('Google 캘린더 연결', connect, 'btn-xs'),
       G.err ? h('span', { class: 'meta red-text', text: G.err }) : null);
   }
