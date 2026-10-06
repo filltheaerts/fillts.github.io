@@ -49,17 +49,44 @@
       h('p', { class: 'meta', text: '더 자세한 원칙은 「AI 가이드」, 바로 쓸 프롬프트는 「프롬프트 전체」에 있습니다.' }));
   }
 
-  /* ---------- 프롬프트 생성기 — 7원칙(목표 · 화자 · 상황 · 형식 · 예시 · 되묻기 · 검증)으로 조립 ---------- */
+  /* ---------- 프롬프트 생성기 — 화자가 핵심. 화자 → 목표 · 상황 → 형식 → 조건 · 검증 순으로 조립 ----------
+     화자 문장 구조(대표 원안): 최고 수준의 전문성 + 태도(날카로움 · 현실 감각) + 통찰(독서량 · 인간 본연) + 끊임없이 공부하는 대상 + 「이 관점으로 자세하고 섬세하게 분석해 결과 도출」 */
+  var PERSONA_GROUPS = [
+    ['마케팅', [
+      { k: 'perf', t: '퍼포먼스 마케터', who: '세계 최고의 20년차 뷰티 D2C 퍼포먼스 마케팅 베테랑', edge: '숫자로 증명하고, 현실 감각과 날카로움을 잃지 않는 그로스 승부사', study: '광고 플랫폼의 흐름과 소비자의 구매 심리' },
+      { k: 'copy', t: '카피라이터', who: '뷰티 업계에서 가장 주목받는 카피라이터', edge: '3초 안에 마음을 움직이되, 과장 없이 정확한 말로 승부하는 사람', study: '소비자의 언어와 숨은 욕망' },
+      { k: 'content', t: '숏폼 · 콘텐츠 PD', who: '수많은 바이럴을 만든 세계 최고의 뷰티 숏폼 콘텐츠 PD', edge: '트렌드를 읽되 휩쓸리지 않고, 사람을 끌어당기는 후킹 감각이 뛰어난 승부사', study: '사람들이 멈추고, 저장하고, 공유하는 이유' },
+      { k: 'influencer', t: '인플루언서 · 커뮤니티', who: '15년차 뷰티 인플루언서 마케팅 디렉터', edge: '관계를 소중히 하면서도 성과 앞에서는 냉정한 협상가', study: '크리에이터와 팬덤이 움직이는 방식' },
+      { k: 'brand', t: '브랜드 전략가', who: '세계 최고의 뷰티 브랜드 혁신가', edge: '날카로움을 잃지 않는 전략 승부사', study: '놀라운 제품과 소비자' }
+    ]],
+    ['D2C 운영', [
+      { k: 'crm', t: 'CRM · 재구매', who: '세계 최고의 20년차 D2C CRM · 리텐션 전문가', edge: '한 명의 고객을 평생 고객으로 만드는 집요한 설계자', study: '고객 여정과 재구매 심리' },
+      { k: 'data', t: '그로스 분석가', who: '세계 최고의 D2C 그로스 데이터 분석가', edge: '숫자 뒤의 진짜 원인을 찾고, 현실 감각을 잃지 않는 사람', study: '매출 · 광고 · 고객 데이터의 패턴' },
+      { k: 'research', t: '시장 · 소비자 리서처', who: '15년차 뷰티 시장 · 소비자 리서처', edge: '정보 검색에 뛰어나고, 출처 없는 말은 믿지 않는 사람', study: '시장 · 경쟁사 · 소비자 트렌드' },
+      { k: 'cx', t: '고객 경험(CS)', who: '세계 최고의 뷰티 브랜드 고객 경험 디렉터', edge: '따뜻하지만 정확하고, 불만을 팬으로 바꾸는 사람', study: '고객의 마음과 작은 불편' },
+      { k: 'ops', t: '물류 · 운영', who: '세계 최고의 뷰티 D2C 물류 · 운영 전문가', edge: '정보 검색에 뛰어나고, 작은 실수도 놓치지 않는 꼼꼼한 실행가', study: '효율적인 D2C 물류와 운영' },
+      { k: 'biz', t: '제휴 · 협상', who: '수많은 파트너십을 성사시킨 뷰티 브랜드 사업개발 리더', edge: '예의 바르면서도 우리 조건은 흐리지 않는 협상가', study: '상대의 입장과 이해관계' },
+      { k: 'it', t: 'IT · 자동화', who: '20년 넘게 업계 동향을 살피고 관찰하고 상상해 온 세계 최고의 IT 전문가', edge: '복잡한 일을 단순한 시스템으로 바꾸는 실용가', study: '새로운 도구와 자동화' }
+    ]],
+    ['제품 · 브랜드', [
+      { k: 'recipe', t: '처방 · 제품 혁신', who: '세계 최고의 20년차 뷰티 제품 레시피 혁신가', edge: '날카로움을 잃지 않는 전략 승부사', study: '성분 · 처방과 소비자의 피부 경험' },
+      { k: 'planning', t: '제품 기획', who: '15년차 세계 최고의 뷰티 제품 기획자', edge: '정보 검색에 뛰어나고, 시장의 빈자리를 먼저 보는 사람', study: '놀라운 제품과 소비자' },
+      { k: 'design', t: '브랜드 디자이너', who: '업계에서 가장 주목받는 세계 최고의 브랜드 전문가', edge: '미술적 감성과 색채 이해가 섬세하고, 미니멀하지만 브랜드의 핵심 포인트 디자인을 정확히 아는 사람', study: '놀라운 제품과 소비자' }
+    ]]
+  ];
+  var PERSONAS = []; PERSONA_GROUPS.forEach(function (g) { g[1].forEach(function (p) { PERSONAS.push(p); }); });
+  var INSIGHT_LINE = '엄청난 독서량으로 인간 본연의 마음을 꿰뚫어 보는 대단한 통찰가';
   var TASKS = [
-    { k: 'copy', t: '광고 · SNS 카피', cat: '카피 · 콘텐츠', role: '뷰티 D2C 브랜드 10년차 카피라이터', fmt: ['표'], n: '10', rules: ['claim', 'words', 'review'], goal: '예: 메타 광고 첫 줄 훅 카피 10개 — 스크롤을 멈추게 하는 것' },
-    { k: 'content', t: '숏폼 · 콘텐츠 기획', cat: '카피 · 콘텐츠', role: '뷰티 숏폼 콘텐츠 PD', fmt: ['표'], n: '3', rules: ['claim', 'words'], goal: '예: 30초 릴스 대본 3안 — 첫 3초 훅 포함' },
-    { k: 'research', t: '리서치 · 시장 조사', cat: '리서치', role: '뷰티 시장 리서치 애널리스트', fmt: ['핵심 요약 먼저', '표'], n: '', rules: ['source', 'nofake'], goal: '예: 미국 클린뷰티 클렌저 시장의 최근 1년 변화 정리' },
-    { k: 'mail', t: '메일 · 메시지', cat: '문서 · 메일', role: '꼼꼼하고 예의 바른 브랜드 실무자', fmt: ['2가지 안 비교'], n: '', rules: ['nofake'], goal: '예: OEM에 샘플 일정 재확인을 요청하는 메일' },
-    { k: 'summary', t: '요약 · 정리', cat: '문서 · 메일', role: '핵심만 뽑아 주는 유능한 비서', fmt: ['번호 목록', '표'], n: '', rules: ['nofake'], goal: '예: 회의 메모에서 결정 · 할 일 · 미정 사항 정리' },
-    { k: 'plan', t: '기획 · 아이디어', cat: '기획', role: '뷰티 브랜드 전략 기획자', fmt: ['표'], n: '15', rules: ['review'], goal: '예: 11월 런칭 이벤트 아이디어 — 예산 300만원 이내' },
-    { k: 'data', t: '데이터 · 시트', cat: '데이터 · 시트', role: 'D2C 그로스 분석가', fmt: ['핵심 요약 먼저', '표'], n: '', rules: ['nofake', 'review'], goal: '예: 지난 2주 광고 데이터에서 가장 중요한 변화 3가지와 다음 실험' },
-    { k: 'cs', t: '고객 응대', cat: '고객 · CS', role: '따뜻하고 정확한 뷰티 브랜드 CS 담당자', fmt: ['짧은 문단'], n: '', rules: ['claim', 'nofake'], goal: '예: 배송 지연 문의에 대한 답변' },
-    { k: 'etc', t: '기타', cat: '기타', role: '', fmt: [], n: '', rules: [], goal: '얻고 싶은 결과물을 한 문장으로' }
+    { k: 'copy', t: '광고 · SNS 카피', cat: '카피 · 콘텐츠', p: 'copy', fmt: ['표'], n: '10', rules: ['claim', 'words', 'review'], goal: '예: 메타 광고 첫 줄 훅 카피 10개 — 스크롤을 멈추게 하는 것' },
+    { k: 'content', t: '숏폼 · 콘텐츠 기획', cat: '카피 · 콘텐츠', p: 'content', fmt: ['표'], n: '3', rules: ['claim', 'words'], goal: '예: 30초 릴스 대본 3안 — 첫 3초 훅 포함' },
+    { k: 'perf', t: '광고 · 퍼포먼스', cat: '마케팅', p: 'perf', fmt: ['핵심 요약 먼저', '표'], n: '', rules: ['nofake', 'review'], goal: '예: 이번 달 메타 광고 예산 300만원 배분안과 테스트 계획' },
+    { k: 'research', t: '리서치 · 시장 조사', cat: '리서치', p: 'research', fmt: ['핵심 요약 먼저', '표'], n: '', rules: ['source', 'nofake'], goal: '예: 미국 클린뷰티 클렌저 시장의 최근 1년 변화 정리' },
+    { k: 'crm', t: 'CRM · 재구매', cat: '마케팅', p: 'crm', fmt: ['표'], n: '', rules: ['claim', 'review'], goal: '예: 첫 구매 고객의 30일 재구매 시퀀스(D+0 · 7 · 14 · 30) 설계' },
+    { k: 'mail', t: '메일 · 협상', cat: '문서 · 메일', p: 'biz', fmt: ['2가지 안 비교'], n: '', rules: ['nofake'], goal: '예: OEM에 샘플 일정 재확인을 요청하는 메일' },
+    { k: 'plan', t: '제품 · 기획', cat: '기획', p: 'planning', fmt: ['표'], n: '15', rules: ['review'], goal: '예: 크림 · 앰플 라인 콘셉트 아이디어 — 바인그라피 세계관 안에서' },
+    { k: 'data', t: '데이터 · 분석', cat: '데이터 · 시트', p: 'data', fmt: ['핵심 요약 먼저', '표'], n: '', rules: ['nofake', 'review'], goal: '예: 지난 2주 광고 데이터에서 가장 중요한 변화 3가지와 다음 실험' },
+    { k: 'cs', t: '고객 응대', cat: '고객 · CS', p: 'cx', fmt: ['짧은 문단'], n: '', rules: ['claim', 'nofake'], goal: '예: 배송 지연 문의에 대한 답변' },
+    { k: 'etc', t: '기타', cat: '기타', p: '', fmt: [], n: '', rules: [], goal: '얻고 싶은 결과물을 한 문장으로' }
   ];
   var FORMATS = ['핵심 요약 먼저', '표', '번호 목록', '짧은 문단', '2가지 안 비교', '체크리스트'];
   var TONES = ['', '친근한 존댓말', '단정하고 전문적인', '감성적인 브랜드 톤', '짧고 직설적인'];
@@ -71,15 +98,28 @@
     ['words', '고정 언어(포드득 · 리저브 클렌징 · 스킨케어 0단계 · 60초 세안법)는 바꾸지 말고 그대로 써.'],
     ['review', '마지막에 이 답의 약점이나 확인이 필요한 부분 3가지를 따로 적어 줘.']
   ];
-  var BRAND_CTX = '우리는 (주)필츠의 클린뷰티 브랜드 「바인그라피」야. 포도나무 전체를 쓰는 3~5만원대 프리미엄 클렌징(클렌징 젤 · 클렌징 오일)을 자사몰 D2C로 팔고, 주 고객은 30~55세 여성 얼리어답터야.';
+  var BRAND_CTX = '우리는 (주)필츠의 클린뷰티 브랜드 「바인그라피」야. 포도나무 전체를 쓰는 3~5만원대 프리미엄 클렌징(클렌징 젤 · 클렌징 오일)을 자사몰 D2C로 팔고, 주 고객은 30~55세 여성 얼리어답터야. 브랜드 미션은 「그녀를 행복하게!」야.';
   var G = null;
+  function personaOf(k) { return PERSONAS.filter(function (p) { return p.k === k; })[0] || null; }
   function freshMaker(k) {
-    var t = TASKS.filter(function (x) { return x.k === k; })[0] || TASKS[0];
-    return { task: t.k, role: t.role, goal: '', ctx: '', brand: t.k !== 'etc', audience: '', fmt: t.fmt.slice(), n: t.n, len: '', tone: '', rules: ['ask'].concat(t.rules), example: '', material: false };
+    var t = TASKS.filter(function (x) { return x.k === k; })[0] || TASKS[0], p = personaOf(t.p) || { k: '', who: '', edge: '', study: '' };
+    return { task: t.k, pk: p.k, who: p.who, edge: p.edge, study: p.study, insight: true, goal: '', ctx: '', brand: t.k !== 'etc', audience: '', fmt: t.fmt.slice(), n: t.n, len: '', tone: '', rules: ['ask'].concat(t.rules), example: '', material: false };
+  }
+  // 받침에 따라 조사를 고른다 (사람이라고 / 승부사라고)
+  function hasBatchim(w) { var c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; }
+  function speakerText(g) {
+    var who = g.who.trim(), edge = g.edge.trim();
+    if (!who) return '';
+    var L = [edge ? '나는 네가 ' + who + (hasBatchim(who) ? '이면서' : '면서') + ', ' + edge + (hasBatchim(edge) ? '이라고' : '라고') + ' 생각해.'
+                  : '나는 네가 ' + who + (hasBatchim(who) ? '이라고' : '라고') + ' 생각해.'];
+    if (g.insight) L.push('또 ' + INSIGHT_LINE + '이고,');
+    if (g.study.trim()) L.push((g.insight ? '' : '또 ') + g.study.trim() + '에 대해 끊임없이 공부하며 세상의 이면을 볼 수 있는 사람이지.');
+    L.push('이 관점으로 자세하고 섬세하게 분석하고 결과를 도출해 줘.');
+    return L.join('\n');
   }
   function buildPrompt(g) {
-    var L = [], t = TASKS.filter(function (x) { return x.k === g.task; })[0] || TASKS[0];
-    if (g.role.trim()) L.push('# 역할', '너는 ' + g.role.trim() + '야.', '');
+    var L = [], sp = speakerText(g);
+    if (sp) L.push('# 대답할 화자', sp, '');
     L.push('# 목표', g.goal.trim() || '[얻고 싶은 결과물 한 문장]', '');
     var ctx = [g.brand ? BRAND_CTX : '', g.ctx.trim(), g.audience.trim() ? '대상: ' + g.audience.trim() : ''].filter(Boolean);
     if (ctx.length) L.push('# 상황', ctx.join('\n'), '');
@@ -97,23 +137,24 @@
   }
   function scoreOf(g) {
     return [
-      ['목표', !!g.goal.trim()], ['화자', !!g.role.trim()], ['상황', g.brand || !!g.ctx.trim() || !!g.audience.trim()],
+      ['화자', !!g.who.trim() && !!(g.edge.trim() || g.study.trim())], ['목표', !!g.goal.trim()], ['상황', g.brand || !!g.ctx.trim() || !!g.audience.trim()],
       ['형식', g.fmt.length > 0 || !!g.n || !!g.len], ['예시', !!g.example.trim()], ['되묻기', g.rules.indexOf('ask') >= 0],
       ['검증', g.rules.indexOf('review') >= 0 || g.rules.indexOf('nofake') >= 0]
     ];
   }
   function maker(view, P) {
     if (!G) G = freshMaker('copy');
-    var g = G, out = h('div', { class: 'mk-out' }), meter = h('div', { class: 'mk-meter' }), msgs = h('p', { class: 'meta' });
+    var g = G, out = h('div', { class: 'mk-out' }), meter = h('div', { class: 'mk-meter' }), spPrev = h('div', { class: 'mk-sp-prev' });
     function sync() {
       var txt = buildPrompt(g), sc = scoreOf(g), ok = sc.filter(function (x) { return x[1]; }).length;
       ui.clear(out); out.appendChild(bodyView(txt));
+      ui.clear(spPrev); spPrev.appendChild(document.createTextNode(speakerText(g) || '화자를 고르거나 직접 적어 주세요.'));
       ui.clear(meter);
-      meter.appendChild(h('div', { class: 'mk-score' }, h('b', { text: ok + ' / 7' }), h('span', { class: 'meta', text: ok >= 6 ? '아주 좋아요' : ok >= 4 ? '좋아요 — 빈 칸을 채우면 더 좋아집니다' : '목표 · 화자 · 상황부터 채워 보세요' })));
-      meter.appendChild(h('div', { class: 'mk-checks' }, sc.map(function (x) { return h('span', { class: 'mk-chk' + (x[1] ? ' on' : ''), text: (x[1] ? '✓ ' : '· ') + x[0] }); })));
+      meter.appendChild(h('div', { class: 'mk-score' }, h('b', { text: ok + ' / 7' }), h('span', { class: 'meta', text: !sc[0][1] ? '화자부터 정하세요 — 답의 질을 가장 크게 바꿉니다' : ok >= 6 ? '아주 좋아요' : ok >= 4 ? '좋아요 — 빈 칸을 채우면 더 좋아집니다' : '목표 · 상황을 채워 보세요' })));
+      meter.appendChild(h('div', { class: 'mk-checks' }, sc.map(function (x, i) { return h('span', { class: 'mk-chk' + (x[1] ? ' on' : '') + (i === 0 ? ' key' : ''), text: (x[1] ? '✓ ' : '· ') + x[0] }); })));
       return txt;
     }
-    var inp = function (key, attrs) { var el = h(attrs && attrs.rows ? 'textarea' : 'input', Object.assign({ type: 'text', oninput: function () { g[key] = this.value; sync(); } }, attrs || {})); el.value = g[key] || ''; return el; };
+    var inp = function (key, attrs) { var el = h(attrs && attrs.rows ? 'textarea' : 'input', Object.assign({ type: 'text', oninput: function () { g[key] = this.value; if (['who', 'edge', 'study'].indexOf(key) >= 0) { g.pk = ''; markPersona(); } sync(); } }, attrs || {})); el.value = g[key] || ''; return el; };
     var chipSet = function (list, key, single) {
       return h('div', { class: 'mk-chips' }, list.map(function (v) {
         var on = single ? g[key] === v : g[key].indexOf(v) >= 0;
@@ -124,23 +165,40 @@
         } });
       }));
     };
+    var pBtns = [], spIn = {};
+    function markPersona() { pBtns.forEach(function (b) { b.classList.toggle('on', b._k === g.pk); }); }
+    var personaBox = h('div', { class: 'mk-personas' }, PERSONA_GROUPS.map(function (grp) {
+      return h('div', { class: 'mk-pgroup' }, h('span', { class: 'mk-pgname', text: grp[0] }), h('div', { class: 'mk-chips' }, grp[1].map(function (p) {
+        var b = h('button', { type: 'button', class: 'mk-chip mk-pchip' + (g.pk === p.k ? ' on' : ''), text: p.t, title: p.who, onclick: function () { g.pk = p.k; g.who = p.who; g.edge = p.edge; g.study = p.study; spIn.who.value = p.who; spIn.edge.value = p.edge; spIn.study.value = p.study; markPersona(); sync(); } });
+        b._k = p.k; pBtns.push(b); return b;
+      })));
+    }));
     var t = TASKS.filter(function (x) { return x.k === g.task; })[0];
     var form = h('div', { class: 'panel mk-form' },
       h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '1' }), h('b', { text: '어떤 일을 시키나요?' })),
       h('div', { class: 'mk-tasks' }, TASKS.map(function (x) {
-        return h('button', { type: 'button', class: 'mk-task' + (x.k === g.task ? ' on' : ''), text: x.t, onclick: function () { var keep = { goal: g.goal, ctx: g.ctx, example: g.example }; G = Object.assign(freshMaker(x.k), keep); HR.refresh(); } });
+        return h('button', { type: 'button', class: 'mk-task' + (x.k === g.task ? ' on' : ''), text: x.t, onclick: function () { var keep = { goal: g.goal, ctx: g.ctx, example: g.example, audience: g.audience }; G = Object.assign(freshMaker(x.k), keep); HR.refresh(); } });
       })),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '2' }), h('b', { text: '핵심 세 가지' })),
+      h('section', { class: 'mk-speaker' },
+        h('div', { class: 'mk-step' }, h('span', { class: 'mk-no key', text: '2' }), h('b', { text: '대답할 화자 — 가장 중요합니다' }),
+          h('span', { class: 'meta', text: '누구의 눈으로 보게 하느냐가 답의 깊이를 정합니다' })),
+        personaBox,
+        h('div', { class: 'mk-sp-fields' },
+          ui.field('전문성 — 세계 최고 수준 · 연차', spIn.who = inp('who', { rows: '2', placeholder: '예: 세계 최고의 20년차 뷰티 D2C 퍼포먼스 마케팅 베테랑', maxlength: '120' })),
+          ui.field('태도 — 날카로움 · 현실 감각', spIn.edge = inp('edge', { rows: '2', placeholder: '예: 숫자로 증명하고 현실 감각을 잃지 않는 승부사', maxlength: '160' }))),
+        ui.field('끊임없이 공부하는 것', spIn.study = inp('study', { placeholder: '예: 광고 플랫폼의 흐름과 소비자의 구매 심리', maxlength: '120' })),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.insight, onchange: function () { g.insight = this.checked; sync(); } }), ' 통찰가 문장 넣기 — 「' + INSIGHT_LINE + '」'),
+        h('div', { class: 'mk-sp-box' }, h('span', { class: 'meta', text: '화자 문장 미리 보기' }), spPrev)),
+      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '3' }), h('b', { text: '목표 · 상황' })),
       ui.field('목표 — 얻고 싶은 결과물 한 문장 *', inp('goal', { placeholder: t.goal, maxlength: '300' })),
-      ui.field('대답할 화자 — 누구처럼 생각할지', inp('role', { placeholder: '예: 15년차 화장품 처방 연구원', maxlength: '120' })),
       ui.field('상황 · 배경 — 왜 · 지금 어떤 상태인지', inp('ctx', { rows: '3', placeholder: '예: 11/12 런칭, 지금은 자사몰 세팅 80%. 예산은 월 300만원.', maxlength: '1500' })),
-      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.brand, onchange: function () { g.brand = this.checked; sync(); } }), ' 우리 브랜드 기본 소개 넣기 (바인그라피 · 가격대 · 고객)'),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.brand, onchange: function () { g.brand = this.checked; sync(); } }), ' 우리 브랜드 기본 소개 넣기 (바인그라피 · 가격대 · 고객 · 미션)'),
       ui.field('대상 — 누가 읽거나 보나요', inp('audience', { placeholder: '예: 시술 후 예민한 30대 여성', maxlength: '200' })),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '3' }), h('b', { text: '결과의 모양' })),
+      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '4' }), h('b', { text: '결과의 모양' })),
       ui.field('형식 (여러 개, 누른 순서대로)', chipSet(FORMATS, 'fmt', false)),
       h('div', { class: 'form-grid' }, ui.field('개수', inp('n', { placeholder: '예: 10', maxlength: '10' })), ui.field('길이', inp('len', { placeholder: '예: 한 줄 25자 이내', maxlength: '60' }))),
       ui.field('톤', chipSet(TONES, 'tone', true)),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '4' }), h('b', { text: '조건 · 검증' })),
+      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '5' }), h('b', { text: '조건 · 검증' })),
       h('div', { class: 'mk-rules' }, RULES.map(function (r) {
         return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.rules.indexOf(r[0]) >= 0, onchange: function () { var i = g.rules.indexOf(r[0]); if (this.checked && i < 0) g.rules.push(r[0]); if (!this.checked && i >= 0) g.rules.splice(i, 1); sync(); } }), ' ' + r[1]);
       })),
@@ -151,12 +209,13 @@
         ui.btn('복사', function () { copy(buildPrompt(g), this); }, 'btn-sm ai-copy')),
       meter, out,
       h('div', { class: 'row' },
+        ui.btn('화자 문장만 복사', function () { copy(speakerText(g), this); }, 'btn-line btn-sm'),
         ui.btn('주요 프롬프트에 저장', function () {
           state.form = { title: (g.goal.trim() || t.t).slice(0, 60), cat: t.cat, body: buildPrompt(g), tags: t.t.split(' · ')[0] };
           HR.go('ai/prompts');
         }, 'btn-line btn-sm'),
-        ui.btn('처음부터', function () { G = freshMaker(g.task); HR.refresh(); }, 'btn-line btn-sm')), msgs);
-    ui.put(view, h('p', { class: 'muted small mk-lead', text: '칸을 채우면 오른쪽에 프롬프트가 바로 만들어집니다. 「AI 잘 쓰는 법」 7가지를 자동으로 지키는 구조입니다. 복사해서 Claude · ChatGPT · Gemini에 그대로 붙여 넣으세요.' }),
+        ui.btn('처음부터', function () { G = freshMaker(g.task); HR.refresh(); }, 'btn-line btn-sm')));
+    ui.put(view, h('p', { class: 'muted small mk-lead', text: '화자를 고르고 목표를 적으면 오른쪽에 프롬프트가 바로 만들어집니다. 복사해서 Claude · ChatGPT · Gemini에 그대로 붙여 넣으세요.' }),
       h('div', { class: 'mk-wrap' }, form, side));
     sync();
   }
