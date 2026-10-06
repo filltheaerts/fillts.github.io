@@ -486,3 +486,11 @@ a.link-card { color: inherit; text-decoration: none; }
 .view-switch[aria-checked="true"] .vs-knob { left: 18px; }
 .view-switch[aria-checked="false"] .vs-admin, .view-switch[aria-checked="true"] .vs-user { color: var(--black); font-weight: 600; }
 body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
+
+.work-strengths { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.work-strengths li { display: flex; flex-direction: column; gap: 6px; }
+.work-strengths.edit li { padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); }
+.work-strengths .ws-row { display: flex; gap: 8px; align-items: center; }
+.work-strengths .ws-row input { flex: 1; min-width: 0; font-weight: 500; }
+.work-strengths textarea { width: 100%; box-sizing: border-box; }
+.work-strengths b { font-weight: 500; }
