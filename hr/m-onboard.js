@@ -62,7 +62,7 @@
     head.appendChild(h('b')); head.appendChild(h('span', { class: 'onb-bar big' }, fill));
     ui.put(view,
       h('section', { class: 'onb-hero' }, h('div', { class: 'onb-hero-top' }, h('span', { class: 'onb-kicker', text: 'ONBOARDING · 첫 한 달 가이드' }),
-        ui.btn('↓ PDF 다운로드 (상세판 16쪽)', function () { downloadPdf(this); }, 'btn-sm onb-pdf')), h('h2', { text: P.title }), h('p', { text: P.lead }), head),
+        ui.btn('↓ PDF 다운로드 (상세판)', function () { downloadPdf(this); }, 'btn-sm onb-pdf')), h('h2', { text: P.title }), h('p', { text: P.lead }), head),
       h('ol', { class: 'onb-stages' }, P.stages.map(function (st, si) {
         return h('li', { class: 'onb-stage' },
           h('div', { class: 'onb-stage-head' }, h('span', { class: 'onb-when', text: st.when }), h('h3', { text: st.title }), h('span', { class: 'onb-count' })),

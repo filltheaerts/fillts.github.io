@@ -36,6 +36,14 @@
     if (!B) return guide(view, P);
     ui.put(view,
       h('section', { class: 'ai-basic-hero' }, h('span', { class: 'ai-basic-kicker', text: 'AI 잘 쓰는 법 · 핵심 7가지' }), h('h2', { text: B.lead })),
+      B.tools ? h('section', { class: 'ai-tools2' }, h('h3', { text: B.tools.title }), h('p', { class: 'muted small', text: B.tools.lead }),
+        h('div', { class: 'ai-tool-grid' }, B.tools.items.map(function (x) {
+          return h('div', { class: 'ai-tool t-' + x.k.toLowerCase() }, h('div', { class: 'ai-tool-head' }, h('b', { text: x.k }), h('span', { class: 'meta', text: x.by })),
+            h('p', { text: x.d }), h('div', { class: 'ai-tool-best' }, h('span', { text: '이럴 때' }), x.best));
+        })),
+        B.tools.work ? h('div', { class: 'ai-work' }, h('b', { class: 'ai-work-title', text: B.tools.work.title }), h('p', { text: B.tools.work.lead }),
+          h('div', { class: 'ai-work-grid' }, B.tools.work.items.map(function (x) { return h('div', null, h('b', { text: x.k }), h('p', { text: x.d })); })),
+          h('ul', { class: 'ai-work-rules' }, B.tools.work.rules.map(function (r) { return h('li', { text: r }); }))) : null) : null,
       h('ol', { class: 'ai-basics' }, B.items.map(function (x, i) {
         return h('li', { class: 'ai-basic' },
           h('div', { class: 'ai-basic-head' }, h('span', { class: 'ai-basic-no', text: String(i + 1) }), h('h3', { text: x.k })),
