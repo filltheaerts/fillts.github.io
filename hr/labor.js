@@ -17,11 +17,10 @@
     { id: 'longservice', name: '장기근속휴가', mode: 'milestone', paid: true, half: false, hours: false, cat: 'company',
       milestones: [{ years: 3, days: 10, bonus: 2000000 }, { years: 5, days: 15, bonus: 3000000 }, { years: 10, days: 22, bonus: 10000000, label: '1개월' }],
       note: '3년 10일 + 200만원 · 5년 15일 + 300만원 · 10년 1개월 + 1,000만원 · 근속기념일부터 1년 안에 사용' },
-    { id: 'emergency', name: '비상', mode: 'request', days: 1, paid: true, half: true, hours: false, cat: 'company', note: '회사 부여' },
     { id: 'civil', name: '예비군·민방위', mode: 'request', days: 3, paid: true, half: true, hours: false, cat: 'company', note: '근로기준법 제10조 · 공민권 행사, 소집 기간' },
     // 경조사
     { id: 'wedding_self', name: '결혼 - 본인', mode: 'request', days: 5, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
-    { id: 'wedding_child', name: '결혼 - 자녀', mode: 'request', days: 1, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
+    { id: 'wedding_child', name: '결혼 - 자녀', mode: 'request', days: 3, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가 · 1회 3일' },
     { id: 'condolence_1', name: '조의 - 부모/배우자/자녀', mode: 'request', days: 5, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
     { id: 'condolence_2', name: '조의 - 조부모/형제/자매', mode: 'request', days: 3, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
     // 가족 · 출산
