@@ -88,7 +88,9 @@
     if (w < ym) return ui.tag('합류 시기 지남 · ' + s.when, 'red');
     return ui.tag((s.plus ? '충원 ' : '합류 ') + s.when, s.plus ? 'mute' : 'warn');
   }
+  var planFresh = false;
   function plan(view) {
+    if (HR.cache.hr_plan && Date.now() - HR.cache.hr_plan.at > 10000 && !planFresh) { delete HR.cache.hr_plan; planFresh = true; }
     var P = HR.load('hr_plan', function () { return db.doc('hr_plan/org').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!P) { var c = HR.cache.hr_plan; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 채용예정 조직도가 없습니다.' : '불러오는 중…')); }
     var ym = fmt.today().slice(0, 7), all = [], top = [];
@@ -114,7 +116,9 @@
       h('div', { class: 'pt-unit-desc', text: top.map(function (s) { return s.role; }).filter(function (r) { return r !== '대표이사'; }).join(' · ') + ' 겸직' })));
 
     // 합류 순서 — 연도별 가로 타임라인
-    all.sort(function (a, b) { return a.s.seq - b.s.seq; });
+    // 합류 순서 = 합류 시기 순 (같은 시기면 기존 순번), 번호는 이 순서대로 다시 매긴다
+    all.sort(function (a, b) { var x = whenYm(a.s.when), y = whenYm(b.s.when); return x < y ? -1 : x > y ? 1 : a.s.seq - b.s.seq; });
+    all.forEach(function (x, i) { x.n = i + 1; });
     var next = all.filter(function (x) { return whenYm(x.s.when) >= ym; })[0], years = {};
     all.forEach(function (x) { var y = whenYm(x.s.when).slice(0, 4); (years[y] = years[y] || []).push(x); });
     var tl = h('div', { class: 'pt-years' });
@@ -132,7 +136,7 @@
       h('ul', { class: 'plain plan-summary' }, P.summary.map(function (x) { return h('li', { text: x }); })),
       h('div', { class: 'org-wrap' }, h('div', { class: 'pt' }, root, cols)),
       ui.panel('합류 순서', next ? h('span', { class: 'meta', text: '다음: ' + next.s.when + ' ' + next.s.role }) : null, h('div', { class: 'org-wrap' }, tl)),
-      ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))));
+      (P.rules || []).length ? ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))) : null);
   }
 
   /* ---------- 구성원 추가 (관리자) ---------- */
