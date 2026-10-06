@@ -585,6 +585,8 @@
   setTimeout(checkVersion, 3000);
   setInterval(checkVersion, 5 * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkVersion(); });
+  var lastVerCheck = 0;
+  window.addEventListener('hashchange', function () { if (Date.now() - lastVerCheck > 60000) { lastVerCheck = Date.now(); checkVersion(); } });   // 메뉴를 옮길 때도 새 버전 확인
   if ($('loginForm')) $('loginForm').appendChild(h('p', { class: 'meta app-ver', text: 'fillts HR · v' + VER }));
   function typing() {
     var a = document.activeElement;
