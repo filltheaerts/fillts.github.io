@@ -524,3 +524,11 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .pay-step-no { width: 24px; height: 24px; border-radius: 50%; background: var(--red); color: var(--white); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none; }
 .pay-faq dt { font-weight: 500; font-size: 14px; margin-top: 14px; }
 .pay-faq dd { font-size: 13px; color: var(--gray-600); margin: 4px 0 0; line-height: 1.7; }
+
+.work-actions { justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.work-top5:not(.edit) li { padding-bottom: 12px; border-bottom: 1px solid var(--gray-100); }
+.work-top5:not(.edit) li:last-child { border-bottom: 0; }
+.work-top5:not(.edit) li b, .work-strengths:not(.edit) b { font-size: 15px; }
+.work-top5:not(.edit) li p, .work-strengths:not(.edit) p { white-space: pre-wrap; line-height: 1.7; margin-top: 2px; }
+.work-strengths:not(.edit) li { padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+.work-strengths:not(.edit) li:last-child { border-bottom: 0; }
