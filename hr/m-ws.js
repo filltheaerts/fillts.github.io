@@ -5,7 +5,7 @@
    읽기 전 구성원 · 쓰기 그 공간 구성원(조직=주조직, TF=멤버) · 관리자. 현황 업데이트는 누구나(다른 팀과 소통). */
 (function () {
   'use strict';
-  var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
+  var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
   var ALL = 'all', EVERY = 'projects';   // 전사 공간 키 · 전체 프로젝트 탭 키
   var STATUS = [['idea', '준비'], ['doing', '진행 중'], ['done', '완료']];
   // 프로젝트 특성 — 목록 · 상세에서 제목 앞 배지로 보인다
@@ -194,6 +194,18 @@
 
   /* ---------- 글 (프로젝트 · 게시판 공용) ---------- */
   var PROJECT_TEMPLATE = '## 목표\n\n## 현재 현황\n\n## 구조 · 역할\n- \n\n## 할 일\n[ ] \n\n## 일정 · 마일스톤\n- ';
+  // 날짜 빠른 선택 칩: [라벨, 수, 'd'(일)|'m'(달)] — 기준일에서 더한 날짜를 넣는다
+  function addMonths(s0, n) {
+    var y = +s0.slice(0, 4), m = +s0.slice(5, 7) - 1 + n, d0 = +s0.slice(8, 10);
+    var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), t = new Date(Date.UTC(y, m, Math.min(d0, last)));
+    return t.toISOString().slice(0, 10);
+  }
+  function quickDates(opts, base, cur, set) {
+    return h('div', { class: 'ws-quick' }, opts.map(function (o) {
+      var v = o[2] === 'm' ? addMonths(base(), o[1]) : L.addDays(base(), o[1]);
+      return h('button', { type: 'button', class: cur === v ? 'on' : '', text: o[0], title: fmt.dot(v), onclick: function () { set(o[2] === 'm' ? addMonths(base(), o[1]) : L.addDays(base(), o[1])); HR.refresh(); } });
+    }));
+  }
   function postForm(view, key, kind, p) {
     var dk = p ? p.id : 'new:' + key + kind;
     var d = draftPost && draftPost.key === dk ? draftPost
@@ -207,8 +219,10 @@
         ui.field('상태', ui.select(STATUS, d.status, { onchange: function () { d.status = this.value; } })),
         ui.field('리드 (진행 책임)', ui.select(HR.memberList(false).map(function (x) { return [x.id, x.name]; }), d.owner, { onchange: function () { d.owner = this.value; } })),
         ui.field('태그 (쉼표로 구분)', h('input', { type: 'text', value: d.tags, maxlength: '100', placeholder: '예: 런칭, 공식몰', oninput: function () { d.tags = this.value; } })),
-        ui.field('시작일', h('input', { type: 'date', value: d.start, onchange: function () { d.start = this.value; } })),
-        ui.field('마감 예정일', h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } }))) : null,
+        ui.field('시작일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: d.start, onchange: function () { d.start = this.value; } }),
+          quickDates([['오늘', 0, 'd'], ['1주 뒤', 7, 'd']], function () { return fmt.today(); }, d.start, function (v) { d.start = v; }))),
+        ui.field('마감 예정일 (시작일 기준)', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } }),
+          quickDates([['1주', 7, 'd'], ['2주', 14, 'd'], ['4주', 28, 'd'], ['1달', 1, 'm'], ['4달', 4, 'm']], function () { return d.start || fmt.today(); }, d.due, function (v) { d.due = v; })))) : null,
       kind === 'project' ? h('div', { class: 'field' }, h('label', { text: '프로젝트 특성 (여러 개 선택 가능)' }), h('div', { class: 'ws-flagpick' }, FLAGS.map(function (x) {
         return h('label', { class: 'check chip fl-' + x[0] }, h('input', { type: 'checkbox', checked: d.flags.indexOf(x[0]) >= 0, onchange: function () { var i = d.flags.indexOf(x[0]); if (this.checked && i < 0) d.flags.push(x[0]); if (!this.checked && i >= 0) d.flags.splice(i, 1); } }), ' ' + x[1]);
       }))) : null,
@@ -322,7 +336,72 @@
     });
     return wrap;
   }
-  function orderToggle() { return h('a', { href: '#', class: 'link', text: projOrdering ? '순서 편집 끝' : '⇅ 프로젝트 순서', onclick: function (e) { e.preventDefault(); projOrdering = !projOrdering; HR.refresh(); } }); }
+  /* ---------- 타임라인 보기 (monday.com식 가로 막대: 시작일 → 마감 예정일) ---------- */
+  var projView = (function () { try { return localStorage.getItem('hrWsView') || 'list'; } catch (e) { return 'list'; } })(), tlSpan = 0;
+  function viewToggle() {
+    var set = function (v) { return function (e) { e.preventDefault(); projView = v; try { localStorage.setItem('hrWsView', v); } catch (x) { /* 무시 */ } HR.refresh(); }; };
+    return h('div', { class: 'ws-viewtog', role: 'group', 'aria-label': '보기 방식' },
+      h('button', { type: 'button', class: projView === 'list' ? 'on' : '', text: '☰ 목록', onclick: set('list') }),
+      h('button', { type: 'button', class: projView === 'timeline' ? 'on' : '', text: '▤ 타임라인으로 보기', onclick: set('timeline') }));
+  }
+  function projectsOf(list, showSpace) { return projView === 'timeline' ? timelineOf(list, showSpace) : listOf(list, showSpace); }
+  function dnum(d) { return Math.round(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 864e5); }
+  function createdDay(p) { return p.createdAt && p.createdAt.toDate ? L.kstDate(p.createdAt.toDate()) : ''; }
+  // 위치는 CSSOM으로 준다 — CSP가 인라인 style 속성을 막는다
+  function at(el, left, width) { el.style.left = left + '%'; if (width !== undefined) el.style.width = width + '%'; return el; }
+  function timelineOf(list, showSpace) {
+    var today = fmt.today(), T = dnum(today);
+    var spanOf = function (p) {
+      var st = p.start || createdDay(p) || today, en = p.due || '';
+      if (en && en < st) st = en;
+      return { s: dnum(st), e: en ? dnum(en) : null, start: st, due: en };
+    };
+    // 보이는 기간: 선택값(3 · 6 · 12개월) 또는 자동(모든 막대 + 오늘 앞뒤 여유)
+    var lo = T - 14, hi = T + 60;
+    if (tlSpan) { lo = T - 14; hi = lo + tlSpan * 30; }
+    else list.forEach(function (p) { var x = spanOf(p); lo = Math.min(lo, x.s - 7); hi = Math.max(hi, (x.e || x.s + 14) + 14); });
+    var first = new Date((lo) * 864e5), mStart = Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1) / 864e5;
+    lo = mStart;
+    var total = Math.max(30, hi - lo), pct = function (d) { return Math.max(0, Math.min(100, (d - lo) / total * 100)); };
+    // 머리줄: 달
+    var months = [];
+    for (var m = new Date(lo * 864e5); m.getTime() / 864e5 < hi; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+      var a = m.getTime() / 864e5, b = Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1) / 864e5;
+      months.push(at(h('span', { class: 'tl-month' + (m.getUTCMonth() === 0 ? ' jan' : ''), text: (m.getUTCMonth() === 0 || !months.length ? String(m.getUTCFullYear()).slice(2) + '. ' : '') + (m.getUTCMonth() + 1) + '월' }), pct(a), pct(Math.min(b, hi)) - pct(a)));
+    }
+    var todayLine = function () { return T >= lo && T <= hi ? at(h('span', { class: 'tl-today' }), pct(T)) : null; };
+    var spans = [0, 3, 6, 12].map(function (n) { return h('button', { type: 'button', class: tlSpan === n ? 'on' : '', text: n ? n + '개월' : '자동', onclick: function () { tlSpan = n; HR.refresh(); } }); });
+    var wrap = h('div', { class: 'ws-tl' + (showSpace ? ' with-space' : '') },
+      h('div', { class: 'tl-tools' }, h('span', { class: 'meta', text: '막대 = 시작일 → 마감 예정일 · 빨간 선 = 오늘' }), h('div', { class: 'tl-spans' }, spans)));
+    var scroller = h('div', { class: 'tl-scroll' }), grid = h('div', { class: 'tl-grid' });
+    grid.appendChild(h('div', { class: 'tl-row tl-head' }, h('div', { class: 'tl-label', text: '프로젝트' }), h('div', { class: 'tl-track' }, months, todayLine())));
+    LIST_ORDER.forEach(function (stt) {
+      var items = list.filter(function (p) { return (p.status || 'idea') === stt[0]; }).sort(function (a, b) { return spanOf(a).s - spanOf(b).s || ((a.due || '9999') < (b.due || '9999') ? -1 : 1); });
+      if (!items.length) return;
+      grid.appendChild(h('div', { class: 'tl-row tl-group st-' + stt[0] }, h('div', { class: 'tl-label' }, h('span', { class: 'ws-pdot' }), h('b', { text: stt[1] }), h('span', { class: 'meta', text: ' ' + items.length })), h('div', { class: 'tl-track' }, todayLine())));
+      items.forEach(function (p) {
+        var x = spanOf(p), end = x.e === null ? x.s + 14 : x.e + 1, left = pct(x.s), w = Math.max(pct(end) - left, 0.8);
+        var label = p.title + (x.due ? '' : ' · 마감 미정');
+        var bar = h('a', { class: 'tl-bar st-' + (p.status || 'idea') + (x.e === null ? ' open' : '') + ((p.flags || []).indexOf('urgent') >= 0 ? ' urgent' : ''), href: '#ws/' + p.org + '/projects/' + p.id,
+          title: p.title + '\n' + fmt.dot(x.start) + ' → ' + (x.due ? fmt.dot(x.due) : '마감 미정') + '\n' + HR.name(p.owner) },
+          h('span', { class: 'tl-bar-t', text: label }));
+        at(bar, left, w);
+        var outside = w < 9 ? at(h('a', { class: 'tl-bar-out', href: '#ws/' + p.org + '/projects/' + p.id, text: label }), Math.min(left + w, 100)) : null;
+        if (outside) bar.classList.add('short');
+        var over = x.e !== null && x.e < T && p.status !== 'done';
+        grid.appendChild(h('div', { class: 'tl-row' },
+          h('a', { class: 'tl-label', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? spaceBadge(p.org) : null,
+            h('span', { class: 'tl-name' }, flagBadges(p), h('span', { class: 'ws-ptitle-t', text: p.title })),
+            h('span', { class: 'tl-sub' + (over ? ' over' : ''), text: HR.name(p.owner) + ' · ' + (x.due ? '~ ' + fmt.dot(x.due).slice(2) + (over ? ' 지남' : '') : '마감 미정') })),
+          h('div', { class: 'tl-track' }, todayLine(), bar, outside)));
+      });
+    });
+    if (!list.length) grid.appendChild(h('div', { class: 'tl-row empty', text: '프로젝트가 없습니다.' }));
+    scroller.appendChild(grid); wrap.appendChild(scroller);
+    setTimeout(function () { var t = scroller.querySelector('.tl-head .tl-today'); if (t && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft = Math.max(0, t.offsetLeft + 220 - scroller.clientWidth / 3); }, 0);
+    return wrap;
+  }
+  function orderToggle() { if (projView === 'timeline') return null; return h('a', { href: '#', class: 'link', text: projOrdering ? '순서 편집 끝' : '⇅ 프로젝트 순서', onclick: function (e) { e.preventDefault(); projOrdering = !projOrdering; HR.refresh(); } }); }
   function boardOf(list, showSpace) {
     return h('div', { class: 'ws-board' }, STATUS.map(function (s) {
       var items = list.filter(function (p) { return (p.status || 'idea') === s[0]; }).sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
@@ -335,13 +414,13 @@
     var list = (whole ? allProjects() : posts(key)).filter(function (p) { return p.kind === 'project'; });
     if (parts[0] === 'new') return inTeam(key) ? postForm(view, key, 'project', null) : null;
     if (parts[0]) { var p = list.filter(function (x) { return x.id === parts[0]; })[0]; if (!p) return ui.put(view, ui.empty('불러오는 중…')); return parts[1] === 'edit' ? postForm(view, key, 'project', p) : postView(view, key, p, 'projects'); }
-    ui.put(view, h('div', { class: 'toolbar' }, h('span', { class: 'meta', text: (whole ? '회사 전체 프로젝트 ' : '프로젝트 ') + list.length + '개' }), orderToggle(), inTeam(key) ? ui.btn('+ 새 프로젝트', function () { draftPost = null; HR.go('ws/' + key + '/projects/new'); }) : null), listOf(list, whole));
+    ui.put(view, h('div', { class: 'toolbar' }, h('span', { class: 'meta', text: (whole ? '회사 전체 프로젝트 ' : '프로젝트 ') + list.length + '개' }), viewToggle(), orderToggle(), inTeam(key) ? ui.btn('+ 새 프로젝트', function () { draftPost = null; HR.go('ws/' + key + '/projects/new'); }) : null), projectsOf(list, whole));
   }
   function everyProject(view) {
     var list = allProjects(), q = (HR.wsQ || '');
     var search = ui.input({ type: 'search', value: q, placeholder: '프로젝트 · 태그 · 담당자 검색', oninput: function () { HR.wsQ = this.value; HR.refresh(); } });
     var f = list.filter(function (p) { var s = (p.title + ' ' + (p.tags || []).join(' ') + ' ' + HR.name(p.owner) + ' ' + spaceName(p.org)).toLowerCase(); return !q || s.indexOf(q.toLowerCase()) >= 0; });
-    ui.put(view, h('div', { class: 'toolbar' }, ui.field('검색', search, 'inline'), h('span', { class: 'meta', text: '전체 ' + f.length + '개 · 팀 · TF를 가리지 않고 모든 프로젝트' }), orderToggle()), listOf(f, true));
+    ui.put(view, h('div', { class: 'toolbar' }, ui.field('검색', search, 'inline'), h('span', { class: 'meta', text: '전체 ' + f.length + '개 · 팀 · TF를 가리지 않고 모든 프로젝트' }), viewToggle(), orderToggle()), projectsOf(f, true));
   }
 
   /* ---------- 게시판 ---------- */
