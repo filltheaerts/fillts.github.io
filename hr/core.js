@@ -558,6 +558,15 @@
     }
     return c ? c.data : null;
   };
+  // 한 줄 안내문(.att-note): 폭이 모자라면 글자를 줄여 항상 한 줄로
+  function fitNotes() {
+    document.querySelectorAll('.att-note').forEach(function (el) {
+      el.style.fontSize = ''; var fs = parseFloat(getComputedStyle(el).fontSize) || 12;
+      while (el.scrollWidth > el.clientWidth + 1 && fs > 8) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+    });
+  }
+  window.addEventListener('resize', fitNotes);
+  new MutationObserver(function () { requestAnimationFrame(fitNotes); }).observe(document.documentElement, { childList: true, subtree: true });
   HR.invalidate = function (prefix) { Object.keys(HR.cache).forEach(function (k) { if (k.indexOf(prefix) === 0) delete HR.cache[k]; }); changed(); };
 
   /* ============================================

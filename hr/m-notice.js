@@ -123,6 +123,36 @@
       h('p', { class: 'note', text: '빨간 점은 그 항목의 핵심 목표 지점입니다. 목표가 바뀌면 이 화면이 함께 갱신됩니다.' }));
   }
 
+  /* ---------- 01 바인그라피 — 브랜드 미션 · 주요사항 (hr_plan/brand) ---------- */
+  function brandPage(view) {
+    if (HR.cache.hr_plan_brand && !HR.cache.hr_plan_brand.loading && Date.now() - HR.cache.hr_plan_brand.at > 15000) delete HR.cache.hr_plan_brand;
+    var B = HR.load('hr_plan_brand', function () { return db.doc('hr_plan/brand').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
+    if (!B) { var c = HR.cache.hr_plan_brand; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
+    var sec = function (label, x, body) { return ui.panel(label + ' · ' + x.title, null, x.lead ? h('p', { class: 'muted small', text: x.lead }) : null, body, x.note ? h('p', { class: 'br-note', text: x.note }) : null); };
+    ui.put(view,
+      h('section', { class: 'br-hero' },
+        h('div', { class: 'br-kicker', text: B.kicker }),
+        h('div', { class: 'br-mission-label', text: 'OUR MISSION' }),
+        h('h2', { class: 'br-mission', text: B.mission }),
+        h('p', { class: 'br-lead', text: B.missionLead }),
+        h('p', { class: 'br-who', text: B.who })),
+      h('div', { class: 'br-moments' }, B.moments.map(function (x) {
+        return h('div', { class: 'br-moment' }, h('div', { class: 'br-m-head' }, h('span', { class: 'br-no', text: x.no }), h('b', { text: x.k })), h('h3', { text: x.t }), h('p', { text: x.d }));
+      })),
+      h('p', { class: 'br-after', text: B.after }),
+      ui.panel('Definition · ' + B.definition.title, null, h('p', { class: 'br-def-lead', text: B.definition.lead }),
+        h('div', { class: 'br-def' }, B.definition.items.map(function (x) { return h('div', { class: 'br-def-i' }, h('span', { class: 'br-k', text: x.k }), h('b', { text: x.v }), h('p', { text: x.d })); })),
+        h('blockquote', { class: 'br-quote', text: B.definition.quote })),
+      sec('Her', B.her, [h('div', { class: 'br-traits' }, h('span', { class: 'br-traits-lead', text: B.her.target }), B.her.traits.map(function (t) { return h('span', { class: 'chip', text: t }); })),
+        h('div', { class: 'br-points' }, B.her.points.map(function (x) { return h('div', null, h('b', { text: x.k }), h('p', { text: x.d })); }))]),
+      sec('Tasks', B.tasks, h('div', { class: 'br-tasks' }, B.tasks.items.map(function (x) { return h('div', { class: 'br-task' }, h('span', { class: 'br-e', text: x.e }), h('b', { text: x.k }), h('p', { text: x.d })); }))),
+      sec('Words', B.words, h('div', { class: 'br-words' }, B.words.items.map(function (w) { return h('span', { text: w }); }))),
+      sec('Stages', B.stages, h('ol', { class: 'br-stages' }, B.stages.items.map(function (x, i) { return h('li', null, h('span', { class: 'br-no', text: ('0' + (i + 1)).slice(-2) }), h('b', { text: x.k }), h('span', { class: 'meta', text: x.d })); }))),
+      sec('Tone & Manner', B.tone, h('div', { class: 'br-tone' }, B.tone.items.map(function (x) { return h('div', null, h('b', { text: '# ' + x.k }), h('p', { text: x.d })); }))),
+      sec('Channel', B.channel, h('ol', { class: 'br-channel' }, B.channel.items.map(function (x) { return h('li', null, h('b', { text: x.k }), h('span', { text: x.d })); }))),
+      h('p', { class: 'meta br-src', text: '출처 · ' + B.source }));
+  }
+
   /* ---------- 일하는 법 (hr_plan/howwework — 노션 「일하는 방식」 정리본) ---------- */
   function howWeWork(view) {
     if (HR.cache.hr_plan_hww && !HR.cache.hr_plan_hww.loading && Date.now() - HR.cache.hr_plan_hww.at > 15000) delete HR.cache.hr_plan_hww;
@@ -150,9 +180,9 @@
       var sub = parts[0] || '';
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
-      if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how') return detail(view, sub);
-      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['milestone', '마일스톤'], ['how', '일하는 법'], ['feed', '소식 · 칭찬']], sub, 'notice'));
-      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else listView(view);
+      if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how' && sub !== 'brand') return detail(view, sub);
+      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['brand', '01 바인그라피'], ['milestone', '마일스톤'], ['how', '일하는 법'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else if (sub === 'brand') brandPage(view); else listView(view);
     }
   });
 })();

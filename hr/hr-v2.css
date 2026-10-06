@@ -817,3 +817,52 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
   .ws-plist.with-space .ws-prow:not(.empty) { display: flex; }
   .ws-prow .ws-pspace { order: 0; flex-direction: row; align-items: baseline; gap: 5px; padding: 2px 7px; }
 }
+
+/* 출근 안내 두 줄 — 항상 한 줄, 작은 글씨 */
+.att-note { font-size: 12px; line-height: 1.5; white-space: nowrap; overflow: hidden; letter-spacing: -0.01em; }
+
+/* 공지사항 › 01 바인그라피 */
+.br-hero { background: #2a1430; color: #fff; padding: 36px 32px; display: flex; flex-direction: column; gap: 10px; }
+.br-kicker { font-size: 11px; letter-spacing: 0.12em; color: #d8b4e2; }
+.br-mission-label { font-size: 11px; letter-spacing: 0.3em; color: #b48ac0; margin-top: 18px; }
+.br-mission { font-size: 40px; font-weight: 600; line-height: 1.2; letter-spacing: -0.01em; color: #fff; }
+.br-lead { font-size: 15px; color: #f3e8f6; }
+.br-who { font-size: 13px; color: #cdb6d4; line-height: 1.7; max-width: 640px; }
+.br-moments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .br-moments { grid-template-columns: 1fr; } .br-hero { padding: 28px 20px; } .br-mission { font-size: 32px; } }
+.br-moment { background: var(--paper); border: 1px solid var(--gray-200); border-top: 3px solid #6b2d7b; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.br-m-head { display: flex; align-items: baseline; gap: 8px; }
+.br-m-head b { font-size: 12px; letter-spacing: 0.1em; color: #6b2d7b; }
+.br-no { font-size: 11px; font-weight: 600; color: var(--gray-400); }
+.br-moment h3 { font-size: 16px; font-weight: 500; line-height: 1.45; }
+.br-moment p { font-size: 13px; line-height: 1.75; color: var(--gray-800); }
+.br-after { text-align: center; font-size: 14px; color: var(--gray-800); padding: 6px 12px; line-height: 1.7; }
+.br-def-lead { font-size: 18px; font-weight: 500; margin: 6px 0 12px; }
+.br-def { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .br-def, .br-tasks, .br-tone { grid-template-columns: 1fr !important; } }
+.br-def-i { border: 1px solid var(--gray-200); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.br-k { font-size: 11px; color: #6b2d7b; letter-spacing: 0.06em; }
+.br-def-i b { font-size: 15px; font-weight: 600; }
+.br-def-i p, .br-points p, .br-task p, .br-tone p { font-size: 13px; line-height: 1.7; color: var(--gray-800); }
+.br-quote { margin: 14px 0 0; padding: 12px 16px; border-left: 3px solid #6b2d7b; background: #faf5fb; font-size: 14px; font-weight: 500; line-height: 1.7; }
+.br-traits { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 12px; }
+.br-traits-lead { font-weight: 600; margin-right: 6px; }
+.br-points { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.br-points > div { background: var(--gray-100); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.br-tasks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.br-task { border: 1px solid var(--gray-200); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.br-e { font-size: 10px; letter-spacing: 0.14em; color: var(--gray-400); }
+.br-task b { font-size: 20px; font-weight: 600; }
+.br-words { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.br-words span { font-size: 17px; font-weight: 600; padding: 8px 16px; background: #2a1430; color: #fff; }
+.br-note { font-size: 13px; color: var(--gray-600); margin-top: 12px; line-height: 1.7; }
+.br-stages { list-style: none; display: flex; flex-direction: column; margin-top: 8px; }
+.br-stages li { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; }
+.br-stages li b { font-size: 14px; font-weight: 500; min-width: 180px; }
+.br-tone { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.br-tone > div { border-top: 2px solid var(--black); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.br-tone b { font-size: 14px; }
+.br-channel { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; counter-reset: ch; }
+.br-channel li { display: flex; gap: 14px; font-size: 13px; line-height: 1.6; }
+.br-channel li b { flex: none; width: 56px; color: #6b2d7b; }
+.br-src { text-align: right; }
