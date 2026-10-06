@@ -1224,3 +1224,5 @@ a.tl-label:hover { background: var(--gray-100); }
 .summary.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 900px) { .summary.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.summary.work-sum dd { font-weight: 300; }
+.summary.work-sum dd.strong { font-weight: 600; color: var(--black); }

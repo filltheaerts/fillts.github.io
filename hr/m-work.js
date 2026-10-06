@@ -133,9 +133,8 @@
     var monthIn = ui.input({ id: 'wkMonth', type: 'month', value: T.month, onchange: function () { if (this.value) { T.month = this.value; HR.refresh(); } } });
     var top = h('div', { class: 'two-col' }, self ? h('div', { class: 'stack' }, punchCard()) : null, self ? h('div', { class: 'stack' }, weekPanel()) : null);
 
-    var summary = h('dl', { class: 'summary five' });
-    [['근로', L.minToHM(M.tot.work)], ['연장', L.minToHM(M.tot.ot)], ['야간', L.minToHM(M.tot.night)], ['휴일', L.minToHM(M.tot.hol)],
-      ['52시간 초과', M.tot.bad + '주', M.tot.bad ? 'red' : '']].forEach(function (p) {
+    var summary = h('dl', { class: 'summary four work-sum' });
+    [['근로', L.minToHM(M.tot.work), 'strong'], ['연장', L.minToHM(M.tot.ot)], ['야간', L.minToHM(M.tot.night)], ['휴일', L.minToHM(M.tot.hol)]].forEach(function (p) {
       summary.appendChild(h('div', null, h('dt', { text: p[0] }), h('dd', { class: p[2] || '', text: p[1] })));
     });
 
