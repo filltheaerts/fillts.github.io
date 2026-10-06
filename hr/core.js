@@ -266,7 +266,8 @@
     'auth/network-request-failed': '네트워크 연결을 확인하세요.',
     'auth/unauthorized-domain': '이 주소(fillts.com)가 로그인 허용 도메인에 아직 등록되지 않았습니다. 관리자에게 알려 주세요.',
     'auth/operation-not-allowed': '이 로그인 방식이 아직 켜져 있지 않습니다. 이메일로 로그인하세요.',
-    'auth/popup-blocked': '브라우저가 로그인 팝업을 막았습니다. 팝업을 허용한 뒤 다시 누르세요.'
+    'auth/popup-blocked': '브라우저가 로그인 창을 막았습니다. 다시 한 번 누르거나, 설정에서 팝업 차단을 끈 뒤 시도하세요.',
+    'auth/web-storage-unsupported': '이 브라우저 설정(쿠키·저장소 차단)으로는 Google 로그인이 안 됩니다. Safari·Chrome 기본 브라우저로 열어 주세요.'
   };
   // 인증 메일: 이동 주소가 허용되지 않은 경우에도 메일은 보낸다
   function sendVerify(user) {
@@ -303,11 +304,22 @@
       .then(function () { done(); $('loginPw').value = ''; }).catch(err);
   });
   // Google Workspace(fillts.com) 로그인 — 이메일 인증이 자동으로 완료된다
+  // 카카오톡·인스타 등 앱 내 브라우저는 Google이 로그인 자체를 차단한다(403 disallowed_useragent)
+  function inAppBrowser() {
+    return /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|Line\/|NAVER\(inapp|DaumApps|everytimeApp|; wv\)/i.test(navigator.userAgent);
+  }
   $('googleBtn').addEventListener('click', function () {
+    if (inAppBrowser()) {
+      var url = location.href, ua = navigator.userAgent;
+      if (/KAKAOTALK/i.test(ua)) { location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url); return; }
+      if (/Android/i.test(ua)) { location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end'; return; }
+      return ui.err($('loginMsg'), '앱 안의 브라우저에서는 Google 로그인이 막혀 있습니다. 우측 상단 메뉴에서 "Safari로 열기"를 누른 뒤 다시 시도하세요.');
+    }
     var p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ hd: 'fillts.com', prompt: 'select_account' });
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
-      .then(function () { return auth.signInWithPopup(p); })
+    // 팝업은 탭과 같은 틱에 열어야 모바일 Safari·Chrome이 막지 않는다 — setPersistence를 기다리지 않는다(auth 내부 큐가 순서 보장)
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    auth.signInWithPopup(p)
       .catch(function (x) {
         if (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request') return;
         ui.err($('loginMsg'), authErr(x));
