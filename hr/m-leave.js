@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var F = { type: 'annual', unit: 'day', start: null, end: null, hours: 2 };
+  var F = { type: 'annual', unit: 'day', start: null, end: null, hours: 2, more: false };
   var V = { year: null, who: null, calMonth: null };
 
   var STATUS = { pending: ['승인 대기', 'warn'], approved: ['승인', 'ok'], rejected: ['반려', 'red'], canceled: ['취소', 'mute'] };
@@ -57,34 +57,58 @@
     return L.policyBalance(p, S.members[mid], mine, fmt.today());
   }
 
-  /* ---------- 내 휴가 ---------- */
+  /* ---------- 내 휴가 ----------
+     기본: 연차 / 오전 반차 / 오후 반차 (큰 버튼)
+     그 외: 경조사 · 가족·출산 · 건강 · 회사 휴가 (접힌 작은 버튼) */
+  var CATS = [['family_event', '경조사'], ['family', '가족 · 출산'], ['health', '건강'], ['company', '회사 휴가']];
+  var CAT_OF = {
+    wedding_self: 'family_event', wedding_child: 'family_event', condolence_1: 'family_event', condolence_2: 'family_event',
+    family_care: 'family', infertility: 'family', paternity: 'family', maternity: 'family',
+    sick: 'health', menstrual: 'health',
+    refresh: 'company', special: 'company', emergency: 'company', civil: 'company'
+  };
+  HR.policyCat = function (p) { return p.cat || CAT_OF[p.id] || 'company'; };
+  HR.LEAVE_CATS = CATS;
+
+  function policyLine(p) {
+    var b = balanceOf(p, S.mid);
+    if (b && b.perRequest) return '1회 ' + fmt.days(p.days);
+    if (b && b.locked) return p.tenureYears + '년 근속 후';
+    if (b) return '잔여 ' + fmt.days(b.left);
+    return '';
+  }
+
   function mine(view) {
     var t = fmt.today();
     if (!F.start) { F.start = t; F.end = t; }
-    var grid = h('div', { class: 'policy-grid' });
-    HR.policies().forEach(function (p) {
-      var b = balanceOf(p, S.mid), main, sub;
-      if (p.mode === 'annual') { main = b ? fmt.days(b.left) : '-'; sub = b ? '발생 ' + fmt.days(b.granted) + (b.pending ? ' · 대기 ' + fmt.days(b.pending) : '') : '입사일 미등록'; }
-      else if (b && b.perRequest) { main = fmt.days(p.days); sub = '신청 시 부여'; }
-      else if (b && b.locked) { main = '—'; sub = p.tenureYears + '년 근속 시 ' + fmt.days(p.days); }
-      else if (b) { main = fmt.days(b.left); sub = { yearly: '매년 ', monthly: '매월 ', tenure: p.tenureYears + '년 근속 시 ' }[p.mode] + fmt.days(p.days) + ' 부여'; }
-      else { main = '-'; sub = ''; }
-      grid.appendChild(h('button', { type: 'button', class: 'policy' + (F.type === p.id ? ' on' : ''), onclick: function () { F.type = p.id; if (!p.half && !p.hours) F.unit = 'day'; HR.refresh(); } },
-        h('div', { class: 'policy-name', text: p.name }), h('div', { class: 'policy-num', text: main }), h('div', { class: 'meta', text: sub }), p.paid === false ? ui.tag('무급', 'mute') : null));
+    var pa = HR.policy('annual'), ba = balanceOf(pa, S.mid);
+
+    // 연차 잔여
+    var hero = h('section', { class: 'panel leave-hero' },
+      h('div', { class: 'panel-head' }, ui.label('Annual leave'), h('a', { href: '#leave/annual', class: 'link', text: '연차 상세' })),
+      h('div', { class: 'big-num' }, ba ? fmt.days(ba.left) : '-', h('small', { text: '남음' })),
+      h('p', { class: 'muted small', text: ba ? '발생 ' + fmt.days(ba.granted) + ' · 사용 ' + fmt.days(ba.used) + (ba.pending ? ' · 승인 대기 ' + fmt.days(ba.pending) : '') : '입사일이 등록되면 자동 계산됩니다.' }));
+
+    // 기본 버튼: 연차 / 오전 반차 / 오후 반차
+    var quick = h('div', { class: 'quick', role: 'group', 'aria-label': '연차 신청 종류' });
+    [['day', '연차', '하루 이상'], ['am', '오전 반차', '0.5일'], ['pm', '오후 반차', '0.5일']].forEach(function (q) {
+      var on = F.type === 'annual' && F.unit === q[0];
+      quick.appendChild(h('button', { type: 'button', class: 'quick-btn' + (on ? ' on' : ''), 'aria-pressed': String(on),
+        onclick: function () { F.type = 'annual'; F.unit = q[0]; if (q[0] !== 'day') F.end = F.start; HR.refresh(); } },
+        h('span', { class: 'quick-name', text: q[1] }), h('span', { class: 'quick-sub', text: q[2] })));
     });
 
-    // 신청 폼
-    var p = HR.policy(F.type);
+    // 신청 폼 (선택된 종류)
+    var p = HR.policy(F.type), special = F.type !== 'annual';
     var units = [['day', '종일']]; if (p.half) units.push(['am', '오전 반차'], ['pm', '오후 반차']); if (p.hours) units.push(['hours', '시간 단위']);
     if (!units.some(function (u) { return u[0] === F.unit; })) F.unit = 'day';
-    var typeSel = ui.select(HR.policies().map(function (x) { return [x.id, x.name]; }), F.type, { id: 'lvType', onchange: function () { F.type = this.value; HR.refresh(); } });
-    var unitSel = ui.select(units, F.unit, { id: 'lvUnit', onchange: function () { F.unit = this.value; if (F.unit !== 'day') F.end = F.start; HR.refresh(); } });
+    var unitSel = special && units.length > 1 ? ui.select(units, F.unit, { id: 'lvUnit', onchange: function () { F.unit = this.value; if (F.unit !== 'day') F.end = F.start; HR.refresh(); } }) : null;
     var sIn = ui.input({ id: 'lvStart', type: 'date', value: F.start, onchange: function () { F.start = this.value; if (F.unit !== 'day' || F.end < F.start) F.end = F.start; HR.refresh(); } });
-    var eIn = ui.input({ id: 'lvEnd', type: 'date', value: F.end, disabled: F.unit !== 'day' ? true : null, onchange: function () { F.end = this.value; HR.refresh(); } });
+    var eIn = ui.input({ id: 'lvEnd', type: 'date', value: F.end, onchange: function () { F.end = this.value; HR.refresh(); } });
     var hIn = ui.input({ id: 'lvHours', type: 'number', min: '1', max: '7', step: '1', value: F.hours, onchange: function () { F.hours = +this.value || 1; HR.refresh(); } });
     var reason = ui.input({ id: 'lvReason', maxlength: '200', placeholder: '선택 · 승인자에게만 보입니다' });
     var days = L.leaveDays(F.unit, F.start, F.end, F.hours, S.hmap);
-    var bal = balanceOf(p, S.mid), prev = p.name + ' · ' + fmt.days(days);
+    var bal = balanceOf(p, S.mid), prev = fmt.days(days) + (p.paid === false ? ' · 무급' : '');
     var problem = '';
     if (bal && bal.perRequest && days > p.days) problem = '1회 최대 ' + fmt.days(p.days) + '까지 신청할 수 있습니다.';
     else if (bal && bal.locked) problem = p.tenureYears + '년 근속 후 사용할 수 있습니다.';
@@ -94,29 +118,58 @@
       if (after < 0) problem = '잔여가 부족합니다. 관리자와 상의하세요.';
     }
     if (days <= 0) problem = '선택한 기간에 근무일이 없습니다.';
+    var title = special ? p.name : F.unit === 'am' ? '오전 반차' : F.unit === 'pm' ? '오후 반차' : '연차';
     var m = ui.msg();
     var form = h('form', { class: 'panel', id: 'leaveForm' },
-      ui.label('Request'),
-      h('div', { class: 'row' }, ui.field('휴가 종류', typeSel), ui.field('단위', unitSel)),
-      h('div', { class: 'row' }, ui.field('시작일', sIn), F.unit === 'day' ? ui.field('종료일', eIn) : null, F.unit === 'hours' ? ui.field('시간', hIn) : null),
+      h('div', { class: 'panel-head' }, h('h3', { class: 'form-title', text: title + ' 신청' }),
+        special ? h('a', { href: '#', class: 'link', text: '연차로 돌아가기', onclick: function (e) { e.preventDefault(); F.type = 'annual'; F.unit = 'day'; HR.refresh(); } }) : null),
+      special && p.note ? h('p', { class: 'muted small', text: p.note }) : null,
+      unitSel ? ui.field('단위', unitSel) : null,
+      h('div', { class: 'row' },
+        ui.field(F.unit === 'day' ? '시작일' : '날짜', sIn),
+        F.unit === 'day' ? ui.field('종료일', eIn) : null,
+        F.unit === 'hours' ? ui.field('시간', hIn) : null),
       ui.field('사유', reason),
-      h('p', { class: 'muted small', text: prev + (p.note ? ' · ' + p.note : '') }),
+      h('p', { class: 'muted small', text: prev }),
       problem ? h('p', { class: 'form-msg', text: problem }) : null, m,
-      h('button', { class: 'btn', type: 'submit', text: '신청하기', disabled: problem && !S.isAdmin ? true : null }),
-      h('p', { class: 'note', text: '신청하면 리더와 관리자에게 Slack·메일·웹으로 알림이 가고, Slack의 승인 버튼으로 바로 처리됩니다. 승인되면 팀 캘린더와 구글 캘린더에 자동 등록됩니다.' }));
+      h('button', { class: 'btn', type: 'submit', text: '신청하기', disabled: problem && !S.isAdmin ? true : null }));
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (problem && !S.isAdmin) return;
       db.collection('hr_leave').add({
         memberId: S.mid, type: F.type, unit: F.unit, start: F.start, end: F.unit === 'day' ? F.end : F.start,
         hours: F.unit === 'hours' ? F.hours : 0, days: days, reason: reason.value.trim(), status: 'pending', createdAt: FV.serverTimestamp()
-      }).then(function () { ui.toast('휴가를 신청했습니다. 승인되면 알림을 드릴게요.'); }).catch(function (x) { ui.fail(x, m); });
+      }).then(function () { ui.toast(title + '를 신청했습니다. 승인되면 알려 드릴게요.'); }).catch(function (x) { ui.fail(x, m); });
     });
 
-    var list = h('ul', { class: 'list' });
-    HR.leavesOf(S.mid).slice().sort(function (a, b) { return a.start < b.start ? 1 : -1; }).slice(0, 30).forEach(function (l) { list.appendChild(leaveItem(l)); });
-    if (!list.children.length) list.appendChild(h('li', { class: 'empty', text: '신청 내역이 없습니다.' }));
-    ui.put(view, grid, h('div', { class: 'two-col' }, form, ui.panel('My requests', null, list)));
+    // 다른 휴가 (카테고리별 작은 버튼, 기본 접힘)
+    var others = HR.policies().filter(function (x) { return x.id !== 'annual'; });
+    var more = h('section', { class: 'panel' },
+      h('div', { class: 'panel-head' }, ui.label('Other leave'),
+        h('button', { type: 'button', class: 'link', 'aria-expanded': String(!!F.more), text: F.more ? '접기' : '다른 휴가 보기', onclick: function () { F.more = !F.more; HR.refresh(); } })));
+    if (!F.more && !special) {
+      more.appendChild(h('p', { class: 'muted small', text: '경조사 · 가족·출산 · 건강 · 회사 휴가 ' + others.length + '종' }));
+    } else {
+      CATS.forEach(function (c) {
+        var list = others.filter(function (x) { return HR.policyCat(x) === c[0]; });
+        if (!list.length) return;
+        more.appendChild(h('div', { class: 'cat-group' }, h('div', { class: 'cat-name', text: c[1] }),
+          h('div', { class: 'chips' }, list.map(function (x) {
+            var on = F.type === x.id;
+            return h('button', { type: 'button', class: 'chip' + (on ? ' on' : ''), 'aria-pressed': String(on), title: x.note || '',
+              onclick: function () { F.type = x.id; F.unit = 'day'; F.more = true; HR.refresh(); } },
+              x.name, h('span', { class: 'chip-sub', text: policyLine(x) }));
+          }))));
+      });
+    }
+
+    var reqs = h('ul', { class: 'list' });
+    HR.leavesOf(S.mid).slice().sort(function (a, b) { return a.start < b.start ? 1 : -1; }).slice(0, 30).forEach(function (l) { reqs.appendChild(leaveItem(l)); });
+    if (!reqs.children.length) reqs.appendChild(h('li', { class: 'empty', text: '신청 내역이 없습니다.' }));
+
+    ui.put(view, h('div', { class: 'two-col' },
+      h('div', { class: 'stack' }, hero, quick, form),
+      h('div', { class: 'stack' }, more, ui.panel('My requests', null, reqs))));
   }
 
   /* ---------- 연차 상세 현황 ---------- */

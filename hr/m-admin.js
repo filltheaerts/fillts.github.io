@@ -11,6 +11,7 @@
       bizNo: ui.input({ value: c.bizNo || '', maxlength: '20', placeholder: '000-00-00000' }), companyAddress: ui.input({ value: c.companyAddress || '', maxlength: '120' }),
       minWage: ui.input({ type: 'number', min: '0', step: '10', value: c.minWage }), monthHours: ui.input({ type: 'number', min: '1', value: c.monthHours }),
       workStart: ui.input({ type: 'time', value: c.workStart }), workEnd: ui.input({ type: 'time', value: c.workEnd }),
+      autoOutHours: ui.input({ type: 'number', min: '0', max: '16', step: '0.5', value: c.autoOutHours == null ? 7 : c.autoOutHours }),
       annualBasis: ui.select([['fiscal', '회계연도 (1월 1일) 기준'], ['hire', '입사일 기준']], c.annualBasis),
       gcalId: ui.input({ value: c.gcalId || '', placeholder: '팀 휴가 캘린더 ID (구독 링크용)', maxlength: '200' })
     };
@@ -20,13 +21,13 @@
       h('div', { class: 'form-grid' }, ui.field('회사명', f.companyName), ui.field('대표자', f.ceoName), ui.field('사업자등록번호', f.bizNo), ui.field('주소 (증명서용)', f.companyAddress)),
       h('label', { class: 'check' }, five, ' 상시근로자 5인 이상 사업장'),
       h('div', { class: 'form-grid' }, ui.field('최저시급 (원)', f.minWage), ui.field('월 소정근로 환산시간', f.monthHours), ui.field('연차 산정 기준', f.annualBasis),
-        ui.field('출근 기준', f.workStart), ui.field('퇴근 기준', f.workEnd), ui.field('구글 캘린더 ID', f.gcalId)),
+        ui.field('출근 기준', f.workStart), ui.field('퇴근 기준', f.workEnd), ui.field('출근 후 자동 퇴근 (시간, 0=끔)', f.autoOutHours), ui.field('구글 캘린더 ID', f.gcalId)),
       m, h('button', { class: 'btn btn-sm', type: 'submit', text: '저장' }),
       h('p', { class: 'note', text: '5인 미만 사업장은 연장·야간·휴일 가산수당(제56조), 연차휴가(제60조), 공휴일 유급휴일이 법적 의무가 아닙니다. 체크를 해제하면 계산이 그 기준으로 바뀝니다. 최저시급은 매년 8월 고시값으로 갱신하세요. 회계연도 기준은 운영이 편하지만 퇴사 시 입사일 기준보다 불리하면 차액을 정산해야 합니다.' }));
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var d = { fivePlus: five.checked };
-      Object.keys(f).forEach(function (k) { d[k] = /minWage|monthHours/.test(k) ? +f[k].value || L.DEFAULT_CONFIG[k] : f[k].value.trim(); });
+      Object.keys(f).forEach(function (k) { d[k] = k === 'autoOutHours' ? Math.max(0, +f[k].value || 0) : /minWage|monthHours/.test(k) ? +f[k].value || L.DEFAULT_CONFIG[k] : f[k].value.trim(); });
       cfgRef().set(d, { merge: true }).then(function () { ui.ok(m, '저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
     });
     ui.put(view, form);
@@ -36,7 +37,7 @@
     if (!draftPolicies) draftPolicies = JSON.parse(JSON.stringify(HR.allPolicies()));
     var P = draftPolicies, m = ui.msg();
     var tb = h('table', { class: 'table policy-table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['사용', '이름', '부여 방식', '일수', '근속(년)', '유급', '반차', '시간', '설명', ''].map(function (x) { return h('th', { text: x }); }))));
+    tb.appendChild(h('thead', null, h('tr', null, ['사용', '이름', '분류', '부여 방식', '일수', '근속(년)', '유급', '반차', '시간', '설명', ''].map(function (x) { return h('th', { text: x }); }))));
     var body = h('tbody');
     P.forEach(function (p, i) {
       var annual = p.mode === 'annual';
@@ -44,6 +45,7 @@
       body.appendChild(h('tr', null,
         h('td', null, h('input', { type: 'checkbox', checked: p.active !== false, 'aria-label': p.name + ' 사용', onchange: set('active', function (el) { return el.checked; }) })),
         h('td', null, ui.input({ value: p.name, maxlength: '30', 'aria-label': '이름', oninput: set('name') })),
+        h('td', null, annual ? h('span', { class: 'muted', text: '기본' }) : ui.select(HR.LEAVE_CATS, HR.policyCat(p), { 'aria-label': '분류', onchange: set('cat') })),
         h('td', null, annual ? h('span', { class: 'muted', text: '법정 자동' }) : ui.select([['request', '신청 시 부여'], ['yearly', '매년 부여'], ['monthly', '매월 부여'], ['tenure', '근속 시 부여']], p.mode, { 'aria-label': '부여 방식', onchange: set('mode') })),
         h('td', null, annual ? h('span', { class: 'muted', text: '15~25' }) : ui.input({ type: 'number', step: '0.125', min: '0', value: p.days, 'aria-label': '일수', class: 'w-num', oninput: set('days', function (el) { return +el.value; }) })),
         h('td', null, p.mode === 'tenure' ? ui.input({ type: 'number', min: '1', value: p.tenureYears || 3, class: 'w-num', 'aria-label': '근속 연수', oninput: set('tenureYears', function (el) { return +el.value; }) }) : null),

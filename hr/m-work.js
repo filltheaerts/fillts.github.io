@@ -9,7 +9,7 @@
   /* ---------- 출퇴근 ---------- */
   function punch(kind, btns, msgEl) {
     var t = fmt.today(), date = t, pres = S.presence[S.mid];
-    if (kind === 'out' && pres && pres.state === 'in' && pres.dk && L.daysBetween(fmt.dkToDate(pres.dk), t) === 1) date = fmt.dkToDate(pres.dk); // 자정 넘긴 퇴근은 출근일 귀속
+    if (kind === 'out' && pres && pres.state === 'in' && pres.dk && L.daysBetween(fmt.dkToDate(pres.dk), t) <= 1) date = fmt.dkToDate(pres.dk); // 퇴근은 출근일에 귀속 (자정 넘김 포함)
     btns.forEach(function (b) { b.disabled = true; });
     var b = db.batch();
     b.set(db.collection('hr_punch').doc(), { memberId: S.mid, kind: kind, mode: mode, dk: fmt.dk(date), ym: fmt.ymNum(date), at: FV.serverTimestamp(), uid: S.user.uid });
@@ -18,16 +18,31 @@
       .catch(function (e) { ui.fail(e, msgEl); btns.forEach(function (x) { x.disabled = false; }); });
   }
   function punchCard() {
-    var t = fmt.today(), days = A.days(S.myPunches, S.myFixes), pres = S.presence[S.mid];
-    var working = pres && pres.state === 'in' && pres.dk && L.daysBetween(fmt.dkToDate(pres.dk), t) <= 1;
-    var td = days[working ? fmt.dkToDate(pres.dk) : t];
+    var t = fmt.today(), me = S.members[S.mid] || {}, live = A.live(me);
+    var days = A.days(S.myPunches, S.myFixes, { member: me, from: L.addDays(t, -1), to: t, leaves: HR.leavesOf(S.mid) });
+    var head = ui.label('Today · ' + fmt.date(t)), clock = h('div', { class: 'clock', id: 'clock', text: L.kstHM(new Date()) });
     var state = h('div', { class: 'punch-state' });
-    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || '' }), ' 출근 · ' + A.modeName(pres.mode));
+    // 자동 근무 일정이 있는 구성원(예: 대표): 버튼 없이 자동 기록
+    if (me.autoIn && me.autoOut) {
+      if (!L.isWorkday(t, S.hmap)) state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '쉬는 날입니다');
+      else if (live.st === 'away') state.append(HR.policy(live.away.type).name + ' 중입니다');
+      else if (live.st === 'in') state.append('근무 중 · ', h('b', { text: me.autoIn }), ' 자동 출근');
+      else if (live.st === 'out') state.append('오늘 ', h('b', { text: me.autoIn + ' – ' + me.autoOut }), ' 자동 기록');
+      else state.append(me.autoIn + ' 자동 출근 예정');
+      return h('section', { class: 'panel punch' }, h('div', { class: 'panel-head' }, head, ui.tag('자동 근무 ' + me.autoIn + '–' + me.autoOut, 'mute')), clock, state,
+        h('p', { class: 'muted small', text: '근무일마다 출퇴근 버튼 없이 자동으로 기록됩니다. 다르게 일한 날은 근무 › 내 근무에서 정정하세요.' }));
+    }
+    var working = live.st === 'in';
+    var autoOutToday = live.st === 'out' && live.auto && live.today;
+    var td = days[working || autoOutToday ? fmt.dkToDate(live.dk) : t];
+    var ah = +S.cfg.autoOutHours || 0;
+    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || '' }), ' 출근 · ' + A.modeName(live.mode) + (ah ? ' · ' + L.kstHM(new Date(live.since + ah * 3600000)) + ' 자동 퇴근' : ''));
+    else if (autoOutToday) state.append('자동 퇴근 처리 · ', h('b', { text: (td ? td.inHM : '') + ' – ' + L.kstHM(new Date(live.at)) }), ' · 더 일했다면 퇴근을 눌러 실제 시각을 남기세요');
     else if (td && td.outHM) state.append('오늘 ', h('b', { text: td.inHM + ' – ' + td.outHM }), ' · 근로 ' + L.minToHM(td.calc ? td.calc.work : 0));
     else state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '아직 출근 기록이 없습니다');
     var msgEl = ui.msg();
     var bIn = ui.btn('출근', null), bOut = ui.btn('퇴근', null, 'btn-line');
-    bIn.disabled = !!working; bOut.disabled = !working;
+    bIn.disabled = working || autoOutToday || !!(days[t] && days[t].src === 'punch'); bOut.disabled = !working && !autoOutToday;
     bIn.onclick = function () { punch('in', [bIn, bOut], msgEl); };
     bOut.onclick = function () { punch('out', [bIn, bOut], msgEl); };
     var modes = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '근무 형태' });
@@ -36,12 +51,12 @@
         onclick: function () { mode = m[0]; try { localStorage.setItem('hrMode', mode); } catch (e) { /* 무시 */ } HR.refresh(); } }));
     });
     return h('section', { class: 'panel punch' },
-      h('div', { class: 'panel-head' }, ui.label('Today · ' + fmt.date(t)), modes),
-      h('div', { class: 'clock', id: 'clock', text: L.kstHM(new Date()) }),
-      state, h('div', { class: 'row' }, bIn, bOut), msgEl);
+      h('div', { class: 'panel-head' }, head, modes), clock,
+      state, h('div', { class: 'row' }, bIn, bOut), msgEl,
+      ah ? h('p', { class: 'muted small', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null);
   }
   function weekPanel() {
-    var t = fmt.today(), days = A.days(S.myPunches, S.myFixes), w = A.week(days, L.mondayOf(t));
+    var t = fmt.today(), mon = L.mondayOf(t), days = A.days(S.myPunches, S.myFixes, { member: S.members[S.mid], from: mon, to: L.addDays(mon, 6), leaves: HR.leavesOf(S.mid) }), w = A.week(days, mon);
     var fillEl = h('div', { class: 'meter-fill' + (w.total > 3120 ? ' over52' : w.total > 2400 ? ' over40' : '') });
     fillEl.style.width = Math.min(100, w.total / 3600 * 100) + '%';
     return ui.panel('This week', h('span', { class: 'mono', text: L.minToHM(w.total) + ' / 52:00' }),
@@ -67,8 +82,9 @@
       HR.refresh();
     }).catch(function (e) { ui.fail(e); });
   }
-  function model(punches, fixes, leaves, ym) {
-    var days = A.days(punches, fixes), md = L.monthDays(ym), weeks = [], seen = {};
+  function model(punches, fixes, leaves, ym, member) {
+    var md = L.monthDays(ym), weeks = [], seen = {};
+    var days = A.days(punches, fixes, { member: member, from: L.mondayOf(md[0]), to: L.addDays(md[md.length - 1], 6), leaves: leaves });
     md.forEach(function (d) { var m = L.mondayOf(d); if (!seen[m]) { seen[m] = 1; weeks.push(m); } });
     // 주 단위 연장·휴일·52h는 그 주 일요일이 속한 달에 귀속
     var wk = weeks.map(function (m) { var w = A.week(days, m); w.count = L.addDays(m, 6).slice(0, 7) === ym; return w; });
@@ -89,7 +105,7 @@
     var fixes = self ? S.myFixes : (T.data && T.data.fixes) || [];
     if (self && T.data && T.month !== t.slice(0, 7)) { punches = T.data.punches; fixes = T.data.fixes; }
     var leaves = HR.leavesOf(T.who);
-    var M = model(punches, fixes, leaves, T.month);
+    var M = model(punches, fixes, leaves, T.month, S.members[T.who]);
     var pay = (T.data && T.data.pay) || (self ? S.pay[S.mid] : null), rate = L.hourlyRate(pay, S.cfg), premium = 0;
     M.weeks.forEach(function (w) { if (w.count) premium += L.premiumPay(w, rate, S.cfg); });
 
@@ -170,11 +186,11 @@
     var board = h('div', { class: 'board' });
     var counts = { in: 0, away: 0, out: 0, none: 0 };
     HR.memberList(false).forEach(function (m) {
-      var p = S.presence[m.id], away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t; })[0];
-      var st = 'none', sub = '미출근';
-      if (away) { st = 'away'; sub = HR.policy(away.type).name; }
-      else if (p && p.dk === fmt.dk(t) && p.state === 'in') { st = 'in'; sub = (p.at && p.at.toDate ? L.kstHM(p.at.toDate()) : '') + ' · ' + A.modeName(p.mode); }
-      else if (p && p.dk === fmt.dk(t)) { st = 'out'; sub = '퇴근'; }
+      var lv = A.live(m), st = lv.st === 'in' || lv.st === 'away' || lv.st === 'out' ? lv.st : 'none', sub = '미출근';
+      if (lv.st === 'away') sub = HR.policy(lv.away.type).name;
+      else if (lv.st === 'in') sub = (lv.sched ? lv.sinceHM + ' 자동' : L.kstHM(new Date(lv.since))) + ' · ' + A.modeName(lv.mode);
+      else if (lv.st === 'out') sub = lv.auto ? '자동 퇴근' : '퇴근';
+      if (lv.st === 'out' && !lv.today) { st = 'none'; sub = '미출근'; }
       counts[st]++;
       board.appendChild(h('a', { class: 'board-card', href: '#people/' + m.id }, h('span', { class: 'dot ' + st }), h('div', null, h('div', { class: 'who', text: m.name }), h('div', { class: 'meta', text: sub }))));
     });
@@ -188,7 +204,7 @@
     tb.appendChild(h('thead', null, h('tr', null, ['구성원', '근로', '연장', '야간', '휴일', '52h 초과', '기록일'].map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))));
     var body = h('tbody'), all = [];
     if (data) HR.memberList(true).forEach(function (m) {
-      var M = model(data.ps.filter(function (p) { return p.memberId === m.id; }), data.fx.filter(function (f) { return f.memberId === m.id; }), HR.leavesOf(m.id), ym);
+      var M = model(data.ps.filter(function (p) { return p.memberId === m.id; }), data.fx.filter(function (f) { return f.memberId === m.id; }), HR.leavesOf(m.id), ym, m);
       all.push({ m: m, M: M });
       body.appendChild(h('tr', { class: 'clickable' + (M.tot.bad ? ' warnrow' : ''), onclick: function () { T.who = m.id; T.month = ym; HR.go('work'); } },
         h('td', { text: m.name }), h('td', { class: 'num', text: L.minToHM(M.tot.work) }), h('td', { class: 'num', text: L.minToHM(M.tot.ot) }),

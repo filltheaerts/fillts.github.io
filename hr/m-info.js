@@ -40,6 +40,10 @@
       { k: 'status', l: '재직 상태', type: 'select', opts: function () { return [['재직', '재직'], ['휴직', '휴직'], ['퇴사', '퇴사']]; } },
       { k: 'leaveDate', l: '퇴사일', type: 'date', show: function (m) { return m.leaveDate ? fmt.dateLong(m.leaveDate) : ''; } }
     ] },
+    { id: 'sched', title: '근무 일정', store: 'm', fields: [
+      { k: 'autoIn', l: '자동 출근', type: 'time', show: function (m) { return m.autoIn ? m.autoIn + ' (근무일 자동 기록)' : '사용 안 함 · 출근 버튼으로 기록'; } },
+      { k: 'autoOut', l: '자동 퇴근', type: 'time', show: function (m) { return m.autoOut || ''; } }
+    ] },
     { id: 'lead', title: '리더 · 연동', store: 'm', fields: [
       { k: 'leaderId', l: '리더 (승인·원온원)', type: 'select', opts: function () { return [['', '(없음)']].concat(HR.memberList(false).map(function (x) { return [x.id, x.name]; })); }, show: function (m) { return m.leaderId ? HR.name(m.leaderId) : ''; } },
       { k: 'slackId', l: 'Slack 사용자 ID', hint: '비워 두면 회사 이메일로 자동 연결' }
@@ -418,8 +422,8 @@
 
   /* ---------- 공통 헤더 + 라우팅 ---------- */
   function profileHead(m, self) {
-    var t = fmt.today(), p = S.presence[m.id], away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t; })[0];
-    var now = m.status === '퇴사' ? ui.tag('퇴사', 'mute') : away ? ui.tag(HR.policy(away.type).name, 'red') : p && p.dk === fmt.dk(t) && p.state === 'in' ? ui.tag('근무 중 · ' + HR.att.modeName(p.mode), 'ok') : null;
+    var t = fmt.today(), lv = HR.att.live(m);
+    var now = lv.st === 'left' ? ui.tag('퇴사', 'mute') : lv.st === 'away' ? ui.tag(HR.policy(lv.away.type).name, 'red') : lv.st === 'in' ? ui.tag('근무 중 · ' + HR.att.modeName(lv.mode), 'ok') : null;
     return h('header', { class: 'profile' },
       h('div', { class: 'avatar', 'aria-hidden': 'true', text: (m.name || '?').slice(-2) }),
       h('div', { class: 'grow' },

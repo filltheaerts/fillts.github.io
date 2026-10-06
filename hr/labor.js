@@ -38,6 +38,7 @@
     monthHours: 209,         // (40 + 주휴 8) × 4.345
     workStart: '09:00',
     workEnd: '18:00',
+    autoOutHours: 7,         // 출근 후 N시간이 지나면 자동 퇴근 처리 (0 = 끔)
     annualBasis: 'fiscal',   // fiscal: 회계연도(1/1) 기준 | hire: 입사일 기준
     leavePolicies: DEFAULT_POLICIES,
     holidays: [
@@ -266,8 +267,10 @@
     });
     events.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.t - b.t; });
 
-    var debt = 0, log = [];
+    var debt = 0, log = [], snap = null;
+    function snapshot() { if (!snap) { snap = { debt: debt }; grants.forEach(function (b) { b.leftNow = b.left; }); } }
     events.forEach(function (e) {
+      if (e.date > asOf) snapshot();
       if (e.type === 'grant' || e.type === 'adj') {
         if (e.b.days < 0) { debt += -e.b.days; log.push({ date: e.date, type: 'adj', days: e.b.days, b: e.b }); return; }
         e.b.left = e.b.days;
@@ -316,11 +319,13 @@
       if (x.date > asOf) return;
       if ((x.type === 'grant' || x.type === 'adj') && x.days > 0 && (!x.b || x.b.exp > asOf)) granted += x.days;
     });
-    grants.forEach(function (b) { if (b.date <= asOf && b.exp > asOf && b.days > 0) used += b.days - b.left; });
+    snapshot();
+    grants.forEach(function (b) { if (b.date <= asOf && b.exp > asOf && b.days > 0) used += b.days - b.leftNow; });
     var upcoming = grants.filter(function (b) { return b.date > asOf; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
-    var expiring = grants.filter(function (b) { return b.date <= asOf && b.exp > asOf && b.left > 0; }).sort(function (a, b) { return a.exp < b.exp ? -1 : 1; })[0];
+    var expiring = grants.filter(function (b) { return b.date <= asOf && b.exp > asOf && b.leftNow > 0; }).sort(function (a, b) { return a.exp < b.exp ? -1 : 1; })[0];
+    if (expiring) expiring = { exp: expiring.exp, left: expiring.leftNow, days: expiring.days, kind: expiring.kind };
     return {
-      log: log, buckets: grants, months: months, balance: balanceAt(asOf), granted: round3(granted), used: round3(used + debt),
+      log: log, buckets: grants, months: months, balance: balanceAt(asOf), granted: round3(granted), used: round3(used + snap.debt),
       debt: debt, promo: promo, next: upcoming, expiring: expiring, legal: cfg.fivePlus
     };
   }

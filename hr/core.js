@@ -159,7 +159,9 @@
 
   /* ============ 근태 계산 ============ */
   HR.att = {
-    days: function (punches, fixes) {
+    // opt: { member, from, to, leaves } — 자동 근무 일정(member.autoIn/autoOut)을 채울 기간
+    days: function (punches, fixes, opt) {
+      opt = opt || {};
       var by = {};
       punches.forEach(function (p) {
         if (!p.at || !p.at.toDate) return;
@@ -172,7 +174,7 @@
         var first = new Date(Math.min.apply(null, d.ins));
         var last = d.outs.length ? new Date(Math.max.apply(null, d.outs)) : null;
         if (last && last < first) last = null;
-        out[date] = { date: date, src: 'punch', mode: d.mode, inHM: L.kstHM(first), outHM: last ? L.kstHM(last) : '', inMin: L.kstMin(first), span: last ? Math.round((last - first) / 60000) : null, open: !last };
+        out[date] = { date: date, src: 'punch', mode: d.mode, inMs: first.getTime(), inHM: L.kstHM(first), outHM: last ? L.kstHM(last) : '', inMin: L.kstMin(first), span: last ? Math.round((last - first) / 60000) : null, open: !last };
       });
       (fixes || []).filter(function (f) { return f.status === 'approved'; })
         .sort(function (a, b) { return a.decidedAt && b.decidedAt ? a.decidedAt.toMillis() - b.decidedAt.toMillis() : 0; })
@@ -181,8 +183,47 @@
           if (i == null || o == null) return;
           out[f.date] = { date: f.date, src: 'fix', mode: (out[f.date] || {}).mode, inHM: f.in, outHM: f.out, inMin: i, span: o >= i ? o - i : o + 1440 - i, brk: f.brk === '' || f.brk == null ? null : +f.brk, open: false };
         });
+      // 자동 퇴근: 출근 후 N시간이 지나도 퇴근 기록이 없으면 그 시각으로 처리 (직접 누른 퇴근이 있으면 그 기록 우선)
+      var ao = Math.round((+S.cfg.autoOutHours || 0) * 60), nowMs = Date.now();
+      if (ao) Object.keys(out).forEach(function (k) {
+        var r = out[k];
+        if (r.open && r.src === 'punch' && r.inMs + ao * 60000 <= nowMs) { r.open = false; r.autoOut = true; r.span = ao; r.outHM = L.kstHM(new Date(r.inMs + ao * 60000)); }
+      });
+      // 자동 근무 일정 (예: 대표 10:00–19:00) — 근무일마다 출퇴근 버튼 없이 기록
+      var m = opt.member;
+      if (m && m.autoIn && m.autoOut && opt.from && opt.to) {
+        var t = fmt.today(), nowMin = L.kstMin(new Date()), i = L.hmToMin(m.autoIn), o = L.hmToMin(m.autoOut);
+        for (var d = opt.from; d <= opt.to && d <= t; d = L.addDays(d, 1)) {
+          if (out[d] || !L.isWorkday(d, S.hmap) || (m.hireDate && d < m.hireDate)) continue;
+          var lv = opt.leaves && HR.att.leaveOn(opt.leaves, d);
+          if (lv && (!lv.unit || lv.unit === 'day')) continue;
+          if (d === t && nowMin < i) continue;
+          var done = d < t || nowMin >= o;
+          out[d] = { date: d, src: 'sched', mode: 'office', inHM: m.autoIn, outHM: done ? m.autoOut : '', inMin: i, span: done ? (o >= i ? o - i : o + 1440 - i) : null, open: !done };
+        }
+      }
       Object.keys(out).forEach(function (k) { out[k].calc = out[k].open ? null : L.calcDay(out[k]); });
       return out;
+    },
+    // 지금 상태: in(근무 중) | out(퇴근) | away(휴가) | none(미출근) | left(퇴사) | rest(휴직)
+    live: function (m) {
+      var t = fmt.today(), p = S.presence[m.id], nowMs = Date.now(), ao = (+S.cfg.autoOutHours || 0) * 3600000;
+      if (m.status === '퇴사') return { st: 'left' };
+      if (m.status === '휴직') return { st: 'rest' };
+      var away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t && (!a.unit || a.unit === 'day'); })[0];
+      if (away) return { st: 'away', away: away };
+      if (p && p.state === 'in' && p.dk && L.daysBetween(fmt.dkToDate(p.dk), t) <= 1) {
+        var since = p.at && p.at.toDate ? p.at.toDate().getTime() : nowMs;
+        if (!ao || since + ao > nowMs) return { st: 'in', since: since, mode: p.mode, dk: p.dk };
+        return { st: 'out', auto: true, at: since + ao, dk: p.dk, today: fmt.dkToDate(p.dk) === t };
+      }
+      if (p && p.state === 'out' && p.dk === fmt.dk(t)) return { st: 'out', at: p.at && p.at.toDate ? p.at.toDate().getTime() : null, today: true };
+      if (m.autoIn && m.autoOut && L.isWorkday(t, S.hmap)) {
+        var nm = L.kstMin(new Date()), ai = L.hmToMin(m.autoIn), ao2 = L.hmToMin(m.autoOut);
+        if (nm >= ai && nm < ao2) return { st: 'in', sched: true, mode: 'office', sinceHM: m.autoIn };
+        if (nm >= ao2) return { st: 'out', sched: true, today: true };
+      }
+      return { st: 'none' };
     },
     week: function (days, monday) {
       var list = [];
@@ -346,7 +387,7 @@
     ref.set({
       name: nm, nickname: '', email: u.email.toLowerCase(), empNo: '', orgId: '', orgRole: title, isOrgHead: true, subOrgs: [],
       job: title, jobFamily: '', position: title, grade: title, hireDate: hire, groupHireDate: '', hireType: '경력',
-      type: '정규직', weeklyHours: 40, status: '재직', leaderId: '', leaveAdjs: [], slackId: ''
+      type: '정규직', weeklyHours: 40, status: '재직', leaderId: '', leaveAdjs: [], slackId: '', autoIn: '10:00', autoOut: '19:00'
     }).then(function () {
       var d = { email: u.email, memberId: ref.id, role: 'admin', createdAt: FV.serverTimestamp() };
       return db.doc('hr_users/' + u.uid).set(d).then(function () { start(d); });
@@ -461,8 +502,20 @@
     var a = document.activeElement;
     return a && $('view').contains(a) && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !/checkbox|radio|button|submit/.test(a.type)));
   }
+  // 이미 만들어진 대표 계정에도 자동 근무 일정 1회 적용
+  var autoChecked = false;
+  function ensureCeoSchedule() {
+    if (autoChecked || !S.isAdmin) return;
+    var me = S.members[S.mid];
+    if (!me) return;
+    autoChecked = true;
+    if ((me.email || '').toLowerCase() === 'kjw@fillts.com' && me.autoIn === undefined) {
+      db.doc('hr_members/' + S.mid).update({ autoIn: '10:00', autoOut: '19:00' }).catch(function () {});
+    }
+  }
   function render(force) {
     if (!S.mid || !S.ready) return;
+    ensureCeoSchedule();
     renderChrome();
     if (!force && typing()) { deferred = true; return; }
     var mod = HR.modules[current.menu]; if (!mod) return;

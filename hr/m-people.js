@@ -5,12 +5,12 @@
   var Q = { q: '', org: '*', status: '재직' };
 
   function nowTag(m) {
-    var t = fmt.today(), p = S.presence[m.id], away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t; })[0];
-    if (m.status === '퇴사') return ui.tag('퇴사', 'mute');
-    if (m.status === '휴직') return ui.tag('휴직', 'mute');
-    if (away) return ui.tag(HR.policy(away.type).name, 'red');
-    if (p && p.dk === fmt.dk(t) && p.state === 'in') return ui.tag(HR.att.modeName(p.mode) || '근무 중', 'ok');
-    if (p && p.dk === fmt.dk(t)) return ui.tag('퇴근', 'mute');
+    var lv = HR.att.live(m);
+    if (lv.st === 'left') return ui.tag('퇴사', 'mute');
+    if (lv.st === 'rest') return ui.tag('휴직', 'mute');
+    if (lv.st === 'away') return ui.tag(HR.policy(lv.away.type).name, 'red');
+    if (lv.st === 'in') return ui.tag(HR.att.modeName(lv.mode) || '근무 중', 'ok');
+    if (lv.st === 'out' && lv.today) return ui.tag('퇴근', 'mute');
     return null;
   }
   function inOrg(m, org) {
