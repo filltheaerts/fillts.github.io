@@ -144,20 +144,23 @@
   function newForm(view) {
     var d = draft || (draft = { type: 'vendor', title: '', payee: '', amount: '', vat: 'incl', account: ACCOUNTS[0], due: L.addDays(fmt.today(), 3), bank: '국민', acct: '', holder: '', purpose: '', checks: {}, att: [] });
     var bind = function (k) { return function () { d[k] = this.value; }; };
-    var type = ui.select(Object.keys(TYPES).map(function (k) { return [k, TYPES[k].name]; }), d.type, { onchange: function () { d.type = this.value; d.checks = {}; d.first = false; HR.refresh(); } });
+    var type = ui.select(Object.keys(TYPES).map(function (k) { return [k, TYPES[k].name]; }), d.type, { onchange: function () { d.type = this.value; d.checks = {}; d.first = null; HR.refresh(); } });
     var amount = h('input', { type: 'text', inputmode: 'numeric', value: d.amount ? (+d.amount).toLocaleString('ko-KR') : '', placeholder: '0', oninput: function () { var v = this.value.replace(/[^\d]/g, ''); d.amount = v; this.value = v ? (+v).toLocaleString('ko-KR') : ''; hint.textContent = v ? won(+v) + (d.vat === 'excl' ? ' + 부가세 ' + won(Math.round(+v * 0.1)) + ' = ' + won(Math.round(+v * 1.1)) : '') : ''; } });
     var hint = h('span', { class: 'meta', text: d.amount ? won(+d.amount) : '' });
     var T = TYPES[d.type], docs = T.docs, req = d.first && T.first ? T.first : [], pre = PRESETS.filter(function (x) { return x.k === d.preset; })[0];
     var quick = h('div', { class: 'pay-quick' }, h('span', { class: 'meta', text: '빠른 작성' }), PRESETS.map(function (x) {
       return h('button', { type: 'button', class: 'chip' + (d.preset === x.k ? ' on' : ''), text: x.name, onclick: function () {
-        d.preset = x.k; d.type = x.type; d.account = x.account; d.vat = x.vat; d.checks = {}; d.first = false;
+        d.preset = x.k; d.type = x.type; d.account = x.account; d.vat = x.vat; d.checks = {}; d.first = null;
         if (!d.title.trim() || PRESETS.some(function (p) { return d.title === p.title; })) d.title = x.title;
         if (!d.purpose.trim() || PRESETS.some(function (p) { return d.purpose === p.purpose; })) d.purpose = x.purpose;
         HR.refresh();
       } });
     }));
     var checks = h('ul', { class: 'pay-docs' },
-      T.first ? h('li', { class: 'pay-first' }, h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!d.first, onchange: function () { d.first = this.checked; HR.refresh(); } }), ' 이 거래처와 첫 거래입니다')) : null,
+      T.first ? h('li', { class: 'pay-first' }, h('span', { class: 'meta', text: '거래 구분 *' }), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '거래 구분' },
+        [[true, '이 거래처와 첫 거래'], [false, '기존 거래처']].map(function (o) {
+          return h('button', { type: 'button', role: 'radio', 'aria-checked': String(d.first === o[0]), class: d.first === o[0] ? 'on' : '', text: o[1], onclick: function () { d.first = o[0]; HR.refresh(); } });
+        }))) : null,
       docs.map(function (x, i) {
         var must = req.indexOf(i) >= 0, cb = h('input', { type: 'checkbox', checked: !!d.checks[i], onchange: function () { d.checks[i] = this.checked; } });
         return h('li', { class: must ? 'must' : '' }, h('label', { class: 'check' }, cb, ' ' + x, must ? h('span', { class: 'red-text', text: ' *필수' }) : null));
@@ -189,6 +192,7 @@
       if (!/^[\d-]{6,30}$/.test(d.acct.trim()) || !d.holder.trim()) return ui.err(m, '계좌번호(숫자 · -)와 예금주를 확인하세요.');
       if (!d.purpose.trim()) return ui.err(m, '지출 목적 · 내용을 입력하세요.');
       if (!d.att.length) return ui.err(m, '증빙 서류를 1개 이상 첨부하세요 (파일 또는 Google Drive 링크).');
+      if (TYPES[d.type].first && d.first !== true && d.first !== false) return ui.err(m, '「첫 거래」인지 「기존 거래처」인지 골라 주세요.');
       var miss = (d.first && TYPES[d.type].first ? TYPES[d.type].first : []).filter(function (i) { return !d.checks[i]; });
       if (miss.length) return ui.err(m, '첫 거래는 ' + miss.map(function (i) { return TYPES[d.type].docs[i].replace(/ \(.*\)$/, ''); }).join(' · ') + '을(를) 첨부하고 체크해야 합니다.');
       go.disabled = true; m.textContent = '올리는 중…';
@@ -197,7 +201,7 @@
         var b = db.batch();
         b.set(ref, { memberId: S.mid, type: d.type, title: d.title.trim(), payee: d.payee.trim(), amount: amt, vat: d.vat, total: total, account: d.account, due: d.due,
           bank: d.bank, acct: d.acct.trim(), holder: d.holder.trim(), purpose: d.purpose.trim(), docs: TYPES[d.type].docs.filter(function (_, i) { return d.checks[i]; }),
-          first: !!(d.first && TYPES[d.type].first), files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
+          first: !!(d.first === true && TYPES[d.type].first), files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
         return b.commit().then(function () { return ref.id; });
       }).then(function (id) { draft = null; done(); ui.toast('입금요청을 올렸습니다. 대표 승인을 기다립니다.'); HR.go('payreq/r/' + id); })
         .catch(function (x) { go.disabled = false; x && x.user ? ui.err(m, x.user) : ui.fail(x, m); });
@@ -210,7 +214,7 @@
     var r = list().filter(function (x) { return x.id === id; })[0];
     if (!r) return ui.put(view, ui.empty('요청을 찾을 수 없습니다.'));
     var st = ST[r.status] || ['', 'mute'], admin = S.isAdmin;
-    var rows = [['지급 유형', (TYPES[r.type] || TYPES.etc).name + (r.first ? ' · 첫 거래' : '')], ['요청자', HR.name(r.memberId)], ['거래처 · 받는 분', r.payee],
+    var rows = [['지급 유형', (TYPES[r.type] || TYPES.etc).name + (TYPES[r.type] && TYPES[r.type].first ? (r.first ? ' · 첫 거래' : ' · 기존 거래처') : '')], ['요청자', HR.name(r.memberId)], ['거래처 · 받는 분', r.payee],
       ['입금할 금액', won(r.total) + (r.vat === 'excl' ? ' (공급가 ' + won(r.amount) + ' + 부가세)' : r.vat === 'incl' ? ' (부가세 포함)' : '')],
       ['입금 희망일', fmt.dateLong(r.due)], ['계좌', r.bank + ' ' + r.acct + ' · ' + r.holder], ['계정 과목', r.account], ['요청일', fmt.ts(r.createdAt)]];
     if (r.decidedAt) rows.push([r.status === 'rejected' ? '반려' : '승인', HR.name(r.decidedBy) + ' · ' + fmt.ts(r.decidedAt) + (r.reason ? ' · ' + r.reason : '')]);
@@ -242,10 +246,21 @@
       acts = h('div', { class: 'row' }, ui.confirmBtn('요청 취소', function () { db.doc('hr_payreq/' + id).update({ status: 'canceled' }).then(function () { done(); ui.toast('요청을 취소했습니다.'); }).catch(ui.fail); }));
     }
     ui.put(view, h('a', { href: '#payreq', class: 'back', text: '← 입금요청' }),
-      h('div', { class: 'pay-head' }, ui.tag(st[0], st[1]), h('h2', { class: 'pay-title', text: r.title })),
+      h('div', { class: 'pay-head' }, ui.tag(st[0], st[1]), h('h2', { class: 'pay-title', text: r.title })), steps(r, true),
       h('div', { class: 'two-col' }, ui.panel('Request · 요청 내용', null, ui.kv(rows, 'kv wide'), h('div', { class: 'pay-purpose', text: r.purpose }),
         r.docs && r.docs.length ? h('p', { class: 'meta', text: '준비 서류 체크: ' + r.docs.join(' · ') }) : null),
         h('div', { class: 'stack' }, ui.panel('Files · 증빙', null, fl), acts)));
+  }
+
+  // 요청 → 대표 승인 → 입금 완료. 반려 · 취소는 그 단계에서 멈춘 것으로 표시
+  function steps(r, withTime) {
+    var rej = r.status === 'rejected', can = r.status === 'canceled';
+    var list = [['요청', true, r.createdAt ? fmt.ts(r.createdAt) : ''],
+      [rej ? '반려' : can ? '취소' : '승인', rej || can || r.status === 'approved' || r.status === 'paid', r.decidedAt ? fmt.ts(r.decidedAt) : ''],
+      ['입금 완료', r.status === 'paid', r.paidDate ? fmt.date(r.paidDate) : '']];
+    return h('ol', { class: 'pay-flow' + (withTime ? ' big' : '') + (rej || can ? ' stop' : '') }, list.map(function (x, i) {
+      return h('li', { class: (x[1] ? 'done' : '') + (i === 1 && (rej || can) ? ' bad' : '') }, h('span', { class: 'pf-dot' }), h('span', { class: 'pf-name', text: x[0] }), withTime && x[1] && x[2] ? h('span', { class: 'pf-time', text: x[2] }) : null);
+    }));
   }
 
   /* ---------- 처리 가이드 ---------- */
@@ -269,30 +284,57 @@
   }
 
   /* ---------- 목록 ---------- */
+  var month = 'all';
   function listView(view) {
-    var all = sorted(list()), mine = !S.isAdmin;
-    var shown = all.filter(function (r) { return filter === 'all' ? true : filter === 'open' ? (r.status === 'pending' || r.status === 'approved') : r.status === filter; });
-    var sum = function (st) { return all.filter(function (r) { return r.status === st; }).reduce(function (a, r) { return a + (r.total || 0); }, 0); };
+    var all = sorted(list()), mine = !S.isAdmin, ym = function (r) { return r.createdAt && r.createdAt.toDate ? L.kstDate(r.createdAt.toDate()).slice(0, 7) : ''; };
+    var months = []; all.forEach(function (r) { var m = ym(r); if (m && months.indexOf(m) < 0) months.push(m); });
+    var inMonth = all.filter(function (r) { return month === 'all' || ym(r) === month; });
+    var shown = inMonth.filter(function (r) { return filter === 'all' ? true : filter === 'open' ? (r.status === 'pending' || r.status === 'approved') : r.status === filter; });
+    var sumOf = function (arr, k) { return arr.reduce(function (a, r) { return a + (r[k] || 0); }, 0); };
+    var cnt = function (st) { return inMonth.filter(function (r) { return r.status === st; }); };
+    // 요약 카드 — 관리자: 전체, 구성원: 내 요청
+    var cards = h('div', { class: 'pay-cards' }, [['승인 대기', cnt('pending'), 'total', 'warn'], ['입금 대기', cnt('approved'), 'total', 'ok'], ['입금 완료', cnt('paid'), 'paidAmount', 'mute'], ['반려', cnt('rejected'), 'total', 'red']].map(function (c) {
+      return h('button', { type: 'button', class: 'pay-card' + (filter === { '승인 대기': 'pending', '입금 대기': 'approved', '입금 완료': 'paid', '반려': 'rejected' }[c[0]] ? ' on' : ''),
+        onclick: function () { filter = { '승인 대기': 'pending', '입금 대기': 'approved', '입금 완료': 'paid', '반려': 'rejected' }[c[0]]; HR.refresh(); } },
+        h('span', { class: 'meta', text: c[0] }), h('b', { text: c[1].length + '건' }), h('span', { class: 'pc-amt', text: won(sumOf(c[1], c[2])) }));
+    }));
     var tb = h('table', { class: 'table pay-table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['요청일', mine ? null : '요청자', '제목', '거래처', '금액', '희망일', '상태'].filter(Boolean).map(function (x, i) { return h('th', { class: x === '금액' ? 'num' : '', text: x }); }))));
+    tb.appendChild(h('thead', null, h('tr', null, ['요청일', mine ? null : '요청자', '제목 · 거래처', '금액', '희망일', '진행'].filter(Boolean).map(function (x) { return h('th', { class: x === '금액' ? 'num' : '', text: x }); }))));
     var body = h('tbody');
     shown.forEach(function (r) {
-      var st = ST[r.status] || ['', 'mute'], late = (r.status === 'pending' || r.status === 'approved') && r.due && r.due < fmt.today();
+      var late = (r.status === 'pending' || r.status === 'approved') && r.due && r.due < fmt.today();
       body.appendChild(h('tr', { class: 'clickable', onclick: function () { HR.go('payreq/r/' + r.id); } },
-        h('td', { text: fmt.ts(r.createdAt) }), mine ? null : h('td', { text: HR.name(r.memberId) }), h('td', { text: r.title }), h('td', { text: r.payee }),
-        h('td', { class: 'num', text: won(r.total) }), h('td', { class: late ? 'red-text' : '', text: fmt.date(r.due) + (late ? ' 지남' : '') }), h('td', null, ui.tag(st[0], st[1]))));
+        h('td', { class: 'muted small', text: fmt.ts(r.createdAt) }), mine ? null : h('td', { text: HR.name(r.memberId) }),
+        h('td', null, h('div', { text: r.title }), h('div', { class: 'meta', text: r.payee + ' · ' + r.account })),
+        h('td', { class: 'num', text: won(r.status === 'paid' ? r.paidAmount : r.total) }), h('td', { class: late ? 'red-text' : '', text: fmt.date(r.due) + (late ? ' 지남' : '') }),
+        h('td', null, steps(r, false))));
     });
-    if (!shown.length) body.appendChild(h('tr', null, h('td', { colspan: mine ? '6' : '7', class: 'empty', text: '해당하는 입금요청이 없습니다.' })));
+    if (!shown.length) body.appendChild(h('tr', null, h('td', { colspan: mine ? '5' : '6', class: 'empty', text: '해당하는 입금요청이 없습니다.' })));
     tb.appendChild(body);
     var chips = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '상태' });
     [['open', '진행 중'], ['pending', '승인 대기'], ['approved', '입금 대기'], ['paid', '입금 완료'], ['rejected', '반려'], ['all', '전체']].forEach(function (x) {
       chips.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': String(filter === x[0]), class: filter === x[0] ? 'on' : '', text: x[1], onclick: function () { filter = x[0]; HR.refresh(); } }));
     });
+    var monthSel = ui.select([['all', '전체 기간']].concat(months.map(function (m) { return [m, (+m.slice(0, 4)) + '년 ' + (+m.slice(5)) + '월']; })), month, { 'aria-label': '기간', onchange: function () { month = this.value; HR.refresh(); } });
+    var extra = null;
+    if (S.isAdmin) {
+      // 입금 완료 기준 계정 과목별 · 요청자별 합계
+      var paid = cnt('paid'), byAcc = {}, byWho = {};
+      paid.forEach(function (r) { byAcc[r.account] = (byAcc[r.account] || 0) + (r.paidAmount || 0); byWho[r.memberId] = (byWho[r.memberId] || 0) + (r.paidAmount || 0); });
+      var bars = function (obj, label) {
+        var keys = Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }), max = keys.length ? obj[keys[0]] : 0;
+        return keys.length ? h('ul', { class: 'pay-bars' }, keys.map(function (k) { var w = h('span', { class: 'pb-fill' }); w.style.width = Math.max(4, Math.round(obj[k] / max * 100)) + '%'; return h('li', null, h('span', { class: 'pb-label', text: label(k) }), h('span', { class: 'pb-bar' }, w), h('span', { class: 'pb-amt', text: won(obj[k]) })); }))
+          : h('p', { class: 'empty', text: '입금 완료된 건이 없습니다.' });
+      };
+      extra = h('div', { class: 'two-col' }, ui.panel('By account · 계정 과목별 입금', h('span', { class: 'meta', text: month === 'all' ? '전체 기간' : month }), bars(byAcc, function (k) { return k; })),
+        ui.panel('By requester · 요청자별 입금', null, bars(byWho, function (k) { return HR.name(k); })));
+    }
     ui.put(view,
-      S.isAdmin ? h('dl', { class: 'summary' }, [['승인 대기', won(sum('pending'))], ['입금 대기', won(sum('approved'))], ['이번 달 입금 완료', won(all.filter(function (r) { return r.status === 'paid' && (r.paidDate || '').slice(0, 7) === fmt.today().slice(0, 7); }).reduce(function (a, r) { return a + (r.paidAmount || 0); }, 0))]].map(function (p) { return h('div', null, h('dt', { text: p[0] }), h('dd', { text: p[1] })); })) : null,
-      h('div', { class: 'toolbar' }, chips, h('a', { href: '#payreq/guide', class: 'link', text: '처리 가이드' }), ui.btn('+ 입금요청 쓰기', function () { HR.go('payreq/new'); })),
-      h('div', { class: 'table-wrap' }, tb),
-      h('p', { class: 'note', text: '흐름: 기안 작성 · 증빙 첨부 → 대표 승인(또는 반려) → 입금 → 입금 완료 기록. 단계마다 요청자와 대표에게 알림이 갑니다.' }));
+      h('div', { class: 'toolbar' }, ui.field('기간', monthSel, 'inline'), h('a', { href: '#payreq/guide', class: 'link', text: '처리 가이드' }), ui.btn('+ 입금요청 쓰기', function () { HR.go('payreq/new'); })),
+      h('div', { class: 'label', text: mine ? 'My requests · 내 입금요청' : 'All requests · 전체 입금요청' }), cards,
+      h('div', { class: 'toolbar' }, chips),
+      h('div', { class: 'table-wrap' }, tb), extra,
+      h('p', { class: 'note', text: '진행: 요청 → 대표 승인 → 입금 완료. 줄을 누르면 상세와 증빙 · 처리 기록을 볼 수 있습니다. 단계마다 요청자와 대표에게 알림이 갑니다.' }));
   }
 
   HR.register('payreq', {

@@ -532,3 +532,28 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .work-top5:not(.edit) li p, .work-strengths:not(.edit) p { white-space: pre-wrap; line-height: 1.7; margin-top: 2px; }
 .work-strengths:not(.edit) li { padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
 .work-strengths:not(.edit) li:last-child { border-bottom: 0; }
+
+.pay-docs li.pay-first { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pay-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 6px 0 4px; }
+@media (max-width: 760px) { .pay-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pay-card { text-align: left; background: var(--paper); border: 1px solid var(--gray-200); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; font: inherit; }
+.pay-card:hover, .pay-card.on { border-color: var(--black); }
+.pay-card b { font-size: 20px; font-weight: 500; }
+.pay-card .pc-amt { font-size: 12px; color: var(--gray-600); font-variant-numeric: tabular-nums; }
+.pay-flow { list-style: none; display: flex; align-items: center; gap: 0; font-size: 11px; white-space: nowrap; }
+.pay-flow li { display: flex; align-items: center; gap: 4px; color: var(--gray-400); }
+.pay-flow li + li::before { content: ""; width: 14px; height: 1px; background: var(--gray-200); margin: 0 4px; }
+.pay-flow li.done { color: var(--black); }
+.pay-flow li.done + li.done::before { background: var(--black); }
+.pay-flow .pf-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+.pay-flow li.done .pf-dot { background: var(--ok); border-color: var(--ok); }
+.pay-flow li.bad, .pay-flow li.bad .pf-name { color: var(--red); }
+.pay-flow li.bad .pf-dot { background: var(--red); border-color: var(--red); }
+.pay-flow.big { font-size: 13px; margin: 12px 0 4px; flex-wrap: wrap; row-gap: 8px; }
+.pay-flow.big li + li::before { width: 40px; }
+.pay-flow .pf-time { color: var(--gray-600); font-size: 11px; margin-left: 2px; }
+.pay-bars { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.pay-bars li { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: center; font-size: 12px; }
+.pb-bar { height: 8px; background: var(--gray-100); position: relative; }
+.pb-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--black); }
+.pb-amt { font-variant-numeric: tabular-nums; }
