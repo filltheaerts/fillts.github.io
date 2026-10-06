@@ -493,7 +493,7 @@ a.link-card { color: inherit; text-decoration: none; }
 .view-switch[aria-checked="true"] .vs-track { background: var(--red); }
 .view-switch[aria-checked="true"] .vs-knob { left: 18px; }
 .view-switch[aria-checked="false"] .vs-admin, .view-switch[aria-checked="true"] .vs-user { color: var(--black); font-weight: 600; }
-body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
+/* 사용자 모드 표시는 스위치로만 — 상단 메뉴에 선을 긋지 않는다 */
 
 .work-strengths { list-style: none; display: flex; flex-direction: column; gap: 12px; }
 .work-strengths li { display: flex; flex-direction: column; gap: 6px; }
@@ -1087,3 +1087,19 @@ a.tl-label:hover { background: var(--gray-100); }
 .mk-chk { font-size: 11px; padding: 2px 8px; border: 1px solid var(--gray-200); color: var(--gray-400); }
 .mk-chk.on { border-color: #7c3aed; color: #6d28d9; background: #f5f3ff; }
 @media (max-width: 960px) { .mk-side { position: static; } }
+
+/* 목표 KR — 목표값 · 현재값 바로 입력 */
+.kr-table .kr-in { width: 120px; text-align: right; font-variant-numeric: tabular-nums; }
+.kr-table .kr-unit-in { width: 64px; }
+.kr-table .kr-pct b { font-size: 15px; color: var(--black); }
+.kr-bar { display: block; height: 4px; background: var(--gray-100); margin-top: 6px; max-width: 220px; }
+.kr-bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width 0.2s; }
+.kr-tip td { font-size: 12px; color: var(--gray-600); background: var(--gray-100); }
+@media (max-width: 760px) { .kr-table .kr-in { width: 84px; } .kr-table .kr-unit-in { width: 48px; } }
+.kr-table .kr-in { max-width: 140px; }
+.kr-table th, .kr-table td { padding: 8px 8px; }
+.kr-table .kr-in { width: 100px; max-width: 100px; }
+.kr-table .kr-unit-in { width: 56px; max-width: 56px; }
+.kr-tip td { white-space: normal; line-height: 1.6; }
+@media (max-width: 760px) { .kr-table th:nth-child(2), .kr-table td:nth-child(2) { display: none; } .kr-table .kr-in { width: 76px; max-width: 76px; } .kr-table .kr-unit-in { width: 44px; max-width: 44px; } .kr-bar { max-width: 80px; } }
+.table.kr-table { min-width: 0; }

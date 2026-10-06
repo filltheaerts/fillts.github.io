@@ -83,20 +83,29 @@
     var edit = canEdit(g), p = pct(g), msgEl = ui.msg();
     var krs = (g.krs || []).map(function (k) { return Object.assign({}, k); });
     var tb = h('table', { class: 'table kr-table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['핵심결과', '시작', '목표', '현재', '달성'].map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))));
+    tb.appendChild(h('thead', null, h('tr', null, ['핵심결과', '시작', edit ? '최종 목표값' : '목표', edit ? '현재 (누적)값' : '현재', edit ? '단위' : null, '달성'].filter(function (x) { return x !== null; }).map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))));
     var body = h('tbody');
+    // 목표 · 현재 · 단위를 여기서 바로 고친다 — 예: 매출 최종 목표 30000 / 현재 누적 20000 → 67%
     krs.forEach(function (k, i) {
-      var cur = edit ? ui.input({ type: 'number', step: 'any', value: k.current == null ? '' : k.current, 'aria-label': k.t + ' 현재값', onchange: function () { krs[i].current = +this.value; } }) : null;
-      body.appendChild(h('tr', null, h('td', { text: k.t }), h('td', { class: 'num', text: num(k.start) + (k.unit || '') }), h('td', { class: 'num', text: num(k.target) + (k.unit || '') }),
-        h('td', { class: 'num' }, edit ? cur : num(k.current) + (k.unit || '')), h('td', { class: 'num', text: Math.round(krPct(k) * 100) + '%' })));
+      var pc = h('td', { class: 'num kr-pct' }), bar = h('span', { class: 'kr-bar' }, h('i'));
+      var redraw = function () { var v = krPct(krs[i]); pc.firstChild ? (pc.firstChild.textContent = Math.round(v * 1000) / 10 + '%') : pc.appendChild(h('b', { text: Math.round(v * 1000) / 10 + '%' })); bar.firstChild.style.width = Math.round(v * 100) + '%'; };
+      var numIn = function (key, label) { return ui.input({ type: 'number', step: 'any', inputmode: 'decimal', class: 'kr-in', value: k[key] == null ? '' : k[key], 'aria-label': k.t + ' ' + label, oninput: function () { krs[i][key] = this.value === '' ? 0 : +this.value; redraw(); } }); };
+      var unitIn = ui.input({ class: 'kr-unit-in', value: k.unit || '', maxlength: '10', placeholder: '만원', 'aria-label': k.t + ' 단위', oninput: function () { krs[i].unit = this.value.trim(); } });
+      body.appendChild(h('tr', null, h('td', null, h('div', { text: k.t }), bar), h('td', { class: 'num', text: num(k.start) + (edit ? '' : (k.unit || '')) }),
+        h('td', { class: 'num' }, edit ? numIn('target', '최종 목표값') : num(k.target) + (k.unit || '')),
+        h('td', { class: 'num' }, edit ? numIn('current', '현재 누적값') : num(k.current) + (k.unit || '')),
+        edit ? h('td', { class: 'num' }, unitIn) : null, pc));
+      redraw();
     });
+    if (edit) body.appendChild(h('tr', { class: 'kr-tip' }, h('td', { colspan: '6', text: '매출처럼 쌓이는 값은 「최종 목표값」에 목표 금액, 「현재 (누적)값」에 지금까지의 합계를 넣으면 달성률이 바로 계산됩니다. 아래 저장을 눌러야 반영됩니다.' })));
     tb.appendChild(body);
     var status = ui.select([['on', '순항'], ['risk', '주의'], ['off', '위험'], ['done', '완료']], g.status || 'on', { id: 'ciStatus' });
     var note = h('textarea', { id: 'ciNote', rows: '3', maxlength: '1000', placeholder: '이번 주 진척, 막힌 점, 다음 주 계획' });
     var checkin = edit ? h('form', { class: 'one-section' }, ui.label('Check-in'), h('div', { class: 'row' }, ui.field('상태', status)), ui.field('회고', note), msgEl,
-      h('button', { class: 'btn btn-sm', type: 'submit', text: '진척 · 체크인 저장' })) : null;
+      h('button', { class: 'btn btn-sm', type: 'submit', text: '목표값 · 현재값 · 체크인 저장' })) : null;
     if (checkin) checkin.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (krs.some(function (k) { return isNaN(+k.target) || +k.target === (+k.start || 0); })) return ui.err(msgEl, '최종 목표값은 시작값과 달라야 합니다.');
       var np = krs.length ? krs.reduce(function (s, k) { return s + krPct(k); }, 0) / krs.length : (status.value === 'done' ? 1 : 0);
       var b = db.batch();
       b.update(db.doc('hr_goals/' + g.id), { krs: krs, status: status.value, progress: np, lastCheckinAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() });
