@@ -250,3 +250,43 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 @media (max-width: 560px) { .kr-row.with-cur { grid-template-columns: minmax(0, 1fr) 70px 70px; } .kr-row.with-cur input:nth-child(5) { display: none; } }
 
 .table tr.muted-row td { color: var(--gray-400); }
+
+/* 교육 — 법정 의무교육 자료 · 본인 이수 체크 */
+.edu-sum { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--gray-200); }
+.edu-sum-num { font-size: 22px; font-weight: 500; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.edu-card { display: flex; flex-direction: column; gap: 14px; }
+.edu-card.is-done { box-shadow: inset 2px 0 0 var(--ok); }
+.edu-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.edu-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.edu-tags { display: flex; gap: 6px; flex-shrink: 0; }
+.edu-videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.edu-video { margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.edu-video figcaption { display: flex; flex-direction: column; gap: 2px; }
+.edu-frame { position: relative; aspect-ratio: 16 / 9; background: var(--gray-100); }
+.edu-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.edu-links { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.edu-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+
+/* 급여명세서 업로드 · 검사 */
+.slip-bar { align-items: flex-end; }
+.slip-table tr.selected td { background: var(--gray-100); }
+.slip-table td.r { text-align: right; white-space: nowrap; }
+.slip-table td.r .btn + .btn { margin-left: 6px; }
+.slip-row > td { background: var(--gray-100); padding: 0; }
+.slip-uploader { display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--paper); border: 1px solid var(--gray-200); margin: 8px; text-align: left; white-space: normal; }
+.slip-target { padding-bottom: 10px; border-bottom: 1px solid var(--gray-100); }
+.slip-target-name { font-size: 18px; font-weight: 500; margin: 4px 0 2px; }
+.slip-checks { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.slip-checks li { display: flex; gap: 8px; align-items: flex-start; }
+.slip-checks .mark { width: 18px; flex-shrink: 0; font-weight: 600; text-align: center; }
+.slip-checks .lv-ok .mark { color: var(--ok); }
+.slip-checks .lv-warn .mark { color: var(--warn); }
+.slip-checks .lv-bad, .slip-checks .lv-block { color: var(--red); }
+.slip-preview-wrap { display: flex; flex-direction: column; gap: 6px; }
+.slip-preview-wrap[hidden], .slip-confirm[hidden] { display: none; }
+.slip-preview { max-width: 100%; max-height: 520px; object-fit: contain; border: 1px solid var(--gray-200); background: #fff; align-self: flex-start; }
+.slip-confirm { padding: 14px 16px; border: 1px solid var(--gray-200); display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.slip-confirm.warn { border-color: var(--warn); }
+.slip-confirm.bad { border-color: var(--red); background: rgba(200, 16, 46, 0.04); }
+.slip-confirm.bad strong { color: var(--red); }
+.warn-text { color: var(--warn); }

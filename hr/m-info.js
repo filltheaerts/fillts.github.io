@@ -246,68 +246,85 @@
   }
 
   /* ---------- 탭: 교육 ---------- */
-  function tabEdu(view, mid) {
-    var recs = listOf('hr_edu', mid), y = fmt.today().slice(0, 4), q = Math.floor((+fmt.today().slice(5, 7) - 1) / 3);
-    var tb = h('table', { class: 'table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['법정 의무교육', '적용', '주기', y + '년 이수', '근거'].map(function (x) { return h('th', { text: x }); }))));
-    var body = h('tbody');
-    var headcount = HR.memberList(false).length;
-    L.MANDATORY_EDU.forEach(function (e) {
-      var sc = L.eduScope(e, S.cfg, headcount);
-      var done = recs.filter(function (r) { return r.kind === e.id && (r.date || '').slice(0, 4) === y; });
-      var ok = e.cycle === 'quarter' ? done.some(function (r) { return Math.floor((+r.date.slice(5, 7) - 1) / 3) === q; }) : done.length > 0;
-      var status = ok ? ui.tag('이수 ' + fmt.dot(done[done.length - 1].date), 'ok')
-        : sc[0] === 'na' ? ui.tag('해당 없음', 'mute')
-        : ui.tag(e.cycle === 'quarter' ? '이번 분기 미이수' : '미이수', sc[0] === 'simple' ? 'warn' : 'red');
-      body.appendChild(h('tr', { class: sc[0] === 'na' ? 'muted-row' : '' },
-        h('td', { text: e.name }),
-        h('td', null, ui.tag({ required: '필수', simple: '간이 가능', na: '제외' }[sc[0]], { required: 'red', simple: 'warn', na: 'mute' }[sc[0]]), h('div', { class: 'meta', text: sc[1] })),
-        h('td', { text: e.cycle === 'quarter' ? '분기' : '연 1회' }),
-        h('td', null, status), h('td', { class: 'muted small', text: e.law })));
+  // 법정 의무교육: 자료(영상·링크)를 보고 본인이 「교육 완료」를 누르면 이수로 기록된다
+  function eduDone(recs, e, y, q) {
+    return recs.filter(function (r) {
+      if (r.kind !== e.id || (r.date || '').slice(0, 4) !== y) return false;
+      return e.cycle !== 'quarter' || Math.floor((+r.date.slice(5, 7) - 1) / 3) === q;
     });
-    tb.appendChild(body);
-    var canAdd = S.isAdmin || mid === S.mid;
-    var kind = ui.select(L.MANDATORY_EDU.map(function (e) { return [e.id, e.name]; }).concat([['etc', '기타 (직무·외부 교육)']]), 'harass');
-    var title = ui.input({ placeholder: '과정명 (기타일 때)', maxlength: '120' }), date = ui.input({ type: 'date', value: fmt.today() }), hours = ui.input({ type: 'number', min: '0', step: '0.5', value: '1' }), m = ui.msg();
-    var form = canAdd ? h('form', { class: 'panel' }, ui.label('Add record'), h('div', { class: 'row' }, ui.field('교육', kind), ui.field('과정명', title)), h('div', { class: 'row' }, ui.field('이수일', date), ui.field('시간', hours)), m, h('button', { class: 'btn btn-sm', type: 'submit', text: '이수 등록' })) : null;
-    if (form) form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var name = kind.value === 'etc' ? title.value.trim() : L.MANDATORY_EDU.filter(function (x) { return x.id === kind.value; })[0].name;
-      if (!name) return ui.err(m, '과정명을 입력하세요.');
-      db.collection('hr_edu').add({ memberId: mid, kind: kind.value, title: name, date: date.value, hours: +hours.value || 0, by: S.mid, createdAt: FV.serverTimestamp() })
+  }
+  function eduMaterial(x) {
+    if (x.kind === 'video') {
+      return h('figure', { class: 'edu-video' },
+        h('div', { class: 'edu-frame' }, h('iframe', { src: 'https://www.youtube-nocookie.com/embed/' + x.yt + '?rel=0', title: x.title, loading: 'lazy',
+          allow: 'encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin' })),
+        h('figcaption', null, h('span', { text: x.title }), h('span', { class: 'meta' }, x.src + ' · ', h('a', { href: 'https://www.youtube.com/watch?v=' + x.yt, target: '_blank', rel: 'noopener noreferrer', class: 'link', text: 'YouTube에서 보기' }))));
+    }
+    return h('li', null, h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer', class: 'link', text: x.title + ' ↗' }), h('span', { class: 'meta', text: ' ' + x.src }));
+  }
+  function tabEdu(view, mid) {
+    var recs = listOf('hr_edu', mid), t = fmt.today(), y = t.slice(0, 4), q = Math.floor((+t.slice(5, 7) - 1) / 3);
+    var self = mid === S.mid, headcount = HR.memberList(false).length;
+    var list = L.MANDATORY_EDU.map(function (e) { return { e: e, sc: L.eduScope(e, S.cfg, headcount) }; });
+    var active = list.filter(function (x) { return x.sc[0] !== 'na'; }), na = list.filter(function (x) { return x.sc[0] === 'na'; });
+    var doneCnt = active.filter(function (x) { return eduDone(recs, x.e, y, q).length; }).length;
+    ui.put(view, h('div', { class: 'edu-sum' },
+      h('div', null, h('div', { class: 'label', text: y + ' Mandatory training' }), h('div', { class: 'edu-sum-num', text: doneCnt + ' / ' + active.length + ' 이수' })),
+      h('p', { class: 'muted small', text: self ? '각 교육의 자료를 끝까지 보고 「교육 완료」를 눌러 직접 체크하세요. 산업안전보건교육은 분기마다 다시 체크합니다.' : '구성원이 자료를 보고 직접 체크합니다.' })));
+    active.forEach(function (x) {
+      var e = x.e, sc = x.sc, done = eduDone(recs, e, y, q), last = done[done.length - 1];
+      var vids = e.materials.filter(function (v) { return v.kind === 'video'; }), links = e.materials.filter(function (v) { return v.kind !== 'video'; });
+      var foot;
+      if (last) {
+        foot = h('div', { class: 'edu-foot' }, ui.tag('이수 완료', 'ok'),
+          h('span', { class: 'meta', text: fmt.dot(last.date) + (e.cycle === 'quarter' ? ' · ' + (q + 1) + '분기' : '') + (last.method === 'self' ? ' · 본인 확인' : '') }),
+          (self || S.isAdmin) ? ui.confirmBtn('이수 취소', function () { db.doc('hr_edu/' + last.id).delete().then(function () { HR.invalidate('hr_edu:' + mid); }).catch(ui.fail); }) : null);
+      } else if (self) {
+        var cb = h('input', { type: 'checkbox' }), go = h('button', { type: 'button', class: 'btn btn-sm', text: '교육 완료', disabled: true }), em = ui.msg();
+        cb.addEventListener('change', function () { go.disabled = !cb.checked; });
+        go.addEventListener('click', function () {
+          go.disabled = true;
+          db.collection('hr_edu').add({ memberId: mid, kind: e.id, title: e.name, date: fmt.today(), hours: e.hours, method: 'self', by: S.mid, createdAt: FV.serverTimestamp() })
+            .then(function () { HR.invalidate('hr_edu:' + mid); ui.toast(e.name + ' 이수를 기록했습니다.'); }).catch(function (err) { go.disabled = false; ui.fail(err, em); });
+        });
+        foot = h('div', { class: 'edu-foot' }, h('label', { class: 'check' }, cb, ' 위 교육자료를 모두 읽고 시청했습니다.'), go, em);
+      } else {
+        foot = h('div', { class: 'edu-foot' }, ui.tag(e.cycle === 'quarter' ? '이번 분기 미이수' : '미이수', sc[0] === 'simple' ? 'warn' : 'red'), h('span', { class: 'meta', text: '본인이 자료를 보고 체크합니다.' }));
+      }
+      ui.put(view, h('section', { class: 'panel edu-card' + (last ? ' is-done' : '') },
+        h('div', { class: 'edu-head' },
+          h('div', null, h('h2', { class: 'edu-title', text: e.name }),
+            h('div', { class: 'meta', text: (e.cycle === 'quarter' ? '분기마다 · ' : '연 1회 · ') + '권장 ' + e.hours + '시간 · ' + e.law })),
+          h('div', { class: 'edu-tags' }, ui.tag({ required: '필수', simple: '간이 가능' }[sc[0]], { required: 'red', simple: 'warn' }[sc[0]]))),
+        h('p', { class: 'muted small', text: sc[1] }),
+        vids.length ? h('div', { class: 'edu-videos' }, vids.map(eduMaterial)) : null,
+        links.length ? h('ul', { class: 'edu-links' }, links.map(eduMaterial)) : null,
+        foot));
+    });
+    if (na.length) ui.put(view, h('p', { class: 'note', text: '해당 없음: ' + na.map(function (x) { return x.e.name + ' (' + x.sc[1] + ')'; }).join(', ') }));
+
+    // 외부·직무 교육 (법정교육 외)
+    var canAdd = S.isAdmin || self;
+    var title = ui.input({ placeholder: '예: 화장품 GMP 실무 과정', maxlength: '120' }), date = ui.input({ type: 'date', value: t }), hours = ui.input({ type: 'number', min: '0', step: '0.5', value: '1' }), m = ui.msg();
+    var form = canAdd ? h('form', { class: 'panel' }, ui.label('Other training · 외부·직무 교육'), ui.field('과정명', title), h('div', { class: 'row' }, ui.field('이수일', date), ui.field('시간', hours)), m, h('button', { class: 'btn btn-sm', type: 'submit', text: '등록' })) : null;
+    if (form) form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (!title.value.trim()) return ui.err(m, '과정명을 입력하세요.');
+      db.collection('hr_edu').add({ memberId: mid, kind: 'etc', title: title.value.trim(), date: date.value, hours: +hours.value || 0, by: S.mid, createdAt: FV.serverTimestamp() })
         .then(function () { HR.invalidate('hr_edu:' + mid); ui.toast('교육 이수를 등록했습니다.'); }).catch(function (x) { ui.fail(x, m); });
     });
     var ul = h('ul', { class: 'list' });
     recs.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (r) {
-      ul.appendChild(h('li', null, h('div', { class: 'grow' }, h('div', { text: r.title }), h('div', { class: 'meta', text: fmt.dot(r.date) + ' · ' + r.hours + '시간' })),
+      ul.appendChild(h('li', null, h('div', { class: 'grow' }, h('div', { text: r.title }), h('div', { class: 'meta', text: fmt.dot(r.date) + ' · ' + r.hours + '시간' + (r.method === 'self' ? ' · 본인 확인' : '') })),
         canAdd ? ui.confirmBtn('삭제', function () { db.doc('hr_edu/' + r.id).delete().then(function () { HR.invalidate('hr_edu:' + mid); }).catch(ui.fail); }) : null));
     });
     if (!ul.children.length) ul.appendChild(h('li', { class: 'empty', text: '등록된 교육 이수 기록이 없습니다.' }));
-    ui.put(view, h('div', { class: 'table-wrap' }, tb),
-      h('p', { class: 'note', text: '적용 여부는 설정 › 회사 기준의 「상시근로자 5인 이상」, 「퇴직연금 도입」과 현재 재직 인원(' + headcount + '명)으로 자동 판정합니다. 업종에 따라 산업안전보건교육 일부가 제외될 수 있으니 관할 노동청에 확인하세요.' }),
-      h('div', { class: 'two-col' }, form, ui.panel('History', null, ul)));
+    ui.put(view, h('div', { class: 'two-col' }, form, ui.panel('History', null, ul)),
+      h('p', { class: 'note', text: '적용 여부는 설정 › 회사 기준의 「상시근로자 5인 이상」과 현재 재직 인원(' + headcount + '명)으로 자동 판정합니다. 이수 기록(일자·본인 확인)은 노동청 점검 시 증빙으로 남습니다. 업종에 따라 산업안전보건교육 일부가 제외될 수 있으니 관할 노동청에 확인하세요.' }));
   }
 
-  /* ---------- 탭: 급여 ---------- */
-  function tabPay(view, mid, m) {
-    var pay = S.pay[mid] || {}, c = L.minWageCheck(pay, S.cfg), rate = L.hourlyRate(pay, S.cfg);
-    var rows = [['급여 형태', pay.payType === 'hourly' ? '시급' : pay.amount ? '월급' : '미등록'], ['금액', pay.amount ? fmt.won(pay.amount) : '-'],
-      ['통상시급', rate ? fmt.won(rate) : '-'], ['최저임금 ' + S.cfg.minWage.toLocaleString() + '원', c ? (c.ok ? '충족' : '미달') : '-', c && !c.ok ? 'red' : ''],
-      pay.payType === 'hourly' ? ['주휴수당 (주)', fmt.won(L.weeklyHolidayPay(m.weeklyHours, rate))] : ['월 환산 최저임금', fmt.won(S.cfg.minWage * S.cfg.monthHours)]];
-    ui.put(view, ui.panel('Pay', null, ui.kv(rows, 'kv wide')));
-    if (S.isAdmin) {
-      var type = ui.select([['monthly', '월급'], ['hourly', '시급']], pay.payType || 'monthly'), amt = ui.input({ type: 'number', min: '0', step: '10', value: pay.amount || '' });
-      var note = ui.input({ value: pay.note || '', placeholder: '예: 식대 20만원 비과세 별도, 포괄임금 미적용', maxlength: '200' }), msgEl = ui.msg();
-      var form = h('form', { class: 'panel' }, ui.label('Edit · 관리자'), h('div', { class: 'row' }, ui.field('형태', type), ui.field('금액 (원)', amt)), ui.field('메모', note), msgEl, h('button', { class: 'btn btn-sm', type: 'submit', text: '저장' }));
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        db.doc('hr_pay/' + mid).set({ payType: type.value, amount: +amt.value || 0, note: note.value.trim(), updatedAt: FV.serverTimestamp() })
-          .then(function () { ui.ok(msgEl, '저장했습니다.'); }).catch(function (x) { ui.fail(x, msgEl); });
-      });
-      ui.put(view, form);
-    }
-    ui.put(view, h('p', { class: 'note', text: '임금명세서는 지급 시 서면·전자 교부 의무가 있습니다 (근로기준법 제48조②, 미교부 과태료). 통상시급 = 월 기본급 ÷ ' + S.cfg.monthHours + '시간. 가산수당 추정은 근무 › 내 근무에서 월별로 확인합니다. 급여 정보는 본인과 관리자만 볼 수 있습니다.' }));
-  }
+  /* ---------- 탭: 급여 — 급여명세서 열람만 (업로드는 설정 › 급여명세서) ---------- */
+  function tabPay(view, mid) { HR.payslip.memberTab(view, mid); }
 
   /* ---------- 탭: 문서 · 증명서 / 계약서 ---------- */
   function tabDocs(view, mid, m, kind) {
@@ -455,7 +472,7 @@
     if (sub === '' || sub === 'info') return tabInfo(view, mid, m);
     if (sub === 'growth') return tabGrowth(view, mid);
     if (sub === 'edu') return tabEdu(view, mid);
-    if (sub === 'pay') return tabPay(view, mid, m);
+    if (sub === 'pay') return tabPay(view, mid);
     if (sub === 'docs') return tabDocs(view, mid, m, 'docs');
     if (sub === 'contract') return tabDocs(view, mid, m, 'contract');
     if (sub === 'notes' && admin) return tabNotes(view, mid);

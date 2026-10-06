@@ -1,4 +1,4 @@
-/* fillts HR — 설정(관리자): 회사 기준 · 휴가 정책 · 공휴일 · 조직 · 권한 · 연동 */
+/* fillts HR — 설정(관리자): 회사 기준 · 휴가 정책 · 공휴일 · 조직 · 권한 · 급여명세서 · 연동 */
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
@@ -172,11 +172,12 @@
   HR.register('admin', {
     render: function (view, parts) {
       var sub = parts[0] || '';
-      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['integrations', '알림 연동']], sub, 'admin'));
+      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['payslip', '급여명세서'], ['integrations', '알림 연동']], sub, 'admin'));
       if (sub === 'leave') policies(view);
       else if (sub === 'holiday') holidays(view);
       else if (sub === 'org') orgs(view);
       else if (sub === 'roles') roles(view);
+      else if (sub === 'payslip') HR.payslip.adminPage(view);
       else if (sub === 'integrations') integrations(view);
       else company(view);
     }

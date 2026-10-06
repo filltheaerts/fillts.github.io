@@ -45,7 +45,7 @@
     workStart: '09:00',
     workEnd: '18:00',
     autoOutHours: 7,
-    pension: false,          // 퇴직연금(DB·DC) 도입 여부 — 퇴직연금 가입자 교육 적용         // 출근 후 N시간이 지나면 자동 퇴근 처리 (0 = 끔)
+    pension: false,          // 퇴직연금(DB·DC) 도입 여부 (기록용)
     annualBasis: 'fiscal',   // fiscal: 회계연도(1/1) 기준 | hire: 입사일 기준
     leavePolicies: DEFAULT_POLICIES,
     holidays: [
@@ -62,22 +62,40 @@
     ]
   };
 
-  // 법정 의무교육 (연간 이수 체크)
-  // rule(ctx) → [적용: 'required' | 'simple' | 'na', 안내]  ctx = { fivePlus, headcount, pension }
+  // 법정 의무교육 — 구성원이 자료를 보고 스스로 이수 체크한다
+  // rule(ctx) → [적용: 'required' | 'simple' | 'na', 안내]  ctx = { fivePlus, headcount }
+  // materials: { kind: 'video'(유튜브 ID) | 'link', title, src(제공 기관), url | yt }
   var MANDATORY_EDU = [
-    { id: 'harass', name: '직장 내 성희롱 예방교육', cycle: 'year', law: '남녀고용평등법 제13조 · 연 1회 이상, 사업주 포함',
-      rule: function (c) { return c.headcount < 10 ? ['simple', '10인 미만: 교육자료 게시·배포로 갈음 가능'] : ['required', '전 사업장 의무']; } },
-    { id: 'privacy', name: '개인정보보호 교육', cycle: 'year', law: '개인정보보호법 제28조 · 개인정보취급자 정기 교육',
-      rule: function () { return ['required', '임직원·고객 개인정보를 다루므로 의무']; } },
-    { id: 'disability', name: '직장 내 장애인 인식개선 교육', cycle: 'year', law: '장애인고용촉진법 제5조의2 · 연 1회 이상',
-      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : c.headcount < 50 ? ['simple', '50인 미만: 고용노동부 교육자료로 자체 교육 가능'] : ['required', '의무']; } },
-    { id: 'pension', name: '퇴직연금 가입자 교육', cycle: 'year', law: '근로자퇴직급여보장법 제32조 · 퇴직연금 도입 시 연 1회',
-      rule: function (c) { return c.pension ? ['required', '퇴직연금(DB·DC) 도입 사업장 의무'] : ['na', '퇴직연금 미도입 (퇴직금 제도)']; } },
-    { id: 'safety', name: '산업안전보건 정기교육', cycle: 'quarter', law: '산업안전보건법 제29조 · 사무직 분기 3시간',
-      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : ['required', '5인 이상 의무 · 업종에 따라 일부 제외될 수 있음']; } }
+    { id: 'harass', name: '직장 내 성희롱 예방교육', cycle: 'year', hours: 1, law: '남녀고용평등법 제13조 · 연 1회 이상, 사업주 포함',
+      rule: function (c) { return c.headcount < 10 ? ['simple', '10인 미만: 교육자료 게시·배포로 갈음 가능'] : ['required', '전 사업장 의무']; },
+      materials: [
+        { kind: 'video', yt: 'mzbgEY_ZUkA', title: '직장 내 성희롱 예방교육', src: '고용노동부' },
+        { kind: 'video', yt: 'xaqQ7j7gHcM', title: '성희롱 예방교육 — 소통전문가·공인노무사 편', src: '고용노동부 제작' },
+        { kind: 'link', url: 'https://www.kigepe.or.kr/', title: '폭력예방교육 자료실', src: '한국양성평등교육진흥원' }
+      ] },
+    { id: 'privacy', name: '개인정보보호 교육', cycle: 'year', hours: 1, law: '개인정보보호법 제28조 · 개인정보취급자 정기 교육',
+      rule: function () { return ['required', '임직원·고객 개인정보를 다루므로 의무']; },
+      materials: [
+        { kind: 'video', yt: 'fXNQ1DuUEtE', title: '개인정보보호 교육과정 — 일반용 ①', src: '한국인터넷진흥원(KISA)' },
+        { kind: 'video', yt: 'Id8R8vQyS6Y', title: '개인정보보호 교육과정 — 일반용 ②', src: '한국인터넷진흥원(KISA)' },
+        { kind: 'link', url: 'https://edu.privacy.go.kr/', title: '개인정보배움터 (무료 온라인 강의·수료증)', src: '개인정보보호위원회' }
+      ] },
+    { id: 'disability', name: '직장 내 장애인 인식개선 교육', cycle: 'year', hours: 1, law: '장애인고용촉진법 제5조의2 · 연 1회 이상',
+      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : c.headcount < 50 ? ['simple', '50인 미만: 고용노동부 교육자료로 자체 교육 가능'] : ['required', '의무']; },
+      materials: [
+        { kind: 'video', yt: 'K018vQpoQd8', title: '모두가 행복한 직장생활의 시작입니다', src: '한국장애인고용공단' },
+        { kind: 'video', yt: 'laVfzLzBFQ0', title: '물어보자고용 — 직장 내 장애인 인식개선 교육', src: '한국장애인고용공단' },
+        { kind: 'link', url: 'https://edu.kead.or.kr/aisd/main.do', title: '인식개선 교육 포털 (이러닝·리플릿·표준강의안)', src: '한국장애인고용공단' }
+      ] },
+    { id: 'safety', name: '산업안전보건 정기교육', cycle: 'quarter', hours: 3, law: '산업안전보건법 제29조 · 사무직 분기 3시간',
+      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : ['required', '5인 이상 의무 · 업종에 따라 일부 제외될 수 있음']; },
+      materials: [
+        { kind: 'video', yt: 'uohfcYDo3Hw', title: '산업현장 4대 필수 안전수칙', src: '안전보건공단' },
+        { kind: 'link', url: 'https://edu.kosha.or.kr/', title: '안전보건교육포털 (사무직 정기교육 이러닝)', src: '안전보건공단' }
+      ] }
   ];
   function eduScope(e, cfg, headcount) {
-    return e.rule({ fivePlus: !!cfg.fivePlus, headcount: headcount || 0, pension: !!cfg.pension });
+    return e.rule({ fivePlus: !!cfg.fivePlus, headcount: headcount || 0 });
   }
 
   /* ---------- KST 날짜 유틸 ---------- */
