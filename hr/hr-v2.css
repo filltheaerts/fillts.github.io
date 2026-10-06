@@ -1449,3 +1449,5 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .tl-subadd { align-self: flex-start; margin-top: 2px; font-size: 10px; color: #fff; background: #1d4ed8; padding: 1px 7px; cursor: pointer; }
 .ws-tl.with-space .tl-label .tl-subadd { grid-column: 2; justify-self: start; }
 .tl-subcaret { color: #a5b4fc; }
+.tl-subadd { color: #1d4ed8 !important; background: transparent !important; border: 1px solid #c7d2fe; padding: 0 6px !important; }
+.tl-subadd:hover { border-color: #1d4ed8; }
