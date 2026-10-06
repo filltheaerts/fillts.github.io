@@ -553,7 +553,11 @@
     if (c && !c.loading && Date.now() - c.at < 60000) return c.data;
     if (!c || !c.loading) {
       HR.cache[key] = { at: c ? c.at : 0, data: c ? c.data : null, loading: true };
-      Promise.resolve().then(fn).then(function (d) { HR.cache[key] = { at: Date.now(), data: d }; changed(); })
+      Promise.resolve().then(fn).then(function (d) {
+        var same = false; try { same = c && !c.err && c.data != null && JSON.stringify(c.data) === JSON.stringify(d); } catch (x) { /* 비교 불가 → 다시 그림 */ }
+        HR.cache[key] = { at: Date.now(), data: same ? c.data : d };
+        if (!same) changed();
+      })
         .catch(function (e) { HR.cache[key] = { at: Date.now(), data: null, err: e }; console.warn(key, e.code || e); changed(); });
     }
     return c ? c.data : null;
@@ -633,16 +637,21 @@
       db.doc('hr_members/' + S.mid).update({ autoIn: '10:00', autoOut: '19:00' }).catch(function () {});
     }
   }
+  var lastView = { key: '', html: '' };
   function render(force) {
     if (!S.mid || !S.ready) return;
     ensureCeoSchedule();
     renderChrome();
     if (!force && typing()) { deferred = true; return; }
     var mod = HR.modules[current.menu]; if (!mod) return;
-    var view = $('view'), y = window.scrollY;
-    clear(view);
+    var old = $('view'), y = window.scrollY, key = current.menu + '/' + current.parts.join('/');
+    var view = old.cloneNode(false);   // 새 화면은 따로 그려 보고, 바뀐 게 있을 때만 갈아 끼운다
     try { mod.render(view, current.parts.slice()); }
     catch (e) { console.error(e); view.appendChild(ui.empty('화면을 그리지 못했습니다. 새로고침 해 주세요.')); }
+    var html = view.innerHTML;
+    if (!force && key === lastView.key && html === lastView.html) return;
+    lastView = { key: key, html: html };
+    old.parentNode.replaceChild(view, old);
     if (!force) window.scrollTo(0, y);
   }
 

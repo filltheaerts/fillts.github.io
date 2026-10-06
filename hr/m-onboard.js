@@ -6,7 +6,7 @@
   var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
 
   function plan() {
-    if (HR.cache.hr_plan_onb && !HR.cache.hr_plan_onb.loading && Date.now() - HR.cache.hr_plan_onb.at > 15000) delete HR.cache.hr_plan_onb;
+    if (HR.cache.hr_plan_onb && !HR.cache.hr_plan_onb.loading && Date.now() - HR.cache.hr_plan_onb.at > 15000) HR.cache.hr_plan_onb.at = 0;
     return HR.load('hr_plan_onb', function () { return db.doc('hr_plan/onboarding').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
   }
   function ids(P) { var a = []; P.stages.forEach(function (st) { st.items.forEach(function (x) { a.push(x.id); }); }); return a; }

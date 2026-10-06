@@ -105,7 +105,7 @@
 
   /* ---------- 마일스톤: 브랜드 핵심 목표 7항목 (hr_plan/milestones — 로그인 구성원만, 공개 저장소에 숫자를 싣지 않는다) ---------- */
   function milestones(view) {
-    if (HR.cache.hr_plan_ms && !HR.cache.hr_plan_ms.loading && Date.now() - HR.cache.hr_plan_ms.at > 15000) delete HR.cache.hr_plan_ms;   // 열 때 최신으로
+    if (HR.cache.hr_plan_ms && !HR.cache.hr_plan_ms.loading && Date.now() - HR.cache.hr_plan_ms.at > 15000) HR.cache.hr_plan_ms.at = 0;   // 열 때 최신으로
     var P = HR.load('hr_plan_ms', function () { return db.doc('hr_plan/milestones').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!P) { var c = HR.cache.hr_plan_ms; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 마일스톤이 없습니다.' : '불러오는 중…')); }
     var lanes = h('div', { class: 'ms-lanes' }, P.sections.map(function (sec) {
@@ -125,7 +125,7 @@
 
   /* ---------- 01 바인그라피 — 브랜드 미션 · 주요사항 (hr_plan/brand) ---------- */
   function brandPage(view) {
-    if (HR.cache.hr_plan_brand && !HR.cache.hr_plan_brand.loading && Date.now() - HR.cache.hr_plan_brand.at > 15000) delete HR.cache.hr_plan_brand;
+    if (HR.cache.hr_plan_brand && !HR.cache.hr_plan_brand.loading && Date.now() - HR.cache.hr_plan_brand.at > 15000) HR.cache.hr_plan_brand.at = 0;
     var B = HR.load('hr_plan_brand', function () { return db.doc('hr_plan/brand').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!B) { var c = HR.cache.hr_plan_brand; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
     var sec = function (label, x, body) { return ui.panel(label + ' · ' + x.title, null, x.lead ? h('p', { class: 'muted small', text: x.lead }) : null, body, x.note ? h('p', { class: 'br-note', text: x.note }) : null); };
@@ -160,7 +160,7 @@
 
   /* ---------- 일하는 법 (hr_plan/howwework — 노션 「일하는 방식」 정리본) ---------- */
   function howWeWork(view) {
-    if (HR.cache.hr_plan_hww && !HR.cache.hr_plan_hww.loading && Date.now() - HR.cache.hr_plan_hww.at > 15000) delete HR.cache.hr_plan_hww;
+    if (HR.cache.hr_plan_hww && !HR.cache.hr_plan_hww.loading && Date.now() - HR.cache.hr_plan_hww.at > 15000) HR.cache.hr_plan_hww.at = 0;
     var P = HR.load('hr_plan_hww', function () { return db.doc('hr_plan/howwework').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!P) { var c = HR.cache.hr_plan_hww; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
     var lines = function (t) { return String(t || '').split('\n').map(function (x, i) { return [i ? h('br') : null, x]; }); };

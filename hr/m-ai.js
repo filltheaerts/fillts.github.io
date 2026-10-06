@@ -7,7 +7,7 @@
   var state = { q: '', cat: '', form: null };
 
   function plan() {
-    if (HR.cache.hr_plan_ai && !HR.cache.hr_plan_ai.loading && Date.now() - HR.cache.hr_plan_ai.at > 15000) delete HR.cache.hr_plan_ai;
+    if (HR.cache.hr_plan_ai && !HR.cache.hr_plan_ai.loading && Date.now() - HR.cache.hr_plan_ai.at > 15000) HR.cache.hr_plan_ai.at = 0;
     return HR.load('hr_plan_ai', function () { return db.doc('hr_plan/ai').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
   }
   function teamPrompts() { return HR.load('hr_prompts', function () { return db.collection('hr_prompts').get().then(HR.rows); }) || []; }
