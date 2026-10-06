@@ -1422,3 +1422,9 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 
 .ws-quick-prev button.prev { border-color: #c7d2fe; color: #1d4ed8; background: #eef2ff; }
 .ws-quick-prev button.prev.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+
+/* 공간 배지 칸이 있는 보기(전체 · 전사): 서브 트리를 프로젝트 제목 아래에서 시작 */
+.ws-tl.with-space .tl-sublabel { padding-left: 136px !important; }
+.ws-tl.with-space .tl-sublabel::before, .ws-tl.with-space .tl-sublabel::after { left: 120px; }
+@media (max-width: 760px) { .ws-tl.with-space .tl-sublabel { padding-left: 30px !important; } .ws-tl.with-space .tl-sublabel::before, .ws-tl.with-space .tl-sublabel::after { left: 16px; } }
+.ws-tl.with-space .tl-label .tl-subtoggle { grid-column: 2; justify-self: start; }
