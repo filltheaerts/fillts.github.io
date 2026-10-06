@@ -563,7 +563,7 @@
   /* ============================================
      라우터 · 렌더
      ============================================ */
-  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance'];
+  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance', 'ws'];
   HR.register = function (id, mod) { HR.modules[id] = mod; };
   HR.go = function (hash) { if (location.hash !== '#' + hash) location.hash = hash; else route(); };
   var current = { menu: 'info', parts: [] };
