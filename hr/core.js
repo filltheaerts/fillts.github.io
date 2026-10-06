@@ -369,7 +369,7 @@
   if (HR.pendingCred) {
     auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
       .then(function () { return auth.signInWithCredential(HR.pendingCred); })
-      .catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; HR.loginNotice = t; if ($('loginMsg')) ui.err($('loginMsg'), t); });
+      .catch(function (x) { var t = x.code === 'auth/invalid-credential' ? 'Google 로그인 정보를 확인하지 못했습니다. 다시 눌러 주세요.' : authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; HR.loginNotice = t; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   }
   if (HR.oauthErr) HR.loginNotice = HR.oauthErr;
   // redirect로 돌아왔을 때 실패 사유를 로그인 화면에 보여 준다 (성공은 onAuthStateChanged가 처리)
@@ -573,6 +573,19 @@
   // 입력 중에는 다시 그리지 않고, 포커스가 빠질 때 반영
   var deferred = false;
   document.addEventListener('focusout', function () { if (deferred) setTimeout(function () { if (!typing()) { deferred = false; render(false); } }, 0); });
+  // 오래 열어 둔 탭·홈 화면 앱이 옛 코드로 남지 않게: 새 버전이 올라오면 자동 새로고침 (입력 중이면 미룸)
+  var VER = ((document.querySelector('script[src*="core.js"]') || {}).src || '').replace(/.*[?&]v=(\d+).*/, '$1');
+  function checkVersion() {
+    if (!/^\d+$/.test(VER)) return;
+    fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+      var m = t.match(/core\.js\?v=(\d+)/);
+      if (m && +m[1] > +VER) { if (typing()) setTimeout(checkVersion, 30000); else location.reload(); }
+    }).catch(function () { /* 오프라인 등 — 다음에 다시 */ });
+  }
+  setTimeout(checkVersion, 3000);
+  setInterval(checkVersion, 5 * 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkVersion(); });
+  if ($('loginForm')) $('loginForm').appendChild(h('p', { class: 'meta app-ver', text: 'fillts HR · v' + VER }));
   function typing() {
     var a = document.activeElement;
     return a && $('view').contains(a) && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !/checkbox|radio|button|submit/.test(a.type)));
