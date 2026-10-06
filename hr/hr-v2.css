@@ -1483,3 +1483,11 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .qs-rows input:focus { outline: none; border-color: #1d4ed8; }
 .tl-subadd, .tl-subsort, .tl-subtoggle { white-space: nowrap; flex: none; display: inline-block; width: auto !important; }
 .tl-subadd-row { flex-wrap: wrap; width: auto !important; max-width: 100%; }
+
+/* 타임라인: 왼쪽 고정 칸이 항상 막대 위 (옆으로 스크롤해도 버튼 · 이름이 가려지지 않게) */
+.tl-label { z-index: 6 !important; }
+.tl-head { z-index: 7 !important; }
+.tl-bar, .tl-bar-out { z-index: 2 !important; }
+.tl-today { z-index: 1 !important; }
+.tl-track { z-index: 0; }
+@media (max-width: 760px) { .tl-subadd, .tl-subsort, .tl-subtoggle { font-size: 9.5px; padding: 0 4px !important; } .tl-subadd-row { gap: 3px; } }
