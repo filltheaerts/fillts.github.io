@@ -502,3 +502,13 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
   .nav-links li.nav-sep { padding-left: 0; margin-top: 8px; padding-top: 8px; }
   .nav-links li.nav-sep::before { top: 0; left: 0; width: 100%; height: 1px; transform: none; background: var(--gray-200); }
 }
+
+.pay-att { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.pay-att li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--gray-200); }
+.pay-att .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-link { align-items: center; }
+.pay-link input[type=url] { flex: 2; min-width: 0; }
+.pay-link input:not([type=url]) { flex: 1; min-width: 0; }
+
+.pay-docs li.must { font-weight: 500; }
+.pay-docs li.pay-first { padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--gray-200); }

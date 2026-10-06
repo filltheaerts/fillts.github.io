@@ -4,12 +4,12 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var MAX_BYTES = 700 * 1024, MAX_FILES = 5;
+  var MAX_FILE = 3 * 1024 * 1024, MAX_TOTAL = 10 * 1024 * 1024, MAX_FILES = 5, CHUNK = 900000;   // 큰 파일은 900KB 조각으로 나눠 저장
   // 지급 유형별로 준비해야 하는 서류
   var TYPES = {
-    vendor: { name: '거래처 대금', docs: ['세금계산서 또는 계산서', '거래명세서 또는 견적서', '통장 사본 (첫 거래 · 계좌 변경 시)'] },
+    vendor: { name: '거래처 대금', docs: ['세금계산서 또는 계산서', '거래명세서 또는 견적서', '사업자등록증 (첫 거래 시 필수)', '통장 사본 (첫 거래 · 계좌 변경 시 필수)'], first: [2, 3] },
     expense: { name: '경비 정산 (개인 카드 · 현금)', docs: ['영수증 · 카드 전표 · 현금영수증', '사용 내역 (참석자 · 목적)'] },
-    advance: { name: '선급금 · 계약금', docs: ['계약서 또는 발주서', '견적서', '통장 사본'] },
+    advance: { name: '선급금 · 계약금', docs: ['계약서 또는 발주서', '견적서', '사업자등록증 (첫 거래 시 필수)', '통장 사본 (첫 거래 · 계좌 변경 시 필수)'], first: [2, 3] },
     tax: { name: '세금 · 공과금 · 보험료', docs: ['고지서 · 납부서'] },
     etc: { name: '기타', docs: ['지출 근거 서류'] }
   };
@@ -29,35 +29,110 @@
   }
   function sorted(a) { return a.slice().sort(function (x, y) { return (y.createdAt && y.createdAt.toMillis ? y.createdAt.toMillis() : 0) - (x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0); }); }
   function done() { HR.invalidate('hr_payreq'); }
+  function isDrive(u) { return /^https:\/\/(drive|docs)\.google\.com\//.test(u || ''); }
   function openFile(f) {
+    if (f.kind === 'link') { var pw = window.open(f.url, 'fillts_drive', 'popup=yes,width=1100,height=820'); if (!pw) location.href = f.url; return; }
     var w = window.open('', '_blank');
     db.doc('hr_payreq_files/' + f.id).get().then(function (s) {
       if (!s.exists) throw { user: '파일을 찾을 수 없습니다.' };
-      var d = s.data(), url = URL.createObjectURL(new Blob([fromB64(d.data)], { type: d.type || 'application/pdf' }));
+      var d = s.data(), n = d.parts || 1, jobs = [];
+      for (var k = 1; k < n; k++) jobs.push(db.doc('hr_payreq_files/' + f.id + 'p' + k).get());
+      return Promise.all(jobs).then(function (rest) { return { type: d.type, data: d.data + rest.map(function (r) { return r.exists ? r.data().data : ''; }).join('') }; });
+    }).then(function (x) {
+      var url = URL.createObjectURL(new Blob([fromB64(x.data)], { type: x.type || 'application/pdf' }));
       if (w) w.location.href = url; else location.href = url;
       setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
     }).catch(function (x) { if (w) w.close(); x && x.user ? ui.toast(x.user) : ui.fail(x); });
   }
-  function readFiles(files) {
-    return Promise.all(Array.prototype.map.call(files, function (f) {
-      if (!/^(application\/pdf|image\/(png|jpeg|webp))$/.test(f.type)) return Promise.reject({ user: f.name + ': PDF 또는 이미지 파일만 올릴 수 있습니다.' });
-      if (f.size > MAX_BYTES) return Promise.reject({ user: f.name + ': ' + size(f.size) + ' — 700KB 이하로 줄여 주세요 (스캔 해상도를 낮추거나 PDF 압축).' });
-      return f.arrayBuffer().then(function (buf) { return { name: f.name.slice(0, 120), type: f.type, size: f.size, data: toB64(buf) }; });
+  // 사진은 긴 변 2200px · JPEG로 줄인다 (영수증 · 세금계산서 촬영본이 대부분 1MB 아래로)
+  function shrink(f) {
+    if (!/^image\//.test(f.type) || f.size <= 700 * 1024) return Promise.resolve(null);
+    return new Promise(function (ok) {
+      var img = new Image(), url = URL.createObjectURL(f);
+      img.onload = function () {
+        var k = Math.min(1, 2200 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        c.toBlob(function (b) { ok(b && b.size < f.size ? b : null); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); ok(null); };
+      img.src = url;
+    });
+  }
+  function prepFile(f) {
+    if (!/^(application\/pdf|image\/(png|jpeg|webp))$/.test(f.type)) return Promise.reject({ user: f.name + ': PDF 또는 이미지 파일만 올릴 수 있습니다.' });
+    return shrink(f).then(function (small) {
+      var src = small || f, name = small ? f.name.replace(/\.[^.]+$/, '') + '.jpg' : f.name;
+      if (src.size > MAX_FILE) throw { user: f.name + ': ' + size(src.size) + ' — 파일당 3MB까지입니다. 더 큰 파일은 Google Drive에 올리고 링크로 첨부하세요.' };
+      return src.arrayBuffer().then(function (buf) { return { name: name.slice(0, 120), type: small ? 'image/jpeg' : f.type, size: src.size, data: toB64(buf) }; });
+    });
+  }
+  // 파일을 조각으로 나눠 저장하고 요청서에 넣을 목록을 돌려준다 (배치 하나에 8조각까지)
+  function writeFiles(reqId, ownerMid, arr, tag, kind) {
+    var docs = [], meta = [];
+    arr.forEach(function (x, i) {
+      if (x.kind === 'link') { meta.push({ id: '', kind: 'link', url: x.url, name: x.name }); return; }
+      var id = reqId + '_' + tag + i, parts = x.data.match(new RegExp('[\\s\\S]{1,' + CHUNK + '}', 'g')) || [''];
+      parts.forEach(function (part, k) {
+        var doc = { memberId: ownerMid, reqId: reqId, name: x.name, type: x.type, data: part };
+        if (k === 0) doc.parts = parts.length;
+        docs.push([k === 0 ? id : id + 'p' + k, doc]);
+      });
+      meta.push({ id: id, name: x.name, type: x.type, size: x.size, kind: kind });
+    });
+    var chain = Promise.resolve();
+    for (var n = 0; n < docs.length; n += 8) (function (slice) {
+      chain = chain.then(function () { var b = db.batch(); slice.forEach(function (dd) { b.set(db.doc('hr_payreq_files/' + dd[0]), dd[1]); }); return b.commit(); });
+    })(docs.slice(n, n + 8));
+    return chain.then(function () { return meta; });
+  }
+  // 첨부 목록 (파일 + Google Drive 링크) — 다시 그려도 draft에 남는다
+  function attachBox(att, onChange, max) {
+    var m = ui.msg(), list = h('ul', { class: 'pay-att' }, att.map(function (x, i) {
+      return h('li', null, ui.tag(x.kind === 'link' ? 'Google Drive' : (x.type === 'application/pdf' ? 'PDF' : '이미지'), x.kind === 'link' ? 'ok' : 'mute'),
+        h('span', { class: 'grow', text: x.name + (x.size ? ' · ' + size(x.size) : '') }),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '빼기', onclick: function () { att.splice(i, 1); onChange(); } }));
     }));
+    var file = h('input', { type: 'file', multiple: true, accept: 'application/pdf,image/png,image/jpeg,image/webp', hidden: true });
+    file.addEventListener('change', function () {
+      var fs = Array.prototype.slice.call(file.files); file.value = '';
+      if (att.length + fs.length > max) return ui.err(m, '첨부는 최대 ' + max + '개입니다.');
+      m.textContent = '파일을 준비하는 중…';
+      Promise.all(fs.map(prepFile)).then(function (arr) {
+        var total = att.concat(arr).reduce(function (a, x) { return a + (x.size || 0); }, 0);
+        if (total > MAX_TOTAL) throw { user: '첨부 합계가 10MB를 넘습니다. 큰 파일은 Google Drive 링크로 첨부하세요.' };
+        arr.forEach(function (x) { att.push(x); }); ui.err(m, ''); onChange();
+      }).catch(function (x) { ui.err(m, x && x.user ? x.user : '파일을 읽지 못했습니다.'); });
+    });
+    var link = ui.input({ type: 'url', placeholder: 'https://drive.google.com/… (공유 링크)' }), lname = ui.input({ maxlength: '60', placeholder: '이름 (예: 세금계산서)' });
+    var addLink = ui.btn('링크 추가', function () {
+      var u = link.value.trim();
+      if (!isDrive(u)) return ui.err(m, 'https://drive.google.com 또는 docs.google.com 링크만 첨부할 수 있습니다.');
+      if (att.length >= max) return ui.err(m, '첨부는 최대 ' + max + '개입니다.');
+      att.push({ kind: 'link', url: u, name: lname.value.trim() || 'Google Drive 파일' }); onChange();
+    }, 'btn-line btn-sm');
+    return h('div', { class: 'stack pay-attach' }, list,
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn btn-sm', text: '파일 선택', onclick: function () { file.click(); } }), file,
+        h('span', { class: 'meta', text: 'PDF · 이미지 · 파일당 3MB (사진은 자동으로 줄임)' })),
+      h('div', { class: 'row pay-link' }, lname, link, addLink), m,
+      h('p', { class: 'meta', text: 'Google Drive 파일은 공유 범위를 「(주)필츠 내 링크가 있는 사용자」로 두면 대표가 바로 열 수 있습니다.' }));
   }
 
   /* ---------- 기안 작성 ---------- */
   function newForm(view) {
-    var d = draft || (draft = { type: 'vendor', title: '', payee: '', amount: '', vat: 'incl', account: ACCOUNTS[0], due: L.addDays(fmt.today(), 3), bank: '국민', acct: '', holder: '', purpose: '', checks: {} });
+    var d = draft || (draft = { type: 'vendor', title: '', payee: '', amount: '', vat: 'incl', account: ACCOUNTS[0], due: L.addDays(fmt.today(), 3), bank: '국민', acct: '', holder: '', purpose: '', checks: {}, att: [] });
     var bind = function (k) { return function () { d[k] = this.value; }; };
-    var type = ui.select(Object.keys(TYPES).map(function (k) { return [k, TYPES[k].name]; }), d.type, { onchange: function () { d.type = this.value; d.checks = {}; HR.refresh(); } });
+    var type = ui.select(Object.keys(TYPES).map(function (k) { return [k, TYPES[k].name]; }), d.type, { onchange: function () { d.type = this.value; d.checks = {}; d.first = false; HR.refresh(); } });
     var amount = h('input', { type: 'text', inputmode: 'numeric', value: d.amount ? (+d.amount).toLocaleString('ko-KR') : '', placeholder: '0', oninput: function () { var v = this.value.replace(/[^\d]/g, ''); d.amount = v; this.value = v ? (+v).toLocaleString('ko-KR') : ''; hint.textContent = v ? won(+v) + (d.vat === 'excl' ? ' + 부가세 ' + won(Math.round(+v * 0.1)) + ' = ' + won(Math.round(+v * 1.1)) : '') : ''; } });
     var hint = h('span', { class: 'meta', text: d.amount ? won(+d.amount) : '' });
-    var docs = TYPES[d.type].docs, checks = h('ul', { class: 'pay-docs' }, docs.map(function (x, i) {
-      var cb = h('input', { type: 'checkbox', checked: !!d.checks[i], onchange: function () { d.checks[i] = this.checked; } });
-      return h('li', null, h('label', { class: 'check' }, cb, ' ' + x));
-    }));
-    var files = h('input', { type: 'file', multiple: true, accept: 'application/pdf,image/png,image/jpeg,image/webp' }), m = ui.msg();
+    var T = TYPES[d.type], docs = T.docs, req = d.first && T.first ? T.first : [];
+    var checks = h('ul', { class: 'pay-docs' },
+      T.first ? h('li', { class: 'pay-first' }, h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!d.first, onchange: function () { d.first = this.checked; HR.refresh(); } }), ' 이 거래처와 첫 거래입니다')) : null,
+      docs.map(function (x, i) {
+        var must = req.indexOf(i) >= 0, cb = h('input', { type: 'checkbox', checked: !!d.checks[i], onchange: function () { d.checks[i] = this.checked; } });
+        return h('li', { class: must ? 'must' : '' }, h('label', { class: 'check' }, cb, ' ' + x, must ? h('span', { class: 'red-text', text: ' *필수' }) : null));
+      }));
+    var m = ui.msg();
     var go = h('button', { class: 'btn', type: 'submit', text: '입금요청 올리기' });
     var f = h('form', { class: 'panel pay-form' }, ui.label('New request · 입금요청 기안'),
       h('div', { class: 'form-grid' },
@@ -73,7 +148,7 @@
         ui.field('예금주 *', h('input', { type: 'text', value: d.holder, maxlength: '40', placeholder: '통장 사본의 예금주명', oninput: bind('holder') }))),
       ui.field('지출 목적 · 내용 *', (function () { var t = h('textarea', { rows: '3', maxlength: '1000', placeholder: '무엇을 왜 사는지, 수량 · 단가, 관련 프로젝트', oninput: bind('purpose') }); t.value = d.purpose; return t; })()),
       h('div', { class: 'field' }, h('label', { text: '준비 서류 (' + TYPES[d.type].name + ')' }), checks),
-      ui.field('증빙 첨부 (PDF · 이미지, 파일당 700KB · 최대 5개) *', files), m, go,
+      h('div', { class: 'field' }, h('label', { text: '증빙 첨부 * (파일 또는 Google Drive 링크, 최대 5개)' }), attachBox(d.att, function () { HR.refresh(); }, MAX_FILES)), m, go,
       h('p', { class: 'note', text: '올리면 대표에게 승인 요청이 갑니다. 승인 후 입금되면 입금일 · 금액이 기록되고 알림이 옵니다. 계좌 정보와 증빙은 본인과 관리자만 볼 수 있습니다.' }));
     f.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -83,16 +158,16 @@
       if (!d.due) return ui.err(m, '입금 희망일을 고르세요.');
       if (!/^[\d-]{6,30}$/.test(d.acct.trim()) || !d.holder.trim()) return ui.err(m, '계좌번호(숫자 · -)와 예금주를 확인하세요.');
       if (!d.purpose.trim()) return ui.err(m, '지출 목적 · 내용을 입력하세요.');
-      if (!files.files.length) return ui.err(m, '증빙 서류를 1개 이상 첨부하세요.');
-      if (files.files.length > MAX_FILES) return ui.err(m, '첨부는 최대 ' + MAX_FILES + '개입니다.');
+      if (!d.att.length) return ui.err(m, '증빙 서류를 1개 이상 첨부하세요 (파일 또는 Google Drive 링크).');
+      var miss = (d.first && TYPES[d.type].first ? TYPES[d.type].first : []).filter(function (i) { return !d.checks[i]; });
+      if (miss.length) return ui.err(m, '첫 거래는 ' + miss.map(function (i) { return TYPES[d.type].docs[i].replace(/ \(.*\)$/, ''); }).join(' · ') + '을(를) 첨부하고 체크해야 합니다.');
       go.disabled = true; m.textContent = '올리는 중…';
-      readFiles(files.files).then(function (arr) {
-        var ref = db.collection('hr_payreq').doc(), b = db.batch(), total = d.vat === 'excl' ? Math.round(amt * 1.1) : amt;
-        var fileMeta = arr.map(function (x, i) { return { id: ref.id + '_' + i, name: x.name, type: x.type, size: x.size, kind: 'evidence' }; });
+      var ref = db.collection('hr_payreq').doc(), total = d.vat === 'excl' ? Math.round(amt * 1.1) : amt;
+      writeFiles(ref.id, S.mid, d.att, 'e', 'evidence').then(function (fileMeta) {
+        var b = db.batch();
         b.set(ref, { memberId: S.mid, type: d.type, title: d.title.trim(), payee: d.payee.trim(), amount: amt, vat: d.vat, total: total, account: d.account, due: d.due,
           bank: d.bank, acct: d.acct.trim(), holder: d.holder.trim(), purpose: d.purpose.trim(), docs: TYPES[d.type].docs.filter(function (_, i) { return d.checks[i]; }),
-          files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
-        arr.forEach(function (x, i) { b.set(db.doc('hr_payreq_files/' + ref.id + '_' + i), { memberId: S.mid, reqId: ref.id, name: x.name, type: x.type, data: x.data }); });
+          first: !!(d.first && TYPES[d.type].first), files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
         return b.commit().then(function () { return ref.id; });
       }).then(function (id) { draft = null; done(); ui.toast('입금요청을 올렸습니다. 대표 승인을 기다립니다.'); HR.go('payreq/r/' + id); })
         .catch(function (x) { go.disabled = false; x && x.user ? ui.err(m, x.user) : ui.fail(x, m); });
@@ -105,13 +180,13 @@
     var r = list().filter(function (x) { return x.id === id; })[0];
     if (!r) return ui.put(view, ui.empty('요청을 찾을 수 없습니다.'));
     var st = ST[r.status] || ['', 'mute'], admin = S.isAdmin;
-    var rows = [['지급 유형', (TYPES[r.type] || TYPES.etc).name], ['요청자', HR.name(r.memberId)], ['거래처 · 받는 분', r.payee],
+    var rows = [['지급 유형', (TYPES[r.type] || TYPES.etc).name + (r.first ? ' · 첫 거래' : '')], ['요청자', HR.name(r.memberId)], ['거래처 · 받는 분', r.payee],
       ['입금할 금액', won(r.total) + (r.vat === 'excl' ? ' (공급가 ' + won(r.amount) + ' + 부가세)' : r.vat === 'incl' ? ' (부가세 포함)' : '')],
       ['입금 희망일', fmt.dateLong(r.due)], ['계좌', r.bank + ' ' + r.acct + ' · ' + r.holder], ['계정 과목', r.account], ['요청일', fmt.ts(r.createdAt)]];
     if (r.decidedAt) rows.push([r.status === 'rejected' ? '반려' : '승인', HR.name(r.decidedBy) + ' · ' + fmt.ts(r.decidedAt) + (r.reason ? ' · ' + r.reason : '')]);
     if (r.status === 'paid') rows.push(['입금 완료', fmt.dateLong(r.paidDate) + ' · ' + won(r.paidAmount) + (r.paidNote ? ' · ' + r.paidNote : '')]);
     var fl = h('ul', { class: 'list' }, (r.files || []).map(function (f) {
-      return h('li', null, h('div', { class: 'grow' }, h('div', null, ui.tag(f.kind === 'receipt' ? '이체확인증' : '증빙', f.kind === 'receipt' ? 'ok' : 'mute'), ' ', f.name), h('div', { class: 'meta', text: size(f.size || 0) })),
+      return h('li', null, h('div', { class: 'grow' }, h('div', null, ui.tag(f.kind === 'receipt' ? '이체확인증' : f.kind === 'link' ? 'Google Drive' : '증빙', f.kind === 'receipt' || f.kind === 'link' ? 'ok' : 'mute'), ' ', f.name), h('div', { class: 'meta', text: f.kind === 'link' ? '팝업으로 열기' : size(f.size || 0) })),
         ui.btn('열기', function () { openFile(f); }, 'btn-line btn-xs'));
     }));
     var acts = null;
@@ -128,15 +203,9 @@
           var amt = +pa.value.replace(/[^\d]/g, '');
           if (!pd.value || !amt) return ui.err(pm, '입금일과 입금액을 입력하세요.');
           var upd = { status: 'paid', paidDate: pd.value, paidAmount: amt, paidNote: pn.value.trim(), paidBy: S.mid, paidAt: FV.serverTimestamp() };
-          (rc.files[0] ? readFiles([rc.files[0]]) : Promise.resolve([])).then(function (arr) {
-            var b = db.batch();
-            if (arr.length) {
-              var fid = id + '_r' + Date.now().toString(36);
-              b.set(db.doc('hr_payreq_files/' + fid), { memberId: r.memberId, reqId: id, name: arr[0].name, type: arr[0].type, data: arr[0].data });
-              upd.files = (r.files || []).concat([{ id: fid, name: arr[0].name, type: arr[0].type, size: arr[0].size, kind: 'receipt' }]);
-            }
-            b.update(db.doc('hr_payreq/' + id), upd);
-            return b.commit();
+          (rc.files[0] ? prepFile(rc.files[0]).then(function (x) { return writeFiles(id, r.memberId, [x], 'r' + Date.now().toString(36), 'receipt'); }) : Promise.resolve([])).then(function (meta) {
+            if (meta.length) upd.files = (r.files || []).concat(meta);
+            return db.doc('hr_payreq/' + id).update(upd);
           }).then(function () { done(); ui.toast('입금 완료로 기록했습니다. 요청자에게 알림이 갑니다.'); }).catch(function (x) { x && x.user ? ui.err(pm, x.user) : ui.fail(x, pm); });
         }), h('p', { class: 'note', text: '금액이 다르게 나갔다면 실제 입금액을 적고 메모에 이유를 남기세요.' }));
     } else if (!admin && r.status === 'pending' && r.memberId === S.mid) {
