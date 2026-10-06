@@ -1400,3 +1400,22 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .tl-subdetail { grid-template-columns: 240px minmax(0, 1fr); }
 .ws-tl.with-space .tl-subdetail { grid-template-columns: 300px minmax(0, 1fr); }
 @media (max-width: 760px) { .tl-subdetail { grid-template-columns: 150px minmax(0, 1fr) !important; } .tl-subdesc { display: none; } }
+
+/* WORK › INFO — 팀 자료실 */
+.ws-res-search { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--gray-200); font-family: inherit; font-size: 14px; background: var(--paper); }
+.ws-res-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.ws-res-list li[hidden] { display: none; }
+.ws-res { background: var(--paper); border: 1px solid var(--gray-200); display: flex; flex-direction: column; }
+.ws-res.pin { border-color: #1d4ed8; }
+.ws-res-main { display: flex; align-items: flex-start; gap: 10px; padding: 14px; color: inherit; text-decoration: none; flex: 1; }
+.ws-res-main:hover { background: #f8faff; }
+.ws-res-kind { flex: none; font-size: 10px; font-weight: 700; color: #fff; background: var(--gray-600); padding: 3px 6px; }
+.ws-res-kind.lk-sheet { background: #0f9d58; } .ws-res-kind.lk-slide { background: #f4b400; } .ws-res-kind.lk-doc { background: #4285f4; } .ws-res-kind.lk-drive { background: #1a73e8; } .ws-res-kind.lk-notion { background: #111; }
+.ws-res-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.ws-res-text b { font-size: 14px; font-weight: 600; }
+.ws-res-pin { font-size: 10px; color: #fff; background: #1d4ed8; padding: 1px 5px; margin-right: 6px; vertical-align: 2px; }
+.ws-res-open { flex: none; font-size: 11px; color: #1d4ed8; }
+.ws-res-foot { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--gray-100); font-size: 11px; }
+.ws-res-foot .meta { margin-right: auto; }
+.ws-res-cat { font-size: 10px; color: var(--gray-600); border: 1px solid var(--gray-200); padding: 1px 6px; }
+.ws-res-form { display: flex; flex-direction: column; gap: 10px; }

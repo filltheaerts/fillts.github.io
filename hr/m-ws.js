@@ -504,6 +504,58 @@
   }
 
   /* ---------- 게시판 ---------- */
+  /* ---------- INFO — 팀별 핵심 링크 · 자료실 (hr_ws_res) ---------- */
+  var RES_CATS = ['리스트 · DB', '가이드 · 매뉴얼', '계정 · 툴', '자료 · 레퍼런스', '기타'];
+  var resDraft = null, resQ = '';
+  function resList(key) { return HR.load('ws_res:' + key, function () { return db.collection('hr_ws_res').where('org', '==', key).get().then(HR.rows); }); }
+  function resForm(key, cur) {
+    if (!resDraft || resDraft.id !== (cur ? cur.id : null)) resDraft = cur ? { id: cur.id, title: cur.title, url: cur.url, desc: cur.desc || '', cat: cur.cat || '기타', pin: !!cur.pin } : { id: null, title: '', url: '', desc: '', cat: RES_CATS[0], pin: false };
+    var d = resDraft, m = ui.msg();
+    return h('form', { class: 'panel ws-res-form', onsubmit: function (e) {
+      e.preventDefault();
+      if (!d.title.trim()) return ui.err(m, '제목을 적어 주세요.');
+      if (!/^https:\/\/\S+$/.test(d.url.trim())) return ui.err(m, '링크는 https:// 로 시작해야 합니다. 파일은 Google Drive에 올리고 공유 링크를 넣어 주세요.');
+      var data = { org: key, title: d.title.trim().slice(0, 80), url: d.url.trim(), desc: d.desc.trim().slice(0, 300), cat: d.cat, pin: !!d.pin, updatedAt: FV.serverTimestamp(), updatedBy: S.mid };
+      var op = cur ? db.doc('hr_ws_res/' + cur.id).update(data) : db.collection('hr_ws_res').add(Object.assign(data, { by: S.mid, at: FV.serverTimestamp() }));
+      op.then(function () { resDraft = null; HR.invalidate('ws_res:' + key); ui.toast(cur ? '수정했습니다.' : 'INFO에 추가했습니다.'); }).catch(function (x) { ui.fail(x, m); });
+    } }, ui.label(cur ? 'Edit · 자료 수정' : 'New · INFO에 자료 추가'),
+      h('div', { class: 'form-grid' },
+        ui.field('제목 *', ui.input({ value: d.title, maxlength: '80', placeholder: '예: 인플루언서 리스트 (2026 하반기)', oninput: function () { d.title = this.value; } })),
+        ui.field('분류', ui.select(RES_CATS.map(function (c) { return [c, c]; }), d.cat, { onchange: function () { d.cat = this.value; } }))),
+      ui.field('링크 * — 시트 · 드라이브 · 노션 · 문서', ui.input({ type: 'url', value: d.url, placeholder: 'https://docs.google.com/spreadsheets/…', oninput: function () { d.url = this.value; } })),
+      ui.field('한 줄 설명', ui.input({ value: d.desc, maxlength: '300', placeholder: '예: 팔로워 · 단가 · 협업 이력 · 연락처 — 매주 월요일 업데이트', oninput: function () { d.desc = this.value; } })),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: d.pin, onchange: function () { d.pin = this.checked; } }), ' 맨 위에 고정 (팀이 가장 자주 쓰는 자료)'),
+      m, h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: cur ? '수정 저장' : '추가' }), ui.btn('취소', function () { resDraft = null; HR.go('ws/' + key + '/info'); }, 'btn-line')));
+  }
+  function infoTab(view, key, parts) {
+    var list = resList(key), can = inTeam(key);
+    if (parts[0] === 'new' && can) return ui.put(view, resForm(key, null));
+    if (!list) return ui.put(view, ui.empty('불러오는 중…'));
+    if (parts[0] && parts[1] === 'edit' && can) { var cur = list.filter(function (x) { return x.id === parts[0]; })[0]; if (cur) return ui.put(view, resForm(key, cur)); }
+    var rows = list.slice().sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || RES_CATS.indexOf(a.cat) - RES_CATS.indexOf(b.cat) || (a.title || '').localeCompare(b.title || '', 'ko'); });
+    var count = h('span', { class: 'meta' });
+    var items = rows.map(function (x) {
+      var k = linkKind(x.url);
+      var li = h('li', { class: 'ws-res' + (x.pin ? ' pin' : '') },
+        h('a', { class: 'ws-res-main', href: x.url, target: '_blank', rel: 'noopener noreferrer' },
+          h('span', { class: 'ws-res-kind ' + k[1], text: k[0] }),
+          h('div', { class: 'ws-res-text' }, h('b', null, x.pin ? h('span', { class: 'ws-res-pin', text: '고정' }) : null, x.title), x.desc ? h('span', { class: 'meta', text: x.desc }) : null),
+          h('span', { class: 'ws-res-open', text: '열기 ↗' })),
+        h('div', { class: 'ws-res-foot' }, h('span', { class: 'ws-res-cat', text: x.cat || '기타' }), h('span', { class: 'meta', text: HR.name(x.updatedBy || x.by) + ' · ' + fmt.ts(x.updatedAt || x.at) }),
+          can ? h('a', { href: '#ws/' + key + '/info/' + x.id + '/edit', class: 'link', text: '수정' }) : null,
+          can ? ui.confirmBtn('삭제', function () { db.doc('hr_ws_res/' + x.id).delete().then(function () { HR.invalidate('ws_res:' + key); }).catch(ui.fail); }) : null));
+      li._hay = (x.title + ' ' + (x.desc || '') + ' ' + (x.cat || '')).toLowerCase(); return li;
+    });
+    var none = h('p', { class: 'empty', text: '찾는 자료가 없습니다.' });
+    function apply() { var ws = resQ.trim().toLowerCase().split(/\s+/).filter(Boolean), n = 0; items.forEach(function (li) { var ok = ws.every(function (w) { return li._hay.indexOf(w) >= 0; }); li.hidden = !ok; if (ok) n++; }); count.textContent = n + '개'; none.hidden = n > 0 || !items.length; }
+    var search = h('input', { type: 'search', class: 'ws-res-search', value: resQ, placeholder: 'INFO 검색 — 예: 인플루언서, 가이드, 계정', oninput: function () { resQ = this.value; apply(); } });
+    ui.put(view, h('div', { class: 'toolbar' }, h('span', { class: 'meta', text: spaceName(key) + ' 팀의 핵심 링크 · 자료' }), count,
+        can ? ui.btn('+ 자료 추가', function () { resDraft = null; HR.go('ws/' + key + '/info/new'); }, 'btn-sm') : null),
+      rows.length ? search : null,
+      rows.length ? h('ul', { class: 'ws-res-list' }, items) : ui.empty(can ? '아직 등록된 자료가 없습니다. 인플루언서 리스트 · 가이드 · 자주 쓰는 계정처럼 팀이 늘 꺼내 보는 링크를 모아 두세요.' : '아직 등록된 자료가 없습니다.'),
+      none, h('p', { class: 'meta', text: '파일은 Google Drive에 올리고 공유 링크로 추가하세요. 다른 팀도 볼 수 있습니다 — 민감한 정보는 링크 권한으로 관리해 주세요.' }));
+    apply();
+  }
   function board(view, key, parts) {
     var list = posts(key).filter(function (p) { return p.kind === 'post'; }).sort(function (a, b) { return (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0) - (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0); });
     if (parts[0] === 'new') return inTeam(key) ? postForm(view, key, 'post', null) : null;
@@ -566,10 +618,11 @@
         ui.put(view, cr);
         if (S.isAdmin && crewEdit === key) ui.put(view, crewEditor(key, assigned || who));
       }   // 프로젝트 상세에서는 그 프로젝트 진행자만
-      var subNav = ui.tabs([['projects', '프로젝트'], ['board', '게시판'], ['intro', '소개 · 목표']], sub, 'ws/' + key);
+      var subNav = ui.tabs([['projects', '프로젝트'], ['info', 'INFO'], ['board', '게시판'], ['intro', '소개 · 목표']], sub, 'ws/' + key);
       subNav.lastChild.classList.add('ws-sub-minor'); subNav.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), subNav.lastChild);
       ui.put(view, h('div', { class: 'ws-sub' }, subNav));
       if (sub === 'intro') return introTab(view, key);
+      if (sub === 'info') return infoTab(view, key, parts.slice(2));
       if (sub === 'board') return board(view, key, parts.slice(2));
       projects(view, key, parts.slice(2));
     }
