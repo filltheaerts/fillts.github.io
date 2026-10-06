@@ -252,18 +252,19 @@
 
   HR.register('ai', {
     render: function (view, parts) {
-      var sub = ['prompts', 'guide', 'maker'].indexOf(parts[0]) >= 0 ? parts[0] : '', P = plan();
+      var sub = ['prompts', 'guide', 'maker', 'edu'].indexOf(parts[0]) >= 0 ? parts[0] : '', P = plan();
       if (!P) { var c = HR.cache.hr_plan_ai; return ui.put(view, ui.head('+AI', 'AI 잘 쓰는 법'), ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
       var all = allPrompts(P).all, cat = sub && parts[1] !== undefined ? P.cats[+parts[1]] || '' : '';
       var n = function (c) { return all.filter(function (p) { return (p.cat || '기타') === c; }).length; };
       // AI 가이드 | 프롬프트 전체 | 분류별 바로가기
-      var items = [['', 'AI 잘 쓰는 법'], ['maker', '프롬프트 생성기'], ['guide', 'AI 가이드'], ['prompts', '프롬프트 전체 ' + all.length]].concat(usedCats(P, all).map(function (c) { return ['prompts/' + P.cats.indexOf(c), c + ' ' + n(c)]; }));
+      var items = [['', 'AI 잘 쓰는 법'], ['maker', '프롬프트 생성기'], ['edu', 'AI교육 게시판'], ['guide', 'AI 가이드'], ['prompts', '프롬프트 전체 ' + all.length]].concat(usedCats(P, all).map(function (c) { return ['prompts/' + P.cats.indexOf(c), c + ' ' + n(c)]; }));
       var t = ui.tabs(items, sub === 'prompts' ? (cat ? 'prompts/' + P.cats.indexOf(cat) : 'prompts') : sub, 'ai');
       t.classList.add('ai-tabs'); t.children[0].classList.add('ai-tab-red');
       t.children[1].classList.add('ai-tab-maker');
-      t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[4]); t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[3]);
+      t.children[2].classList.add('ai-tab-edu');
+      t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[5]); t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[4]);
       ui.put(view, ui.head('+AI', 'AI 잘 쓰는 법'), t);
-      if (sub === 'prompts') prompts(view, P, cat); else if (sub === 'guide') guide(view, P); else if (sub === 'maker') maker(view, P); else basics(view, P);
+      if (sub === 'prompts') prompts(view, P, cat); else if (sub === 'guide') guide(view, P); else if (sub === 'maker') maker(view, P); else if (sub === 'edu') HR.aiEdu.render(view, parts.slice(1)); else basics(view, P);
     }
   });
 })();

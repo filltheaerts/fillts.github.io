@@ -1226,3 +1226,38 @@ a.tl-label:hover { background: var(--gray-100); }
 @media (max-width: 600px) { .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .summary.work-sum dd { font-weight: 300; }
 .summary.work-sum dd.strong { font-weight: 600; color: var(--black); }
+
+/* +AI › AI교육 게시판 */
+.subtabs a.ai-tab-edu { font-weight: 600; }
+.edu-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-left: 4px solid #7c3aed; padding: 6px 0 6px 18px; }
+.edu-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: #7c3aed; }
+.edu-hero p { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+.edu-list { list-style: none; background: var(--paper); border: 1px solid var(--gray-200); }
+.edu-list li + li { border-top: 1px solid var(--gray-100); }
+.edu-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto 70px; align-items: center; gap: 14px; padding: 16px 18px; color: inherit; text-decoration: none; }
+.edu-row:hover { background: #faf5ff; }
+.edu-no { width: 28px; height: 28px; border-radius: 50%; background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.edu-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.edu-row-main b { font-size: 15px; font-weight: 600; }
+.edu-row-main .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.edu-badges { display: flex; gap: 4px; }
+.edu-badge { font-size: 11px; padding: 2px 7px; border: 1px solid var(--gray-200); color: var(--gray-600); white-space: nowrap; }
+.edu-badge.yt { border-color: #dc2626; color: #dc2626; }
+.edu-date { font-size: 12px; color: var(--gray-600); font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 760px) { .edu-row { grid-template-columns: 28px minmax(0, 1fr) 56px; } .edu-badges { display: none; } }
+.edu-article { display: flex; flex-direction: column; gap: 14px; }
+.edu-meta { display: flex; align-items: center; gap: 10px; }
+.edu-meta .edu-date { font-weight: 600; color: #6d28d9; }
+.edu-meta .link { margin-left: auto; }
+.edu-title { font-size: 24px; font-weight: 600; line-height: 1.4; }
+.edu-video { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.edu-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.edu-att { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: #faf5ff; }
+.edu-att b { font-size: 12px; color: #6d28d9; letter-spacing: 0.06em; }
+.ws-link.lk-yt .lk-kind { background: #dc2626; }
+.edu-file .lk-kind { background: #6d28d9; }
+.edu-text p { font-size: 14px; line-height: 1.85; color: var(--gray-800); }
+.edu-form { display: flex; flex-direction: column; gap: 12px; }
+.edu-link-row input:nth-child(1) { flex: 0 0 200px; }
+.edu-link-row input:nth-child(2) { flex: 1; }
+@media (max-width: 760px) { .edu-link-row { flex-wrap: wrap; } .edu-link-row input:nth-child(1) { flex-basis: 100%; } }
