@@ -44,7 +44,8 @@
     monthHours: 209,         // (40 + 주휴 8) × 4.345
     workStart: '09:00',
     workEnd: '18:00',
-    autoOutHours: 7,         // 출근 후 N시간이 지나면 자동 퇴근 처리 (0 = 끔)
+    autoOutHours: 7,
+    pension: false,          // 퇴직연금(DB·DC) 도입 여부 — 퇴직연금 가입자 교육 적용         // 출근 후 N시간이 지나면 자동 퇴근 처리 (0 = 끔)
     annualBasis: 'fiscal',   // fiscal: 회계연도(1/1) 기준 | hire: 입사일 기준
     leavePolicies: DEFAULT_POLICIES,
     holidays: [
@@ -62,13 +63,22 @@
   };
 
   // 법정 의무교육 (연간 이수 체크)
+  // rule(ctx) → [적용: 'required' | 'simple' | 'na', 안내]  ctx = { fivePlus, headcount, pension }
   var MANDATORY_EDU = [
-    { id: 'harass', name: '직장 내 성희롱 예방교육', cycle: 'year', law: '남녀고용평등법 제13조 · 연 1회 이상' },
-    { id: 'privacy', name: '개인정보보호 교육', cycle: 'year', law: '개인정보보호법 제28조 · 취급자 정기 교육' },
-    { id: 'disability', name: '직장 내 장애인 인식개선 교육', cycle: 'year', law: '장애인고용촉진법 제5조의2 · 연 1회 이상' },
-    { id: 'pension', name: '퇴직연금 가입자 교육', cycle: 'year', law: '근로자퇴직급여보장법 제32조 · 퇴직연금 도입 시 연 1회' },
-    { id: 'safety', name: '산업안전보건 정기교육', cycle: 'quarter', law: '산업안전보건법 제29조 · 사무직 분기 3시간 (업종·규모별 적용 확인)' }
+    { id: 'harass', name: '직장 내 성희롱 예방교육', cycle: 'year', law: '남녀고용평등법 제13조 · 연 1회 이상, 사업주 포함',
+      rule: function (c) { return c.headcount < 10 ? ['simple', '10인 미만: 교육자료 게시·배포로 갈음 가능'] : ['required', '전 사업장 의무']; } },
+    { id: 'privacy', name: '개인정보보호 교육', cycle: 'year', law: '개인정보보호법 제28조 · 개인정보취급자 정기 교육',
+      rule: function () { return ['required', '임직원·고객 개인정보를 다루므로 의무']; } },
+    { id: 'disability', name: '직장 내 장애인 인식개선 교육', cycle: 'year', law: '장애인고용촉진법 제5조의2 · 연 1회 이상',
+      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : c.headcount < 50 ? ['simple', '50인 미만: 고용노동부 교육자료로 자체 교육 가능'] : ['required', '의무']; } },
+    { id: 'pension', name: '퇴직연금 가입자 교육', cycle: 'year', law: '근로자퇴직급여보장법 제32조 · 퇴직연금 도입 시 연 1회',
+      rule: function (c) { return c.pension ? ['required', '퇴직연금(DB·DC) 도입 사업장 의무'] : ['na', '퇴직연금 미도입 (퇴직금 제도)']; } },
+    { id: 'safety', name: '산업안전보건 정기교육', cycle: 'quarter', law: '산업안전보건법 제29조 · 사무직 분기 3시간',
+      rule: function (c) { return !c.fivePlus ? ['na', '5인 미만 사업장 제외'] : ['required', '5인 이상 의무 · 업종에 따라 일부 제외될 수 있음']; } }
   ];
+  function eduScope(e, cfg, headcount) {
+    return e.rule({ fivePlus: !!cfg.fivePlus, headcount: headcount || 0, pension: !!cfg.pension });
+  }
 
   /* ---------- KST 날짜 유틸 ---------- */
   var fmt = new Intl.DateTimeFormat('en-CA', {
@@ -383,7 +393,7 @@
   }
 
   root.Labor = {
-    TZ: TZ, DEFAULT_CONFIG: DEFAULT_CONFIG, DEFAULT_POLICIES: DEFAULT_POLICIES, MANDATORY_EDU: MANDATORY_EDU,
+    TZ: TZ, DEFAULT_CONFIG: DEFAULT_CONFIG, DEFAULT_POLICIES: DEFAULT_POLICIES, MANDATORY_EDU: MANDATORY_EDU, eduScope: eduScope,
     kstDate: kstDate, kstHM: kstHM, kstMin: kstMin,
     addDays: addDays, addMonths: addMonths, addYears: addYears, weekday: weekday, mondayOf: mondayOf,
     daysBetween: daysBetween, monthDays: monthDays, hmToMin: hmToMin, minToHM: minToHM, round3: round3,

@@ -249,13 +249,21 @@
   function tabEdu(view, mid) {
     var recs = listOf('hr_edu', mid), y = fmt.today().slice(0, 4), q = Math.floor((+fmt.today().slice(5, 7) - 1) / 3);
     var tb = h('table', { class: 'table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['법정 의무교육', '주기', y + '년 이수', '근거'].map(function (x) { return h('th', { text: x }); }))));
+    tb.appendChild(h('thead', null, h('tr', null, ['법정 의무교육', '적용', '주기', y + '년 이수', '근거'].map(function (x) { return h('th', { text: x }); }))));
     var body = h('tbody');
+    var headcount = HR.memberList(false).length;
     L.MANDATORY_EDU.forEach(function (e) {
+      var sc = L.eduScope(e, S.cfg, headcount);
       var done = recs.filter(function (r) { return r.kind === e.id && (r.date || '').slice(0, 4) === y; });
       var ok = e.cycle === 'quarter' ? done.some(function (r) { return Math.floor((+r.date.slice(5, 7) - 1) / 3) === q; }) : done.length > 0;
-      body.appendChild(h('tr', null, h('td', { text: e.name }), h('td', { text: e.cycle === 'quarter' ? '분기' : '연 1회' }),
-        h('td', null, ok ? ui.tag('이수 ' + fmt.dot(done[done.length - 1].date), 'ok') : ui.tag(e.cycle === 'quarter' ? '이번 분기 미이수' : '미이수', 'red')), h('td', { class: 'muted small', text: e.law })));
+      var status = ok ? ui.tag('이수 ' + fmt.dot(done[done.length - 1].date), 'ok')
+        : sc[0] === 'na' ? ui.tag('해당 없음', 'mute')
+        : ui.tag(e.cycle === 'quarter' ? '이번 분기 미이수' : '미이수', sc[0] === 'simple' ? 'warn' : 'red');
+      body.appendChild(h('tr', { class: sc[0] === 'na' ? 'muted-row' : '' },
+        h('td', { text: e.name }),
+        h('td', null, ui.tag({ required: '필수', simple: '간이 가능', na: '제외' }[sc[0]], { required: 'red', simple: 'warn', na: 'mute' }[sc[0]]), h('div', { class: 'meta', text: sc[1] })),
+        h('td', { text: e.cycle === 'quarter' ? '분기' : '연 1회' }),
+        h('td', null, status), h('td', { class: 'muted small', text: e.law })));
     });
     tb.appendChild(body);
     var canAdd = S.isAdmin || mid === S.mid;
@@ -275,7 +283,9 @@
         canAdd ? ui.confirmBtn('삭제', function () { db.doc('hr_edu/' + r.id).delete().then(function () { HR.invalidate('hr_edu:' + mid); }).catch(ui.fail); }) : null));
     });
     if (!ul.children.length) ul.appendChild(h('li', { class: 'empty', text: '등록된 교육 이수 기록이 없습니다.' }));
-    ui.put(view, h('div', { class: 'table-wrap' }, tb), h('div', { class: 'two-col' }, form, ui.panel('History', null, ul)));
+    ui.put(view, h('div', { class: 'table-wrap' }, tb),
+      h('p', { class: 'note', text: '적용 여부는 설정 › 회사 기준의 「상시근로자 5인 이상」, 「퇴직연금 도입」과 현재 재직 인원(' + headcount + '명)으로 자동 판정합니다. 업종에 따라 산업안전보건교육 일부가 제외될 수 있으니 관할 노동청에 확인하세요.' }),
+      h('div', { class: 'two-col' }, form, ui.panel('History', null, ul)));
   }
 
   /* ---------- 탭: 급여 ---------- */

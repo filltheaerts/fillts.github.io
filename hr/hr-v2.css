@@ -248,3 +248,5 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 .kr-row.kr-head { font-size: 10px; letter-spacing: 0.08em; color: var(--gray-600); }
 .kr-row.kr-head span { padding-bottom: 2px; }
 @media (max-width: 560px) { .kr-row.with-cur { grid-template-columns: minmax(0, 1fr) 70px 70px; } .kr-row.with-cur input:nth-child(5) { display: none; } }
+
+.table tr.muted-row td { color: var(--gray-400); }
