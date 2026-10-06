@@ -76,7 +76,7 @@
       h('div', { class: 'panel-head' }, head, modes), clock,
       state, h('div', { class: 'row' }, bIn, bOut), msgEl,
       ah ? h('p', { class: 'muted small', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null,
-      geoRule(t) ? h('p', { class: 'muted small', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다 (위치 권한 필요 · 좌표는 저장하지 않고 거리만 남깁니다).' }) : null);
+      geoRule(t) ? h('p', { class: 'muted small', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다' }) : null);
   }
   function weekPanel() {
     var t = fmt.today(), mon = L.mondayOf(t), days = A.days(S.myPunches, S.myFixes, { member: S.members[S.mid], from: mon, to: L.addDays(mon, 6), leaves: HR.leavesOf(S.mid) }), w = A.week(days, mon);
