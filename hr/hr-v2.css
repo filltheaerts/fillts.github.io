@@ -996,3 +996,34 @@ a.tl-label:hover { background: var(--gray-100); }
 .br-logo-img { height: 120px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--gray-100); padding: 12px; }
 .br-logo.dark .br-logo-img { background: #2a1430; }
 .br-logo-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* 공지사항 › 필츠그라피 (경영자 2주 일기) */
+.dy-hero { border-left: 3px solid var(--red); padding: 4px 0 4px 16px; display: flex; flex-direction: column; gap: 6px; }
+.dy-kicker { font-size: 11px; letter-spacing: 0.14em; color: var(--red); font-weight: 600; }
+.dy-hero p { font-size: 13px; color: var(--gray-600); line-height: 1.7; }
+.dy-form { border: 1px dashed var(--gray-400); background: #fffdf7; }
+.dy-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dy-period { display: inline-flex; align-items: center; gap: 8px; }
+.dy-period b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.dy-f label { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.dy-no { font-size: 11px; color: var(--red); font-weight: 600; }
+.dy-list { display: flex; flex-direction: column; gap: 14px; }
+.dy-card { background: var(--paper); border: 1px solid var(--gray-200); padding: 22px 24px; display: flex; flex-direction: column; gap: 6px; }
+.dy-card.draft { border-style: dashed; background: #fffdf7; }
+.dy-card-head { display: flex; align-items: center; gap: 10px; }
+.dy-card-head .link:first-of-type { margin-left: auto; }
+.dy-per { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--red); font-variant-numeric: tabular-nums; }
+.dy-title { font-size: 20px; font-weight: 600; line-height: 1.4; }
+.dy-secs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+@media (max-width: 760px) { .dy-secs { grid-template-columns: 1fr; } .dy-card { padding: 18px 16px; } }
+.dy-sec { background: var(--gray-100); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.dy-sec.s-highlight { grid-column: 1 / -1; background: #fff5f5; border-left: 3px solid var(--red); }
+.dy-sec.s-notice { grid-column: 1 / -1; background: #f5f3ff; border-left: 3px solid #7c3aed; }
+.dy-sec h4 { font-size: 12px; letter-spacing: 0.06em; color: var(--gray-600); font-weight: 600; }
+.dy-text p { font-size: 14px; line-height: 1.75; color: var(--gray-800); }
+.dy-text p.li { padding-left: 14px; position: relative; }
+.dy-text p.li::before { content: '·'; position: absolute; left: 3px; font-weight: 700; }
+
+/* 공지 탭 NEW */
+.subtabs a.has-new { position: relative; }
+.tab-new { position: relative; top: -0.7em; margin-left: 3px; font-size: 8px; font-weight: 700; letter-spacing: 0.04em; color: #fff; background: var(--red); padding: 1px 3px; line-height: 1.2; }

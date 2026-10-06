@@ -419,7 +419,7 @@
   }
 
   /* ---------- 탭: 알림 설정 (본인) ---------- */
-  var CATS = [['approval', '요청 · 결과', '휴가·근태 정정 요청과 승인/반려 결과'], ['notice', '공지', '새 공지 (중요 공지는 메일 필수)'], ['reminder', '리마인드', '퇴근 누락, 주 52시간 임박, 원온원 D-1, 연차 촉진, 목표 체크인'], ['social', '칭찬 · 원온원', '받은 칭찬, 원온원 일정']];
+  var CATS = [['approval', '요청 · 결과', '휴가 · 근무 정정 요청과 승인/반려 결과'], ['notice', '공지', '새 공지 (중요 공지는 메일 필수)'], ['reminder', '리마인드', '퇴근 누락, 주 52시간 임박, 원온원 D-1, 연차 촉진, 목표 체크인'], ['social', '칭찬 · 원온원', '받은 칭찬, 원온원 일정']];
   var DEF = { approval: { web: true, slack: true, email: true }, notice: { web: true, slack: true, email: false }, reminder: { web: true, slack: true, email: false }, social: { web: true, slack: true, email: false } };
   function tabNotify(view) {
     var cur = (S.priv && S.priv.notify) || {}, me = S.members[S.mid] || {};

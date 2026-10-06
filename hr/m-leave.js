@@ -306,7 +306,7 @@
     render: function (view, parts) {
       var sub = parts[0] || '';
       var n = S.isLead ? S.leaves.filter(function (l) { return l.status === 'pending' && canApprove(l); }).length : 0;
-      ui.put(view, ui.head('Time off', '휴가·근태'),
+      ui.put(view, ui.head('Time off', '휴가'),
         ui.tabs([['', '내 휴가'], ['annual', '연차 상세'], ['holidays', '쉬는 날'], ['calendar', '팀 캘린더'], S.isLead ? ['approve', '승인' + (n ? ' ' + n : '')] : null], sub, 'leave'));
       if (sub === 'annual') annual(view);
       else if (sub === 'holidays') holidays(view);

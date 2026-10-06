@@ -180,16 +180,110 @@
         h('ol', { class: 'hww-culture' }, P.culture.items.map(function (x, i) { return h('li', null, h('span', { class: 'hww-cn', text: ('0' + (i + 1)).slice(-2) }), h('div', null, h('b', { text: x.t }), h('p', { text: x.d }))); }))));
   }
 
+  /* ---------- 필츠그라피 — 경영자의 2주 일기 (hr_diary) ----------
+     구성원은 올라온 글만 본다. 관리자 모드에서만 프리셋 작성칸(임시저장 · 올리기)이 보인다. */
+  var DIARY = [
+    ['highlight', '2주간의 하이라이트', '이번 2주 가장 중요했던 장면 3가지'],
+    ['result', '성과 노트', '숫자 · 결과 · 완료한 일 (무엇이 얼마나)'],
+    ['knowhow', '새로운 노하우', '이번에 새로 알게 된 것 · 다음에 바로 쓸 방법'],
+    ['special', '특이사항', '이슈 · 변화 · 리스크 · 감사한 일'],
+    ['notice', '공지사항', '구성원이 알아야 할 것 · 다음 2주 계획']
+  ];
+  var DIARY_ANCHOR = '2026-01-05';   // 월요일 — 여기서부터 2주 단위로 자른다
+  var diaryDraft = null, diaryOpen = {};
+  function dn(d) { return Math.round(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 864e5); }
+  function dd(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
+  function blockOf(day, shift) { var a = dn(DIARY_ANCHOR), k = Math.floor((dn(day) - a) / 14) + (shift || 0); return { start: dd(a + k * 14), end: dd(a + k * 14 + 13) }; }
+  function periodText(x) { return fmt.dot(x.start).slice(2) + ' – ' + fmt.dot(x.end).slice(5); }
+  function diaries() {
+    return HR.load('hr_diary:' + (S.isAdmin ? 'all' : 'pub'), function () {
+      var q = S.isAdmin ? db.collection('hr_diary') : db.collection('hr_diary').where('published', '==', true);
+      return q.get().then(HR.rows);
+    }) || [];
+  }
+  function diaryForm(view, cur) {
+    var d = diaryDraft, m = ui.msg();
+    var per = h('div', { class: 'dy-period' },
+      ui.btn('◀', function () { var b = blockOf(d.start, -1); d.start = b.start; d.end = b.end; HR.refresh(); }, 'btn-line btn-xs'),
+      h('b', { text: periodText(d) }), h('span', { class: 'meta', text: '2주' }),
+      ui.btn('▶', function () { var b = blockOf(d.start, 1); d.start = b.start; d.end = b.end; HR.refresh(); }, 'btn-line btn-xs'));
+    var title = h('input', { type: 'text', maxlength: '80', value: d.title, placeholder: '이번 2주를 한 줄로 (비우면 기간이 제목이 됩니다)', oninput: function () { d.title = this.value; } });
+    var save = function (pub) {
+      var body = {}, any = false;
+      DIARY.forEach(function (x) { body[x[0]] = (d.sec[x[0]] || '').trim(); if (body[x[0]]) any = true; });
+      if (!any) return ui.err(m, '한 칸 이상 적어 주세요.');
+      var data = { start: d.start, end: d.end, title: d.title.trim(), sec: body, published: pub, by: S.mid, updatedAt: FV.serverTimestamp() };
+      var op = cur ? db.doc('hr_diary/' + cur.id).update(data) : db.collection('hr_diary').add(Object.assign(data, { at: FV.serverTimestamp() }));
+      op.then(function () { diaryDraft = null; HR.invalidate('hr_diary'); ui.toast(pub ? '올렸습니다. 구성원 모두가 볼 수 있습니다.' : '임시저장했습니다. 관리자에게만 보입니다.'); }).catch(function (x) { ui.fail(x, m); });
+    };
+    return h('form', { class: 'panel dy-form', onsubmit: function (e) { e.preventDefault(); save(true); } },
+      h('div', { class: 'dy-form-head' }, ui.label((cur ? 'Edit' : 'New') + ' · 필츠그라피 2주 일기 (관리자 전용 작성칸)'), per),
+      ui.field('제목', title),
+      DIARY.map(function (x, i) {
+        var ta = h('textarea', { rows: i < 2 ? '5' : '4', maxlength: '4000', placeholder: x[2] + '\n- 한 줄에 하나씩', oninput: function () { d.sec[x[0]] = this.value; } });
+        ta.value = d.sec[x[0]] || '';
+        return h('div', { class: 'field dy-f' }, h('label', null, h('span', { class: 'dy-no', text: ('0' + (i + 1)).slice(-2) }), ' ' + x[1]), ta);
+      }), m,
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: cur && cur.published ? '수정 반영' : '올리기' }),
+        ui.btn('임시저장', function () { save(false); }, 'btn-line'),
+        cur || diaryDraft.touched ? ui.btn('닫기', function () { diaryDraft = null; HR.refresh(); }, 'btn-line') : null));
+  }
+  function diaryCard(x) {
+    var open = diaryOpen[x.id] !== undefined ? diaryOpen[x.id] : null;
+    var secs = DIARY.filter(function (k) { return x.sec && x.sec[k[0]]; });
+    return h('article', { class: 'dy-card' + (x.published ? '' : ' draft') },
+      h('div', { class: 'dy-card-head' }, h('span', { class: 'dy-per', text: periodText(x) }), x.published ? null : ui.tag('임시저장 · 관리자만', 'warn'),
+        S.isAdmin ? h('a', { href: '#', class: 'link', text: '수정', onclick: function (e) { e.preventDefault(); diaryDraft = { start: x.start, end: x.end, title: x.title || '', sec: Object.assign({}, x.sec), id: x.id, touched: true }; HR.refresh(); window.scrollTo(0, 0); } }) : null,
+        S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_diary/' + x.id).delete().then(function () { HR.invalidate('hr_diary'); }).catch(ui.fail); }) : null),
+      h('h3', { class: 'dy-title', text: x.title || (periodText(x) + ' 일기') }),
+      h('span', { class: 'meta', text: HR.name(x.by) + ' · ' + fmt.ts(x.updatedAt || x.at) }),
+      h('div', { class: 'dy-secs' + (open === false ? ' folded' : '') }, secs.map(function (k) {
+        return h('section', { class: 'dy-sec s-' + k[0] }, h('h4', { text: k[1] }), h('div', { class: 'dy-text' }, String(x.sec[k[0]]).split('\n').map(function (l) {
+          var t = l.replace(/^\s*[-·•]\s*/, ''); return l.trim() ? h('p', { class: /^\s*[-·•]/.test(l) ? 'li' : '', text: t }) : null;
+        })));
+      })));
+  }
+  function diaryPage(view) {
+    var list = diaries().slice().sort(function (a, b) { return (b.start || '') < (a.start || '') ? -1 : (b.start || '') > (a.start || '') ? 1 : 0; });
+    ui.put(view, h('section', { class: 'dy-hero' }, h('span', { class: 'dy-kicker', text: 'FILLTSGRAPHY · 경영자의 2주 일기' }),
+      h('p', { text: '2주마다 대표가 직접 쓰는 기록입니다. 하이라이트 · 성과 · 새로 알게 된 것 · 특이사항 · 공지를 한곳에 모읍니다.' })));
+    if (S.isAdmin) {
+      var cur = diaryDraft && diaryDraft.id ? list.filter(function (x) { return x.id === diaryDraft.id; })[0] : null;
+      if (!diaryDraft) { var b = blockOf(fmt.today()); diaryDraft = { start: b.start, end: b.end, title: '', sec: {} }; }
+      ui.put(view, diaryForm(view, cur));
+    }
+    var shown = list.filter(function (x) { return S.isAdmin || x.published; });
+    ui.put(view, shown.length ? h('div', { class: 'dy-list' }, shown.map(diaryCard)) : ui.empty('아직 올라온 글이 없습니다. 첫 번째 2주 일기를 기다려 주세요.'));
+  }
+
+  // 새 글 표시: 공지 · 소식·칭찬 · 필츠그라피 — 그 탭을 마지막으로 본 뒤 남이 올린 글이 있으면 탭 오른쪽 위에 NEW
+  function ms(t) { return t && t.toMillis ? t.toMillis() : 0; }
+  function seenKey(tab) { return 'hrSeen:' + S.mid + ':' + (tab || 'notice'); }
+  function seenAt(tab) { try { var v = +localStorage.getItem(seenKey(tab)); return v || Date.now() - 7 * 864e5; } catch (e) { return 0; } }
+  function markSeen(tab) { try { localStorage.setItem(seenKey(tab), String(Date.now())); } catch (e) { /* 무시 */ } }
+  function latestOf(tab) {
+    var mine = function (by) { return by === S.mid; }, mx = 0;
+    if (tab === '') (S.notices || []).forEach(function (n) { if (!mine(n.authorMid)) mx = Math.max(mx, ms(n.updatedAt), ms(n.createdAt)); });
+    if (tab === 'feed') (S.feed || []).forEach(function (f) { if (!mine(f.authorMid)) mx = Math.max(mx, ms(f.createdAt)); });
+    if (tab === 'diary') diaries().forEach(function (x) { if (x.published && !mine(x.by)) mx = Math.max(mx, ms(x.updatedAt), ms(x.at)); });
+    return mx;
+  }
+
   HR.register('notice', {
     render: function (view, parts) {
       var sub = parts[0] || '';
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
-      if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how' && sub !== 'brand') return detail(view, sub);
-      var nt = ui.tabs([['', '공지'], ['feed', '소식 · 칭찬'], ['how', '일하는 법'], ['milestone', '마일스톤'], ['brand', '01 바인그라피']], sub, 'notice');
-      nt.classList.add('nt-split'); nt.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), nt.children[2]);   // 공지 · 소식 | 회사 안내
+      if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how' && sub !== 'brand' && sub !== 'diary') return detail(view, sub);
+      var nt = ui.tabs([['', '공지'], ['feed', '소식 · 칭찬'], ['diary', '필츠그라피'], ['how', '일하는 법'], ['milestone', '마일스톤'], ['brand', '01 바인그라피']], sub, 'notice');
+      nt.classList.add('nt-split');
+      [['', 0], ['feed', 1], ['diary', 2]].forEach(function (t) {
+        if (t[0] === sub) { markSeen(t[0]); return; }
+        if (latestOf(t[0]) > seenAt(t[0])) { var a = nt.children[t[1]]; a.classList.add('has-new'); a.appendChild(h('sup', { class: 'tab-new', text: 'NEW' })); }
+      });   // 공지 · 소식 | 필츠그라피 | 회사 안내
+      nt.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), nt.children[3]); nt.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), nt.children[2]);
       ui.put(view, ui.head('Notice', '공지사항'), nt);
-      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else if (sub === 'brand') brandPage(view); else listView(view);
+      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else if (sub === 'brand') brandPage(view); else if (sub === 'diary') diaryPage(view); else listView(view);
     }
   });
 })();
