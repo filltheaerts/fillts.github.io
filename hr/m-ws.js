@@ -8,6 +8,12 @@
   var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
   var ALL = 'all', EVERY = 'projects';   // 전사 공간 키 · 전체 프로젝트 탭 키
   var STATUS = [['idea', '준비'], ['doing', '진행 중'], ['done', '완료']];
+  // 프로젝트 특성 — 목록 · 상세에서 제목 앞 배지로 보인다
+  var FLAGS = [['important', '중요'], ['basic', '베이직'], ['urgent', '긴급'], ['simple', '간단']];
+  function flagBadges(p) {
+    var f = p.flags || [];
+    return FLAGS.filter(function (x) { return f.indexOf(x[0]) >= 0; }).map(function (x) { return h('span', { class: 'ws-flag fl-' + x[0], text: x[1] }); });
+  }
   var editPage = null, draftPost = null, tfForm = false;
 
   /* ---------- 공간 ---------- */
@@ -36,6 +42,13 @@
     }));
     return ui.panel('My order · 내 탭 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); ordering = false; HR.refresh(); } }), ul,
       h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 나에게만 적용됩니다. 같은 유닛(STUDIO · DIRECT · TF) 안에서 순서가 바뀌고, 「전체 프로젝트」는 항상 맨 앞입니다.' }));
+  }
+  function spaceBadge(key) {
+    var ss = spaces(), s = ss.filter(function (x) { return x[0] === key; })[0];
+    if (!s) return h('span', { class: 'ws-pspace g-etc' }, h('b', { text: key }));
+    var groups = []; ss.forEach(function (x) { if (x[2] === 'org' && x[3] && groups.indexOf(x[3]) < 0) groups.push(x[3]); });
+    var cls = s[2] === 'all' ? 'g-all' : s[2] === 'tf' ? 'g-tf' : s[3] ? 'g-u' + (groups.indexOf(s[3]) % 4) : 'g-etc';
+    return h('span', { class: 'ws-pspace ' + cls, title: spaceName(key) }, s[2] === 'all' ? null : h('small', { text: s[3] || '' }), h('b', { text: s[2] === 'all' ? '전사' : s[1] }));
   }
   function spaceName(key) { var s = spaces().filter(function (x) { return x[0] === key; })[0]; return s ? (s[0] === ALL ? S.cfg.companyName + ' 전사' : (s[3] ? s[3] + ' · ' : '') + s[1]) : key; }
   function inTeam(key) {
@@ -184,7 +197,7 @@
   function postForm(view, key, kind, p) {
     var dk = p ? p.id : 'new:' + key + kind;
     var d = draftPost && draftPost.key === dk ? draftPost
-      : (draftPost = { key: dk, title: p ? p.title : '', body: p ? p.body : (kind === 'project' ? PROJECT_TEMPLATE : ''), status: p ? p.status : 'idea', owner: p ? p.owner : S.mid, people: p ? (p.people || []).slice() : [], due: p ? p.due || '' : '',
+      : (draftPost = { key: dk, title: p ? p.title : '', body: p ? p.body : (kind === 'project' ? PROJECT_TEMPLATE : ''), status: p ? p.status : 'idea', owner: p ? p.owner : S.mid, people: p ? (p.people || []).slice() : [], flags: p ? (p.flags || []).slice() : [], start: p ? p.start || '' : '', due: p ? p.due || '' : '',
         tags: p ? (p.tags || []).join(', ') : '', links: p ? (p.links || []).map(function (l) { return Object.assign({}, l); }) : [{ t: '', url: '' }] });
     var m = ui.msg(), back = kind === 'project' ? 'projects' : 'board';
     var body = h('textarea', { rows: '16', maxlength: '20000', oninput: function () { d.body = this.value; } }); body.value = d.body;
@@ -193,8 +206,12 @@
       kind === 'project' ? h('div', { class: 'form-grid' },
         ui.field('상태', ui.select(STATUS, d.status, { onchange: function () { d.status = this.value; } })),
         ui.field('리드 (진행 책임)', ui.select(HR.memberList(false).map(function (x) { return [x.id, x.name]; }), d.owner, { onchange: function () { d.owner = this.value; } })),
-        ui.field('기한', h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } })),
-        ui.field('태그 (쉼표로 구분)', h('input', { type: 'text', value: d.tags, maxlength: '100', placeholder: '예: 런칭, 공식몰', oninput: function () { d.tags = this.value; } }))) : null,
+        ui.field('태그 (쉼표로 구분)', h('input', { type: 'text', value: d.tags, maxlength: '100', placeholder: '예: 런칭, 공식몰', oninput: function () { d.tags = this.value; } })),
+        ui.field('시작일', h('input', { type: 'date', value: d.start, onchange: function () { d.start = this.value; } })),
+        ui.field('마감 예정일', h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } }))) : null,
+      kind === 'project' ? h('div', { class: 'field' }, h('label', { text: '프로젝트 특성 (여러 개 선택 가능)' }), h('div', { class: 'ws-flagpick' }, FLAGS.map(function (x) {
+        return h('label', { class: 'check chip fl-' + x[0] }, h('input', { type: 'checkbox', checked: d.flags.indexOf(x[0]) >= 0, onchange: function () { var i = d.flags.indexOf(x[0]); if (this.checked && i < 0) d.flags.push(x[0]); if (!this.checked && i >= 0) d.flags.splice(i, 1); } }), ' ' + x[1]);
+      }))) : null,
       kind === 'project' ? h('div', { class: 'field' }, h('label', { text: '함께 진행하는 사람' }), h('div', { class: 'ws-people pick' }, HR.memberList(false).map(function (x) {
         return h('label', { class: 'check chip' }, h('input', { type: 'checkbox', checked: d.people.indexOf(x.id) >= 0, onchange: function () { var i = d.people.indexOf(x.id); if (this.checked && i < 0) d.people.push(x.id); if (!this.checked && i >= 0) d.people.splice(i, 1); } }), ' ' + x.name);
       }))) : null,
@@ -204,9 +221,10 @@
     f.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!d.title.trim()) return ui.err(m, '제목을 입력하세요.');
+      if (kind === 'project' && d.start && d.due && d.start > d.due) return ui.err(m, '마감 예정일이 시작일보다 빠릅니다.');
       var bad = d.links.filter(function (l) { return l.url.trim() && !/^https:\/\/\S+$/.test(l.url.trim()); });
       if (bad.length) return ui.err(m, '링크는 https:// 로 시작해야 합니다: ' + bad[0].url);
-      var data = { org: key, kind: kind, title: d.title.trim(), body: d.body, status: kind === 'project' ? d.status : 'post', owner: kind === 'project' ? d.owner : S.mid, due: kind === 'project' ? d.due : '',
+      var data = { org: key, kind: kind, title: d.title.trim(), body: d.body, status: kind === 'project' ? d.status : 'post', owner: kind === 'project' ? d.owner : S.mid, flags: kind === 'project' ? FLAGS.map(function (x) { return x[0]; }).filter(function (k) { return d.flags.indexOf(k) >= 0; }) : [], start: kind === 'project' ? d.start || '' : '', due: kind === 'project' ? d.due : '',
         tags: kind === 'project' ? d.tags.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8) : [], links: cleanLinks(d.links),
         people: kind === 'project' ? d.people.filter(function (x) { return x !== d.owner; }).slice(0, 20) : [], updatedAt: FV.serverTimestamp() };
       var op = p ? db.doc('hr_ws_posts/' + p.id).update(data).then(function () { return p.id; })
@@ -244,9 +262,9 @@
     ui.put(view, h('a', { href: '#ws/' + key + '/' + back, class: 'back', text: '← ' + spaceName(key) + ' · ' + (p.kind === 'project' ? '프로젝트' : '게시판') }),
       h('article', { class: 'panel ws-article' },
         p.kind === 'project' ? crewRow(crew(p), '진행자', true) : null,
-        h('h1', { class: 'ws-title', text: p.title }),
+        h('h1', { class: 'ws-title' }, p.kind === 'project' ? flagBadges(p) : null, p.title),
         h('div', { class: 'ws-meta' }, st && p.kind === 'project' ? ui.tag(st[1], p.status === 'done' ? 'mute' : p.status === 'doing' ? 'ok' : 'warn') : null,
-          h('span', { class: 'meta', text: [p.kind === 'project' ? '담당 ' + HR.name(p.owner) : HR.name(p.createdBy), p.due ? '기한 ' + fmt.dot(p.due) : '', '작성 ' + fmt.ts(p.createdAt) + (p.updatedAt ? ' · 수정 ' + fmt.ts(p.updatedAt) : '')].filter(Boolean).join(' · ') }),
+          h('span', { class: 'meta', text: [p.kind === 'project' ? '담당 ' + HR.name(p.owner) : HR.name(p.createdBy), p.start ? '시작 ' + fmt.dot(p.start) : '', p.due ? '마감 예정 ' + fmt.dot(p.due) : '', '작성 ' + fmt.ts(p.createdAt) + (p.updatedAt ? ' · 수정 ' + fmt.ts(p.updatedAt) : '')].filter(Boolean).join(' · ') }),
           (p.tags || []).map(function (t) { return ui.tag('#' + t, 'mute'); })),
         (p.links || []).length ? h('div', { class: 'ws-links big' }, p.links.map(linkChip)) : null,
         richText(p.body),
@@ -260,18 +278,22 @@
 
   /* ---------- 프로젝트 보드 ---------- */
   function card(p, showSpace) {
-    return h('a', { class: 'ws-card', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? h('span', { class: 'ws-space', text: spaceName(p.org) }) : null, h('b', { text: p.title }),
-      h('span', { class: 'meta', text: [HR.name(p.owner) + ((p.people || []).length ? ' 외 ' + p.people.length + '명' : ''), p.due ? '~ ' + fmt.date(p.due) : ''].filter(Boolean).join(' · ') }),
+    return h('a', { class: 'ws-card', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? h('span', { class: 'ws-space', text: spaceName(p.org) }) : null, h('b', null, flagBadges(p), p.title),
+      h('span', { class: 'meta', text: [HR.name(p.owner) + ((p.people || []).length ? ' 외 ' + p.people.length + '명' : ''), p.start || p.due ? (p.start ? fmt.dot(p.start) : '') + ' → ' + (p.due ? fmt.dot(p.due) : '') : ''].filter(Boolean).join(' · ') }),
       (p.links || []).length ? h('span', { class: 'ws-links small' }, p.links.slice(0, 4).map(linkChip)) : null,
       (p.tags || []).length ? h('span', { class: 'ws-tags' }, p.tags.map(function (t) { return h('span', { text: '#' + t }); })) : null);
   }
   // 노션처럼 간단한 목록: 진행 중 → 준비 → 완료. 같은 상태 안 순서는 각자(hr_private.projOrder)
   var LIST_ORDER = [['doing', '진행 중'], ['idea', '준비'], ['done', '완료']], projOrdering = false, showDone = false;
+  function dday(due) {
+    var n = Math.round((new Date(due + 'T00:00:00') - new Date(fmt.today() + 'T00:00:00')) / 864e5);
+    return h('span', { class: 'ws-dday' + (n < 0 ? ' over' : n <= 7 ? ' soon' : ''), text: n === 0 ? 'D-day' : n > 0 ? 'D-' + n : 'D+' + (-n) });
+  }
   function listOf(list, showSpace) {
     var my = (S.priv && S.priv.projOrder) || [];
     var rank = function (p) { var i = my.indexOf(p.id); return i < 0 ? 1e6 + ((p.due || '9999') < '9999' ? 0 : 1) : i; };
     var save = function (ids) { S.priv = Object.assign({}, S.priv, { projOrder: ids }); db.doc('hr_private/' + S.mid).set({ projOrder: ids.slice(0, 300), updatedAt: FV.serverTimestamp() }, { merge: true }).catch(ui.fail); HR.refresh(); };
-    var wrap = h('div', { class: 'ws-plist' });
+    var wrap = h('div', { class: 'ws-plist' + (showSpace ? ' with-space' : '') });
     LIST_ORDER.forEach(function (st) {
       var items = list.filter(function (p) { return (p.status || 'idea') === st[0]; }).sort(function (a, b) { return rank(a) - rank(b) || ((a.due || '9999') < (b.due || '9999') ? -1 : 1); });
       if (st[0] === 'done' && !showDone && !projOrdering) {
@@ -280,6 +302,7 @@
       }
       var sec = h('section', { class: 'ws-pgroup st-' + st[0] }, h('div', { class: 'ws-pgroup-head' }, h('span', { class: 'ws-pdot' }), h('b', { text: st[1] }), h('span', { class: 'meta', text: items.length + '' }),
         st[0] === 'done' && showDone && !projOrdering ? h('a', { href: '#', class: 'link', text: '접기', onclick: function (e) { e.preventDefault(); showDone = false; HR.refresh(); } }) : null));
+      if (items.length) sec.appendChild(h('div', { class: 'ws-prow ws-phead' }, h('span'), showSpace ? h('span', { text: '공간' }) : null, h('span', { text: '프로젝트' }), h('span', { text: '진행자' }), h('span', { text: '시작일' }), h('span', { text: '마감 예정일' }), h('span', { text: '링크' }), h('span', { text: '태그' })));
       if (!items.length) sec.appendChild(h('div', { class: 'ws-prow empty', text: '없음' }));
       items.forEach(function (p, i) {
         var move = function (k) { return function (e) { e.preventDefault(); e.stopPropagation();
@@ -287,10 +310,12 @@
           var rest = my.filter(function (x) { return ids.indexOf(x) < 0; }); save(ids.concat(rest)); }; };
         sec.appendChild(h('a', { class: 'ws-prow', href: '#ws/' + p.org + '/projects/' + p.id },
           projOrdering ? h('span', { class: 'ws-pmove' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', disabled: i === 0, onclick: move(-1) }), h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', disabled: i === items.length - 1, onclick: move(1) })) : h('span'),
-          h('span', { class: 'ws-ptitle' }, showSpace ? h('span', { class: 'ws-space', text: spaceName(p.org) + ' ' }) : null, p.title),
+          showSpace ? spaceBadge(p.org) : null,
+          h('span', { class: 'ws-ptitle' }, flagBadges(p), h('span', { class: 'ws-ptitle-t', text: p.title })),
           h('span', { class: 'ws-pmeta' }, HR.name(p.owner) + ((p.people || []).length ? ' 외 ' + p.people.length : '')),
-          h('span', { class: 'ws-pmeta' }, p.due ? '~ ' + fmt.date(p.due) : ''),
-          h('span', { class: 'ws-plinks' }, (p.links || []).slice(0, 3).map(linkChip)),
+          h('span', { class: 'ws-pdate ws-pstart' }, p.start ? fmt.dot(p.start) : '—'),
+          h('span', { class: 'ws-pdate ws-pdue' }, p.due ? fmt.dot(p.due) : '—', p.due && p.status !== 'done' ? dday(p.due) : null),
+          h('span', { class: 'ws-plinks' }, (p.links || []).slice(0, 4).map(linkChip)),
           h('span', { class: 'ws-ptags' }, (p.tags || []).slice(0, 3).map(function (t) { return '#' + t; }).join(' '))));
       });
       wrap.appendChild(sec);
@@ -306,10 +331,11 @@
     }));
   }
   function projects(view, key, parts) {
-    var list = posts(key).filter(function (p) { return p.kind === 'project'; });
+    var whole = key === ALL && !parts[0];   // 전사 탭은 모든 팀 · TF 프로젝트를 한눈에
+    var list = (whole ? allProjects() : posts(key)).filter(function (p) { return p.kind === 'project'; });
     if (parts[0] === 'new') return inTeam(key) ? postForm(view, key, 'project', null) : null;
     if (parts[0]) { var p = list.filter(function (x) { return x.id === parts[0]; })[0]; if (!p) return ui.put(view, ui.empty('불러오는 중…')); return parts[1] === 'edit' ? postForm(view, key, 'project', p) : postView(view, key, p, 'projects'); }
-    ui.put(view, h('div', { class: 'toolbar' }, h('span', { class: 'meta', text: '프로젝트 ' + list.length + '개' }), orderToggle(), inTeam(key) ? ui.btn('+ 새 프로젝트', function () { draftPost = null; HR.go('ws/' + key + '/projects/new'); }) : null), listOf(list, false));
+    ui.put(view, h('div', { class: 'toolbar' }, h('span', { class: 'meta', text: (whole ? '회사 전체 프로젝트 ' : '프로젝트 ') + list.length + '개' }), orderToggle(), inTeam(key) ? ui.btn('+ 새 프로젝트', function () { draftPost = null; HR.go('ws/' + key + '/projects/new'); }) : null), listOf(list, whole));
   }
   function everyProject(view) {
     var list = allProjects(), q = (HR.wsQ || '');
@@ -355,7 +381,7 @@
     render: function (view, parts) {
       var ss = spaces(), me = S.members[S.mid] || {};
       var key = parts[0] === EVERY ? EVERY : parts[0] && ss.some(function (t) { return t[0] === parts[0]; }) ? parts[0] : (parts[0] && /^tf_/.test(parts[0]) ? parts[0] : (me.orgId && S.orgs[me.orgId] ? me.orgId : ALL));
-      var sub = parts[1] || 'intro';
+      var sub = parts[1] || 'projects';   // 들어오면 프로젝트부터. 소개 · 목표는 뒤로
       var groupsEl = [], cur = null;
       ss.forEach(function (t) {
         if (!cur || cur.name !== t[3]) { cur = { name: t[3], el: h('div', { class: 'ws-group' + (t[2] === 'tf' ? ' tf' : '') }, t[3] ? h('span', { class: 'ws-group-name', text: t[3] }) : null) }; groupsEl.push(cur); }
@@ -381,10 +407,12 @@
         ui.put(view, cr);
         if (S.isAdmin && crewEdit === key) ui.put(view, crewEditor(key, assigned || who));
       }   // 프로젝트 상세에서는 그 프로젝트 진행자만
-      ui.put(view, h('div', { class: 'ws-sub' }, ui.tabs([['intro', '소개 · 목표'], ['projects', '프로젝트'], ['board', '게시판']], sub, 'ws/' + key)));
-      if (sub === 'projects') return projects(view, key, parts.slice(2));
+      var subNav = ui.tabs([['projects', '프로젝트'], ['board', '게시판'], ['intro', '소개 · 목표']], sub, 'ws/' + key);
+      subNav.lastChild.classList.add('ws-sub-minor'); subNav.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), subNav.lastChild);
+      ui.put(view, h('div', { class: 'ws-sub' }, subNav));
+      if (sub === 'intro') return introTab(view, key);
       if (sub === 'board') return board(view, key, parts.slice(2));
-      introTab(view, key);
+      projects(view, key, parts.slice(2));
     }
   });
 })();

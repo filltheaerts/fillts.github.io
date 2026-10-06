@@ -753,3 +753,67 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .ws-pgroup.st-done .ws-ptitle { color: var(--gray-600); }
 .ws-plist-more { align-self: flex-start; background: none; border: 1px dashed var(--gray-400); padding: 6px 12px; font-size: 12px; color: var(--gray-600); cursor: pointer; }
 @media (max-width: 760px) { .ws-prow { grid-template-columns: auto minmax(0, 1fr) auto; } .ws-plinks, .ws-ptags, .ws-prow .ws-pmeta:nth-of-type(2) { display: none; } }
+
+/* WORK 프로젝트 목록 — 시작일 · 마감 예정일 칸 */
+.ws-prow { grid-template-columns: auto minmax(0, 1fr) 110px 92px 128px minmax(0, 200px) 100px; }
+.ws-phead { font-size: 11px; color: var(--gray-400); letter-spacing: 0.04em; padding-top: 7px; padding-bottom: 7px; background: var(--gray-100); }
+.ws-phead:hover { background: var(--gray-100); }
+.ws-pdate { font-size: 12px; color: var(--gray-800); white-space: nowrap; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+.ws-dday { font-size: 10px; padding: 1px 5px; border: 1px solid var(--gray-200); color: var(--gray-600); }
+.ws-dday.soon { border-color: var(--warn); color: var(--warn); }
+.ws-dday.over { border-color: var(--red); color: var(--red); }
+/* 프로젝트 특성 배지 + 목록 링크 바로 열기 */
+.ws-flag { display: inline-block; font-size: 10px; font-weight: 600; line-height: 1; padding: 3px 6px; margin-right: 5px; vertical-align: 2px; border: 1px solid currentColor; letter-spacing: 0.02em; }
+.ws-title .ws-flag { font-size: 12px; padding: 4px 8px; vertical-align: 5px; }
+.ws-flag.fl-important { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.ws-flag.fl-urgent { background: var(--red); border-color: var(--red); color: #fff; }
+.ws-flag.fl-basic { color: var(--gray-600); }
+.ws-flag.fl-simple { color: #15803d; }
+.ws-flagpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.ws-flagpick .chip.fl-important:has(input:checked) { border-color: #1d4ed8; color: #1d4ed8; }
+.ws-flagpick .chip.fl-urgent:has(input:checked) { border-color: var(--red); color: var(--red); }
+.ws-flagpick .chip:has(input:checked) { font-weight: 600; border-color: var(--black); }
+.ws-ptitle { display: flex; align-items: center; min-width: 0; }
+.ws-ptitle-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-ptitle .ws-flag { flex: none; }
+.ws-plinks { flex-wrap: wrap; }
+.ws-plinks .ws-link { padding: 3px 7px; font-size: 11px; max-width: 150px; }
+.ws-plinks .ws-link .lk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-plinks .ws-link:hover { background: var(--black); color: #fff; }
+.ws-prow { grid-template-columns: auto minmax(0, 1fr) 100px 86px 124px minmax(0, 240px) 90px; }
+@media (max-width: 760px) {
+  .ws-prow:not(.empty) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .ws-phead { display: none !important; }
+  .ws-prow > span:first-child:empty { display: none; }
+  .ws-prow .ws-ptitle { flex: 1 1 100%; }
+  .ws-prow .ws-pmeta { order: 2; }
+  .ws-prow .ws-pstart { order: 3; font-size: 11px; color: var(--gray-600); }
+  .ws-prow .ws-pdue { order: 4; font-size: 11px; color: var(--gray-600); }
+  .ws-prow .ws-pstart::before { content: '시작 '; }
+  .ws-prow .ws-pdue::before { content: '마감 '; }
+  .ws-prow .ws-plinks { display: flex; order: 5; flex: 1 1 100%; margin-top: 4px; }
+  .ws-prow .ws-plinks:empty { display: none; }
+  .ws-prow .ws-ptags { display: none; }
+}
+
+/* WORK 공간 하위 탭 — 프로젝트 · 게시판 | 소개 · 목표(보조) */
+.ws-sub .subtabs { align-items: center; }
+.ws-sub-sep { display: inline-block; width: 1px; height: 14px; background: var(--gray-200); margin: 0 4px; }
+.ws-sub .subtabs a.ws-sub-minor { color: var(--gray-400); font-size: 12px; }
+.ws-sub .subtabs a.ws-sub-minor.active { color: var(--black); }
+
+/* 전체 · 전사 프로젝트 — 공간(카테고리) 배지 칸 */
+.ws-plist.with-space .ws-prow:not(.empty) { grid-template-columns: auto 150px minmax(0, 1fr) 90px 86px 124px minmax(0, 220px) 80px; }
+.ws-pspace { display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; padding: 3px 8px; border-left: 3px solid var(--gray-400); background: var(--gray-100); min-width: 0; line-height: 1.25; }
+.ws-pspace small { font-size: 9px; letter-spacing: 0.08em; color: var(--gray-600); }
+.ws-pspace b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-pspace.g-u0 { border-left-color: #7c3aed; background: #f5f3ff; } .ws-pspace.g-u0 small { color: #7c3aed; }
+.ws-pspace.g-u1 { border-left-color: #0f766e; background: #f0fdfa; } .ws-pspace.g-u1 small { color: #0f766e; }
+.ws-pspace.g-u2 { border-left-color: #b45309; background: #fffbeb; } .ws-pspace.g-u2 small { color: #b45309; }
+.ws-pspace.g-u3 { border-left-color: #be185d; background: #fdf2f8; } .ws-pspace.g-u3 small { color: #be185d; }
+.ws-pspace.g-tf { border-left-color: #ea580c; background: #fff7ed; } .ws-pspace.g-tf small { color: #ea580c; }
+.ws-pspace.g-all { border-left-color: var(--black); }
+@media (max-width: 760px) {
+  .ws-plist.with-space .ws-prow:not(.empty) { display: flex; }
+  .ws-prow .ws-pspace { order: 0; flex-direction: row; align-items: baseline; gap: 5px; padding: 2px 7px; }
+}
