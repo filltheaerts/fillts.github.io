@@ -1261,3 +1261,23 @@ a.tl-label:hover { background: var(--gray-100); }
 .edu-link-row input:nth-child(1) { flex: 0 0 200px; }
 .edu-link-row input:nth-child(2) { flex: 1; }
 @media (max-width: 760px) { .edu-link-row { flex-wrap: wrap; } .edu-link-row input:nth-child(1) { flex-basis: 100%; } }
+
+/* 필츠그라피 — 인사이트(스페셜) */
+.dy-kind { display: inline-flex; border: 1px solid var(--gray-200); align-self: flex-start; }
+.dy-kind button { background: var(--paper); border: 0; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--gray-600); }
+.dy-kind button + button { border-left: 1px solid var(--gray-200); }
+.dy-kind button.on { background: var(--black); color: #fff; }
+.ins-card { border-top: 4px solid var(--black); gap: 8px; }
+.ins-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: #fff; background: var(--black); padding: 3px 8px; }
+.ins-title { font-size: 24px; font-weight: 600; line-height: 1.4; margin-top: 4px; }
+.ins-sub { font-size: 15px; color: var(--gray-600); line-height: 1.6; }
+.ins-body { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; max-height: 340px; overflow: hidden; position: relative; }
+.ins-body::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--paper)); }
+.ins-card.open .ins-body { max-height: none; }
+.ins-card.open .ins-body::after { display: none; }
+.ins-body h4 { font-size: 17px; font-weight: 600; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+.ins-body p { font-size: 15px; line-height: 1.9; color: var(--gray-800); }
+.ins-body blockquote { margin: 4px 0; padding: 12px 16px; border-left: 3px solid var(--red); background: #fff5f5; font-size: 16px; font-weight: 500; line-height: 1.7; }
+.ins-body ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.ins-body li { font-size: 14px; line-height: 1.8; color: var(--gray-800); }
+.ins-more { align-self: flex-start; background: none; border: 1px solid var(--black); padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; margin-top: 4px; }
