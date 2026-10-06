@@ -32,7 +32,9 @@
     else state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '아직 출근 기록이 없습니다');
     var msgEl = ui.msg();
     var bIn = ui.btn('출근', null), bOut = ui.btn('퇴근', null, 'btn-line');
-    bIn.disabled = working || autoOutToday || !!days[t]; bOut.disabled = !working && !autoOutToday;
+    var holToday = !L.isWorkday(t, S.hmap), holOk = otsOf(S.mid, t).some(function (o) { return o.kind === 'hol' && o.status === 'approved'; });
+    bIn.disabled = working || autoOutToday || !!days[t] || (holToday && !holOk);
+    if (holToday && !holOk && !working) { ui.clear(state); state.append((S.hmap[t] ? S.hmap[t] + ' · ' : '') + '쉬는 날입니다 · 휴일근무는 사전 승인 후 출근할 수 있습니다'); } bOut.disabled = !working && !autoOutToday;
     bIn.onclick = function () { punch('in', [bIn, bOut], msgEl); };
     bOut.onclick = function () { punch('out', [bIn, bOut], msgEl); };
     var modes = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '근무 형태' });
@@ -115,7 +117,9 @@
     M.md.forEach(function (d) {
       var r = M.days[d], c = r && r.calc, hol = L.holidayName(d, S.cfg, S.hmap), sat = L.weekday(d) === 6, lv = A.leaveOn(M.leaves, d);
       var pf = fixes.filter(function (f) { return f.date === d && f.status === 'pending'; })[0];
+      var dayOts = otsOf(T.who, d).filter(function (o) { return o.status !== 'canceled'; });
       var st = lv ? ui.tag(HR.policy(lv.type).name + (lv.unit && lv.unit !== 'day' ? ' ' + HR.unitText(lv) : ''), 'red')
+        : r && r.blocked ? ui.tag('휴일근무 미승인 · 미반영', 'red')
         : pf ? ui.tag('정정 대기', 'warn') : r && r.src === 'fix' ? ui.tag('정정됨', 'ok')
         : r && r.open && d < t ? ui.tag('퇴근 누락', 'red') : r && r.open ? ui.tag('근무 중', 'ok')
         : (!r && !hol && !sat && d < t && !S.hmap[d]) ? ui.tag('기록 없음', 'mute') : null;
@@ -127,8 +131,9 @@
         h('td', { class: 'num', text: c ? L.minToHM(c.work) : '' }),
         h('td', { class: 'num', text: c && !hol && c.work > 480 ? L.minToHM(c.work - 480) : '' }),
         h('td', { class: 'num', text: c && c.night ? L.minToHM(c.night) : '' }),
-        h('td', null, st),
-        h('td', null, self && d <= t && !pf ? h('button', { class: 'btn btn-line btn-xs', type: 'button', text: '정정', onclick: function () { openFix(view, d, r); } }) : null)));
+        h('td', null, st, r && r.capped ? ui.tag('승인 범위까지 반영', 'mute') : null, dayOts.map(otTag)),
+        h('td', { class: 'wk-actions' }, self && d <= t && !pf ? h('button', { class: 'btn btn-line btn-xs', type: 'button', text: '정정', onclick: function () { openFix(view, d, r); } }) : null,
+          self ? otButtons(view, d, t) : null)));
       if (L.weekday(d) === 0 || d === M.md[M.md.length - 1]) {
         var w = M.weeks.filter(function (x) { return x.monday === L.mondayOf(d); })[0];
         if (w) body.appendChild(h('tr', { class: 'weekrow' + (w.over52 ? ' bad' : '') }, h('td', { colspan: '11',
@@ -222,6 +227,80 @@
       .then(function () { ui.toast(st === 'approved' ? '승인했습니다.' : '반려했습니다.'); HR.invalidate('teamMonth'); }).catch(ui.fail);
   }
   HR.work.fixItem = fixItem;
+
+  /* ---------- 연장 · 야간 · 휴일근무 사전 신청 (관리자 승인분만 근무로 인정) ---------- */
+  var OTK = { ot: '연장근무', night: '야간근무', hol: '휴일근무' };
+  var OTS = { pending: ['승인 대기', 'warn'], approved: ['승인', 'ok'], rejected: ['반려', 'red'], canceled: ['취소', 'mute'] };
+  function otsOf(mid, date) { return (S.ots || []).filter(function (o) { return o.memberId === mid && (!date || o.date === date); }); }
+  function otRange(o) { return o.from + '–' + o.to + (L.hmToMin(o.to) <= L.hmToMin(o.from) ? '(+1)' : ''); }
+  function otTag(o) { var st = OTS[o.status] || ['', 'mute']; return ui.tag(OTK[o.kind].replace('근무', '') + ' ' + st[0] + ' ' + otRange(o), st[1]); }
+  var otPanel;
+  function openOt(view, date, kind) {
+    if (otPanel) otPanel.remove();
+    if (fixPanel) { fixPanel.remove(); fixPanel = null; }
+    var def = { ot: [S.cfg.workEnd || '18:00', L.minToHM((L.hmToMin(S.cfg.workEnd || '18:00') + 120) % 1440)], night: ['22:00', '00:00'], hol: [S.cfg.workStart || '10:00', S.cfg.workEnd || '18:00'] }[kind];
+    var fromI = ui.input({ type: 'time', value: def[0] }), toI = ui.input({ type: 'time', value: def[1] });
+    var rsn = ui.input({ maxlength: '200', placeholder: '예: 런칭 상세페이지 마감, 해외 바이어 화상 미팅' }), m = ui.msg();
+    otPanel = h('form', { class: 'panel' },
+      h('div', { class: 'panel-head' }, ui.label(OTK[kind] + ' 신청 · ' + fmt.date(date)), h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); otPanel.remove(); otPanel = null; } })),
+      h('div', { class: 'row' }, ui.field('시작', fromI), ui.field('종료', toI)), ui.field('사유', rsn), m,
+      h('button', { class: 'btn btn-sm', type: 'submit', text: OTK[kind] + ' 신청' }),
+      h('p', { class: 'muted small', text: kind === 'night' ? '22:00~06:00 근무는 승인된 시간대만 인정됩니다. 종료가 시작보다 이르면 다음 날로 봅니다.'
+        : kind === 'hol' ? '휴무일·공휴일에는 승인된 휴일근무가 있어야 출근 기록이 남습니다.' : '출근 후 8시간이 지나면 자동 퇴근됩니다. 승인된 연장근무는 종료 시각까지 인정됩니다.' }));
+    otPanel.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!rsn.value.trim()) return ui.err(m, '사유를 입력하세요.');
+      if (!fromI.value || !toI.value || fromI.value === toI.value) return ui.err(m, '시작과 종료 시각을 확인하세요.');
+      if (kind !== 'night' && toI.value < fromI.value) return ui.err(m, '종료 시각이 시작보다 늦어야 합니다.');
+      if (otsOf(S.mid, date).some(function (o) { return o.kind === kind && (o.status === 'pending' || o.status === 'approved'); })) return ui.err(m, '이미 같은 날 ' + OTK[kind] + ' 신청이 있습니다.');
+      db.collection('hr_ot').add({ memberId: S.mid, date: date, kind: kind, from: fromI.value, to: toI.value, reason: rsn.value.trim(), status: 'pending', createdAt: FV.serverTimestamp() })
+        .then(function () { otPanel.remove(); otPanel = null; ui.toast(OTK[kind] + ' 신청을 보냈습니다. 관리자가 승인하면 반영됩니다.'); })
+        .catch(function (x) { ui.fail(x, m); });
+    });
+    view.querySelector('#wkTable').after(otPanel);
+    fromI.focus();
+  }
+  function otButtons(view, d, t) {
+    if (d < t) return null;
+    var kinds = L.isWorkday(d, S.hmap) ? ['ot', 'night'] : ['hol', 'night'];
+    return kinds.map(function (k) { return h('button', { class: 'btn btn-line btn-xs', type: 'button', text: OTK[k] + ' 신청', onclick: function () { openOt(view, d, k); } }); });
+  }
+  function otDecide(o, st) {
+    db.doc('hr_ot/' + o.id).update({ status: st, decidedBy: S.mid, decidedAt: FV.serverTimestamp() })
+      .then(function () { ui.toast(st === 'approved' ? '승인했습니다.' : '반려했습니다.'); HR.invalidate('teamMonth'); }).catch(ui.fail);
+  }
+  function otItem(o, approve) {
+    var st = OTS[o.status] || ['', 'mute'];
+    return h('li', null,
+      h('div', { class: 'grow' }, h('div', null, ui.tag(st[0], st[1]), ' ', (approve ? HR.name(o.memberId) + ' · ' : '') + OTK[o.kind] + ' · ' + fmt.date(o.date) + ' ' + otRange(o)), h('div', { class: 'meta', text: o.reason })),
+      approve ? h('div', { class: 'actions' }, ui.btn('승인', function () { otDecide(o, 'approved'); }, 'btn-xs'), ui.btn('반려', function () { otDecide(o, 'rejected'); }, 'btn-line btn-xs'))
+        : o.status === 'pending' && o.memberId === S.mid ? ui.btn('취소', function () { db.doc('hr_ot/' + o.id).update({ status: 'canceled' }).catch(ui.fail); }, 'btn-line btn-xs') : null);
+  }
+  HR.work.otItem = otItem;
+  function otHistory(view) {
+    var all = (S.ots || []).filter(function (o) { return S.isAdmin || o.memberId === S.mid; }).sort(function (a, b) { return (b.date + (b.from || '')) < (a.date + (a.from || '')) ? -1 : 1; });
+    if (S.isAdmin) {
+      var pend = h('ul', { class: 'list' });
+      all.filter(function (o) { return o.status === 'pending'; }).forEach(function (o) { pend.appendChild(otItem(o, true)); });
+      if (!pend.children.length) pend.appendChild(h('li', { class: 'empty', text: '대기 중인 신청이 없습니다.' }));
+      ui.put(view, ui.panel('Pending approval', null, pend));
+    }
+    var tb = h('table', { class: 'table' });
+    tb.appendChild(h('thead', null, h('tr', null, ['근무일', '구성원', '구분', '시간', '사유', '상태', '신청', '처리'].map(function (x) { return h('th', { text: x }); }))));
+    var body = h('tbody');
+    all.forEach(function (o) {
+      var st = OTS[o.status] || ['', 'mute'];
+      body.appendChild(h('tr', null, h('td', { text: fmt.date(o.date) + ' ' + o.date.slice(0, 4) }), h('td', { text: HR.name(o.memberId) }), h('td', { text: OTK[o.kind] }),
+        h('td', { text: otRange(o) }), h('td', { class: 'muted small', text: o.reason }), h('td', null, ui.tag(st[0], st[1])),
+        h('td', { class: 'muted small', text: fmt.ts(o.createdAt) }),
+        h('td', { class: 'muted small', text: o.decidedBy ? HR.name(o.decidedBy) + ' · ' + fmt.ts(o.decidedAt) : '' })));
+    });
+    if (!all.length) body.appendChild(h('tr', null, h('td', { colspan: '8', class: 'empty', text: '연장·야간·휴일근무 신청 내역이 없습니다. 내 근무 표의 날짜 옆 버튼으로 신청합니다.' })));
+    tb.appendChild(body);
+    ui.put(view, ui.panel('History · 전체 내역', null, h('div', { class: 'table-wrap flat' }, tb)),
+      h('p', { class: 'note', text: '출근 후 8시간이 지나면 자동 퇴근됩니다. 연장(8시간 초과)·야간(22:00~06:00)·휴일(휴무일·공휴일) 근무는 사전에 신청해 관리자가 승인한 시간대만 근무 기록에 반영됩니다. 신청·승인·반려·취소 이력은 모두 남습니다.' }));
+  }
+
   function fixes(view) {
     var pend = h('ul', { class: 'list' }), my = h('ul', { class: 'list' });
     if (S.isAdmin) {   // 근태 정정은 관리자만 승인 (본인 것 포함)
@@ -251,8 +330,10 @@
     render: function (view, parts) {
       var sub = parts[0] || '';
       var pendingN = S.isAdmin ? S.fixes.length : 0;
-      ui.put(view, ui.head('Work', '근무'), ui.tabs([['', '내 근무'], S.isLead ? ['team', '팀 현황'] : null, ['fix', '정정 요청' + (S.isLead && pendingN ? ' ' + pendingN : '')]], sub, 'work'));
+      var otN = S.isAdmin ? (S.ots || []).filter(function (o) { return o.status === 'pending'; }).length : 0;
+      ui.put(view, ui.head('Work', '근무'), ui.tabs([['', '내 근무'], S.isLead ? ['team', '팀 현황'] : null, ['fix', '정정 요청' + (pendingN ? ' ' + pendingN : '')], ['ot', '연장·야간·휴일 신청' + (otN ? ' ' + otN : '')]], sub, 'work'));
       if (sub === 'team' && S.isLead) team(view);
+      else if (sub === 'ot') otHistory(view);
       else if (sub === 'fix') fixes(view);
       else mine(view);
     }

@@ -343,3 +343,8 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 .plan-what { flex: 1; min-width: 160px; }
 .plan-rev { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .plan-rev b { font-size: 16px; font-weight: 500; }
+
+/* 근무 표 — 정정 · 연장/야간/휴일 신청 버튼 */
+.wk-actions { white-space: nowrap; }
+.wk-actions .btn + .btn { margin-left: 4px; }
+td .tag + .tag { margin-left: 4px; }
