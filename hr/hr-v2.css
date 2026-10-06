@@ -1419,3 +1419,6 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .ws-res-foot .meta { margin-right: auto; }
 .ws-res-cat { font-size: 10px; color: var(--gray-600); border: 1px solid var(--gray-200); padding: 1px 6px; }
 .ws-res-form { display: flex; flex-direction: column; gap: 10px; }
+
+.ws-quick-prev button.prev { border-color: #c7d2fe; color: #1d4ed8; background: #eef2ff; }
+.ws-quick-prev button.prev.on { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }

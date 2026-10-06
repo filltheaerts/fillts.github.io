@@ -140,7 +140,7 @@
     }));
     return h('div', { class: 'stack' }, ul, arr.length < 10 ? ui.btn('+ 링크 추가 (시트 · 슬라이드 · 문서 · 드라이브 · 노션 …)', function () { arr.push({ t: '', url: '' }); HR.refresh(); }, 'btn-line btn-sm') : null);
   }
-  function subsEditor(arr) {
+  function subsEditor(arr, parent) {
     var move = function (i, k) { return function () { var j = i + k, t = arr[i]; arr[i] = arr[j]; arr[j] = t; HR.refresh(); }; };
     return h('div', { class: 'ws-subs-edit' }, arr.map(function (x, i) {
       var body = h('textarea', { rows: '3', maxlength: '4000', placeholder: '무엇을 · 누가 · 어떻게 — 세부 내용', oninput: function () { x.body = this.value; } }); body.value = x.body;
@@ -151,7 +151,8 @@
           ui.btn('삭제', function () { arr.splice(i, 1); HR.refresh(); }, 'btn-line btn-xs')),
         h('div', { class: 'form-grid ws-sub-dates' },
           ui.field('시작일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: x.start, onchange: function () { x.start = this.value; } }),
-            quickDates([['오늘', 0, 'd'], ['1주 뒤', 7, 'd']], function () { return fmt.today(); }, x.start, function (v) { x.start = v; }))),
+            quickDates([['오늘', 0, 'd'], ['1주 뒤', 7, 'd']], function () { return fmt.today(); }, x.start, function (v) { x.start = v; }),
+            prevPresets(i === 0 ? { start: parent.start, due: '', name: '프로젝트' } : { start: arr[i - 1].start, due: arr[i - 1].due, name: '앞 서브' }, x))),
           ui.field('마감 예정일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: x.due, onchange: function () { x.due = this.value; } }),
             quickDates([['1주', 7, 'd'], ['2주', 14, 'd'], ['1달', 1, 'm'], ['2달', 2, 'm']], function () { return x.start || fmt.today(); }, x.due, function (v) { x.due = v; },
               [['+1주', 7, 'd'], ['+1달', 1, 'm']], function () { return x.due || x.start || fmt.today(); })))),
@@ -160,6 +161,19 @@
           : ui.btn('+ 링크 추가 (구글 드라이브 · 시트 · 문서 …)', function () { x.links.push({ t: '', url: '' }); HR.refresh(); }, 'btn-line btn-xs'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: x.done, onchange: function () { x.done = this.checked; this.closest('.ws-sub-edit').classList.toggle('done', this.checked); } }), ' 완료'));
     }), arr.length < 20 ? ui.btn('+ 서브 프로젝트 추가', function () { arr.push({ t: '', start: '', due: '', body: '', done: false, links: [] }); HR.refresh(); }, 'btn-line btn-sm') : null);
+  }
+  // 서브 시작일 빠른 입력 — 앞 서브(첫 서브는 상위 프로젝트) 기준
+  function prevPresets(prev, x) {
+    var opts = [];
+    if (prev.start) {
+      if (prev.name === '프로젝트') opts.push(['프로젝트 시작일', prev.start]);
+      opts.push([prev.name + ' 시작 후 1주', L.addDays(prev.start, 7)]);
+    }
+    if (prev.due) opts.push([prev.name + ' 종료 후', L.addDays(prev.due, 1)]);
+    if (!opts.length) return null;
+    return h('div', { class: 'ws-quick ws-quick-prev' }, opts.map(function (o) {
+      return h('button', { type: 'button', class: 'prev' + (x.start === o[1] ? ' on' : ''), text: o[0], title: fmt.dot(o[1]), onclick: function () { x.start = o[1]; HR.refresh(); } });
+    }));
   }
   function cleanSubs(arr) {
     return (arr || []).filter(function (x) { return (x.t || '').trim(); }).slice(0, 20).map(function (x) {
@@ -263,7 +277,7 @@
         return h('label', { class: 'check chip' }, h('input', { type: 'checkbox', checked: d.people.indexOf(x.id) >= 0, onchange: function () { var i = d.people.indexOf(x.id); if (this.checked && i < 0) d.people.push(x.id); if (!this.checked && i >= 0) d.people.splice(i, 1); } }), ' ' + x.name);
       }))) : null,
       h('div', { class: 'field' }, h('label', { text: '핵심 링크 — 스프레드시트 · 프레젠테이션 · 문서 · 드라이브 · 노션' }), linksEditor(d.links)),
-      kind === 'project' ? h('div', { class: 'field ws-subs-field' }, h('label', { text: '서브 프로젝트 — 필요할 때만 추가 (이름 · 기간 · 내용 · 링크)' }), subsEditor(d.subs)) : null,
+      kind === 'project' ? h('div', { class: 'field ws-subs-field' }, h('label', { text: '서브 프로젝트 — 필요할 때만 추가 (이름 · 기간 · 내용 · 링크)' }), subsEditor(d.subs, d)) : null,
       ui.field(kind === 'project' ? '현황 · 구조' : '내용', body), h('p', { class: 'meta', text: FORMAT_HELP }), m,
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: '저장' }), ui.btn('취소', function () { draftPost = null; HR.go('ws/' + key + '/' + back + (p ? '/' + p.id : '')); }, 'btn-line')));
     f.addEventListener('submit', function (e) {
