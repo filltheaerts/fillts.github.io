@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var editing = {};
+  var editing = {}, goalEdit = false;
 
   /* ---------- 데이터 ---------- */
   function privOf(mid) {
@@ -221,11 +221,22 @@
     if (!el.children.length) el.appendChild(h('li', { class: 'empty', text: '다가오는 일정이 없습니다.' }));
     right.appendChild(ui.panel('Upcoming', null, el));
     // 내 목표
-    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).slice(0, 4);
+    // 순서는 각자 정한다 (hr_private.goalOrder) — 「순서」를 누르면 ↑↓로 바꾸고 바로 저장
+    var order = (S.priv && S.priv.goalOrder) || [];
+    var rank = function (g) { var i = order.indexOf(g.id); return i < 0 ? 1e6 + (g.createdAt && g.createdAt.toMillis ? g.createdAt.toMillis() / 1e7 : 0) : i; };
+    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return rank(a) - rank(b); });
     var gl = h('ul', { class: 'list' });
-    goals.forEach(function (g) { gl.appendChild(HR.goals.mini(g)); });
+    var saveOrder = function (ids) { db.doc('hr_private/' + S.mid).set({ goalOrder: ids, updatedAt: FV.serverTimestamp() }, { merge: true }).catch(ui.fail); };
+    (goalEdit ? goals : goals.slice(0, 6)).forEach(function (g, i) {
+      if (!goalEdit) return gl.appendChild(HR.goals.mini(g));
+      var move = function (k) { return function () { var ids = goals.map(function (x) { return x.id; }), j = i + k; if (j < 0 || j >= ids.length) return; var t = ids[i]; ids[i] = ids[j]; ids[j] = t; S.priv = Object.assign({}, S.priv, { goalOrder: ids }); saveOrder(ids); HR.refresh(); }; };
+      gl.appendChild(h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === goals.length - 1, onclick: move(1) })),
+        h('div', { class: 'grow' }, HR.goals.mini(g))));
+    });
     if (!gl.children.length) gl.appendChild(h('li', { class: 'empty', text: '진행 중인 목표가 없습니다. 목표관리에서 이번 분기 목표를 세워 보세요.' }));
-    right.appendChild(ui.panel('My goals', h('a', { href: '#goals', class: 'link', text: '목표관리' }), gl));
+    right.appendChild(ui.panel('My goals', h('span', { class: 'row-inline' }, goals.length > 1 ? h('a', { href: '#', class: 'link', text: goalEdit ? '완료' : '순서', onclick: function (e) { e.preventDefault(); goalEdit = !goalEdit; HR.refresh(); } }) : null, ' ', h('a', { href: '#goals', class: 'link', text: '목표관리' })), gl));
 
     ui.put(view, HR.today.panel(), h('div', { class: 'home-grid' }, left, right));
     void me;

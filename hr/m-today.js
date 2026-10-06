@@ -69,14 +69,14 @@
         var want = {};
         (j.items || []).forEach(function (ev) {
           var k = classify(ev);
-          if (k) expand(ev, k, from, to).forEach(function (o) { want[S.mid + '_' + o.date.replace(/-/g, '') + '_' + hash(ev.id + o.date)] = o; });
+          if (k) expand(ev, k, from, to).forEach(function (o) { o.title = String(ev.summary || '').trim().slice(0, 80); o.place = String(ev.location || '').trim().slice(0, 80); want[S.mid + '_' + o.date.replace(/-/g, '') + '_' + hash(ev.id + o.date)] = o; });
         });
         var b = db.batch(), n = 0;
         (S.sched || []).filter(function (s) { return s.memberId === S.mid && s.src === 'gcal' && !want[s.id]; }).forEach(function (s) { b.delete(db.doc('hr_sched/' + s.id)); n++; });
         Object.keys(want).forEach(function (id) {
           var o = want[id], cur = (S.sched || []).filter(function (s) { return s.id === id; })[0];
-          if (cur && cur.kind === o.kind && cur.from === o.from && cur.to === o.to) return;
-          b.set(db.doc('hr_sched/' + id), { memberId: S.mid, kind: o.kind, date: o.date, from: o.from, to: o.to, title: '', src: 'gcal', at: FV.serverTimestamp() }); n++;
+          if (cur && cur.kind === o.kind && cur.from === o.from && cur.to === o.to && cur.title === o.title && (cur.place || '') === o.place) return;
+          b.set(db.doc('hr_sched/' + id), { memberId: S.mid, kind: o.kind, date: o.date, from: o.from, to: o.to, title: o.title, place: o.place, src: 'gcal', at: FV.serverTimestamp() }); n++;   // 외근은 제목·장소까지 보인다
         });
         return n ? b.commit() : null;
       })
@@ -114,11 +114,11 @@
     var half = awayOf(m.id, t).filter(function (a) { return (a.unit === 'am' && nm < HALF) || (a.unit === 'pm' && nm >= HALF); })[0];
     if (half) return { dot: 'away', label: half.unit === 'am' ? '오전 반차' : '오후 반차', sub: HR.policy(half.type).name };
     var trip = sc.filter(function (s) { return s.kind === 'trip' && nowIn(s, nm); })[0];
-    if (trip) return { dot: 'field', label: '출장 중', sub: trip.to ? '~' + trip.to : '' };
+    if (trip) return { dot: 'field', label: '출장 중', sub: [trip.to ? '~' + trip.to : '', trip.title, trip.place].filter(Boolean).join(' · ') };
     var meet = sc.filter(function (s) { return s.kind === 'meeting' && nowIn(s, nm); })[0];
     if (meet) return { dot: 'meet', label: '미팅 중', sub: meet.to ? '~' + meet.to : '' };
     var field = sc.filter(function (s) { return s.kind === 'field' && nowIn(s, nm); })[0];
-    if (field) return { dot: 'field', label: '외근 중', sub: field.to ? '~' + field.to : '' };
+    if (field) return { dot: 'field', label: '외근 중', sub: [field.to ? '~' + field.to : '', field.title, field.place].filter(Boolean).join(' · ') };
     var next = sc.filter(function (s) { return s.from && L.hmToMin(s.from) > nm && s.kind !== 'remote'; })[0];
     var nextTxt = next ? '다음 ' + KNAME[next.kind] + ' ' + next.from : '';
     if (lv.st === 'in') {
@@ -150,7 +150,12 @@
       var an = anniv(m, t);
       if (an) groups.anniv.push(h('li', null, ui.tag('기념일', 'ok'), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: an })));
       schedOf(m.id, t).forEach(function (s) {
-        groups.sched.push(h('li', { class: nowIn(s, nm) && s.kind !== 'remote' ? 'now' : '' }, ui.tag(KNAME[s.kind], KTAG[s.kind]), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: span(s) })));
+        // 누르면 장소 · 지도 링크가 펼쳐진다
+        var li = h('li', { class: (nowIn(s, nm) && s.kind !== 'remote' ? 'now ' : '') + (s.place ? 'has-detail' : ''), title: s.place ? '눌러서 장소 보기' : '' },
+          ui.tag(KNAME[s.kind], KTAG[s.kind]), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: [span(s), s.title].filter(Boolean).join(' · ') }),
+          s.place ? h('div', { class: 'today-detail' }, h('span', { text: '장소 · ' + s.place }), ' ', h('a', { class: 'link', href: 'https://map.naver.com/p/search/' + encodeURIComponent(s.place), target: '_blank', rel: 'noopener noreferrer', text: '지도 ↗', onclick: function (e) { e.stopPropagation(); } })) : null);
+        if (s.place) li.addEventListener('click', function () { li.classList.toggle('open'); });
+        groups.sched.push(li);
       });
     });
     var today = h('ul', { class: 'today-list' }, groups.away, groups.anniv, groups.sched);
