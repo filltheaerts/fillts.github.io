@@ -39,5 +39,26 @@
       h('p', { class: 'note', text: '홈 화면 앱은 기기에 데이터를 따로 저장하지 않고 항상 최신 화면을 불러옵니다. 로그인은 브라우저와 별도로 한 번 더 해야 할 수 있습니다.' }));
   }
 
+  // 연결 테스트: 서버가 로그인한 본인에게 Slack DM · 메일을 보내고 결과를 돌려준다 (설정 › 알림 연동, INFO › 알림 설정)
+  var TEST_URL = 'https://asia-northeast3-fillts-web.cloudfunctions.net/hrTest';
+  HR.testPanel = function () {
+    var out = h('ul', { class: 'list test-result' }), btn = ui.btn('테스트 알림 받기', function () {
+      var u = firebase.auth().currentUser; if (!u) return;
+      btn.disabled = true; ui.clear(out); out.appendChild(h('li', { class: 'meta', text: '보내는 중…' }));
+      u.getIdToken().then(function (tok) { return fetch(TEST_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: '{}' }); })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          ui.clear(out);
+          if (j.error) { out.appendChild(h('li', { class: 'red-text', text: j.error })); return; }
+          [['Slack', j.slack, 'Slack 앱에 fillts HR 메시지가 왔는지 확인하세요.'], ['메일', j.email, '회사 메일함(스팸함 포함)을 확인하세요.']].forEach(function (x) {
+            out.appendChild(h('li', null, ui.tag(x[0] + (x[1].ok ? ' ✓' : ' ✕'), x[1].ok ? 'ok' : 'red'), ' ', h('span', { class: 'meta', text: x[1].ok ? x[2] : x[1].err })));
+          });
+        })
+        .catch(function () { ui.clear(out); out.appendChild(h('li', { class: 'red-text', text: '서버에 연결하지 못했습니다. 잠시 후 다시 눌러 주세요.' })); })
+        .then(function () { btn.disabled = false; });
+    }, 'btn-line btn-sm');
+    return h('div', { class: 'test-panel' }, h('div', { class: 'row' }, btn, h('span', { class: 'meta', text: '나에게 Slack 메시지와 메일을 한 통씩 보내 연결을 확인합니다.' })), out);
+  };
+
   HR.app = { panel: panel };
 })();

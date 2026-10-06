@@ -176,6 +176,66 @@
       ui.panel('Accounts', null, ul));
   }
 
+  // ── 원클릭 연동: Slack 앱은 미리 채운 매니페스트로 만들고, 값 2개만 붙여 넣는다 · 메일은 앱 비밀번호 1개 ──
+  var SLACK_ACTIONS_URL = 'https://slackactions-syaknclaca-du.a.run.app';
+  function slackManifestUrl() {
+    var mf = {
+      display_information: { name: 'fillts HR', description: 'fillts HR 알림 · 승인 버튼', background_color: '#0a0a0a' },
+      features: { bot_user: { display_name: 'fillts HR', always_online: true } },
+      oauth_config: { scopes: { bot: ['chat:write', 'users:read', 'users:read.email', 'im:write'] } },
+      settings: { interactivity: { is_enabled: true, request_url: SLACK_ACTIONS_URL }, org_deploy_enabled: false, socket_mode_enabled: false, token_rotation_enabled: false }
+    };
+    return 'https://api.slack.com/apps?new_app=1&manifest_json=' + encodeURIComponent(JSON.stringify(mf));
+  }
+  function connectPanel() {
+    var meta = HR.load('hr_secret_meta', function () { return db.doc('hr_secret_meta/main').get().then(function (s) { return s.exists ? s.data() : {}; }); }) || {};
+    var saveMeta = function (d) { return db.doc('hr_secret_meta/main').set(Object.assign(d, { updatedAt: FV.serverTimestamp() }), { merge: true }).then(function () { HR.invalidate('hr_secret_meta'); }); };
+    // Slack
+    var bot = ui.input({ placeholder: 'xoxb-…', autocomplete: 'off' }), sign = ui.input({ placeholder: 'Signing Secret (32자리)', autocomplete: 'off' }), sm = ui.msg();
+    var slackForm = h('form', { class: 'connect-step' },
+      h('ol', { class: 'app-steps' },
+        h('li', null, h('a', { href: slackManifestUrl(), target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-sm', text: '① Slack 앱 만들기 (설정 자동 입력)' }),
+          h('div', { class: 'meta', text: '워크스페이스(filltshq) 선택 → Next → Create' })),
+        h('li', null, '② 만든 앱 화면 왼쪽 「Install App」 → 「Install to filltshq」 → 허용'),
+        h('li', null, '③ 「Bot User OAuth Token」(xoxb-…)과 Basic Information의 「Signing Secret」을 아래에 붙여 넣고 저장')),
+      h('div', { class: 'row' }, ui.field('Bot User OAuth Token', bot), ui.field('Signing Secret', sign)), sm,
+      h('button', { class: 'btn btn-sm', type: 'submit', text: 'Slack 연결 저장' }));
+    slackForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var b = bot.value.trim(), g = sign.value.trim();
+      if (!/^xoxb-[A-Za-z0-9-]+$/.test(b)) return ui.err(sm, 'Bot User OAuth Token은 xoxb- 로 시작합니다.');
+      if (!/^[a-f0-9]{20,64}$/.test(g)) return ui.err(sm, 'Signing Secret을 확인하세요 (영문 소문자·숫자 32자리).');
+      db.doc('hr_secrets/main').set({ slackBot: b, slackSigning: g, updatedAt: FV.serverTimestamp() }, { merge: true })
+        .then(function () { return saveMeta({ slack: true, slackHint: '…' + b.slice(-4) }); })
+        .then(function () { bot.value = ''; sign.value = ''; ui.ok(sm, '저장했습니다. 아래 「테스트 알림 받기」로 확인하세요.'); }).catch(function (x) { ui.fail(x, sm); });
+    });
+    // 메일
+    var user = ui.input({ type: 'email', value: meta.smtpUser || 'kjw@fillts.com' }), pass = ui.input({ placeholder: '16자리 앱 비밀번호', autocomplete: 'off' }), mm = ui.msg();
+    var mailForm = h('form', { class: 'connect-step' },
+      h('ol', { class: 'app-steps' },
+        h('li', null, h('a', { href: 'https://myaccount.google.com/apppasswords', target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-sm', text: '① 앱 비밀번호 만들기' }),
+          h('div', { class: 'meta', text: '보내는 계정(예: kjw@fillts.com)으로 로그인 → 앱 이름 「fillts HR」 → 만들기. 2단계 인증이 켜져 있어야 보입니다.' })),
+        h('li', null, '② 화면에 뜬 16자리를 아래에 붙여 넣고 저장')),
+      h('div', { class: 'row' }, ui.field('보내는 메일 계정', user), ui.field('앱 비밀번호', pass)), mm,
+      h('button', { class: 'btn btn-sm', type: 'submit', text: '메일 연결 저장' }));
+    mailForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var u = user.value.trim().toLowerCase(), pw = pass.value.replace(/\s+/g, '');
+      if (!/^[^@\s]+@fillts\.com$/.test(u)) return ui.err(mm, '@fillts.com 회사 메일만 쓸 수 있습니다.');
+      if (!/^[a-z]{16}$/i.test(pw)) return ui.err(mm, '앱 비밀번호는 영문 16자리입니다 (띄어쓰기는 자동으로 뺍니다).');
+      db.doc('hr_secrets/main').set({ smtpUser: u, smtpPass: pw, updatedAt: FV.serverTimestamp() }, { merge: true })
+        .then(function () { return saveMeta({ mail: true, smtpUser: u }); })
+        .then(function () { pass.value = ''; ui.ok(mm, '저장했습니다. 아래 「테스트 알림 받기」로 확인하세요.'); }).catch(function (x) { ui.fail(x, mm); });
+    });
+    var stat = function (on, t) { return ui.tag(on ? '연결됨' + (t ? ' · ' + t : '') : '미연결', on ? 'ok' : 'mute'); };
+    return ui.panel('Connect · 원클릭 연동 (관리자 1회)', null,
+      h('div', { class: 'two-col connect-grid' },
+        h('div', { class: 'stack' }, h('div', { class: 'connect-head' }, h('b', { text: 'Slack' }), stat(meta.slack, meta.slackHint)), slackForm),
+        h('div', { class: 'stack' }, h('div', { class: 'connect-head' }, h('b', { text: '회사 메일' }), stat(meta.mail, meta.smtpUser)), mailForm)),
+      HR.testPanel(),
+      h('p', { class: 'note', text: '저장한 값은 서버만 읽을 수 있고 화면에서는 다시 볼 수 없습니다(끝 4자리만 표시). 구성원은 따로 설정할 것이 없습니다 — Slack은 회사 메일과 같은 이메일의 Slack 계정으로, 메일은 회사 메일로 자동 연결되며 각자 INFO › 알림 설정에서 테스트할 수 있습니다.' }));
+  }
+
   function integrations(view) {
     var st = S.status || {};
     var row = function (key, name, desc) {
@@ -183,7 +243,7 @@
       return h('li', null, h('div', { class: 'grow' }, h('div', { text: name }), h('div', { class: 'meta', text: desc })),
         s ? ui.tag((s.ok ? '정상' : '오류') + (s.at && s.at.toDate ? ' · ' + fmt.ts(s.at) : ''), s.ok ? 'ok' : 'red') : ui.tag('기록 없음', 'mute'));
     };
-    ui.put(view,
+    ui.put(view, connectPanel(),
       ui.panel('Status', null, h('ul', { class: 'list' },
         row('slack', 'Slack', '요청 DM + 승인/반려 버튼, HR 채널 공지, 리마인드'),
         row('email', '회사 메일', '승인 요청·결과, 중요 공지, 연차 촉진 (Google Workspace SMTP)'),
@@ -193,7 +253,7 @@
         h('thead', null, h('tr', null, ['이벤트', '받는 사람', '웹', 'Slack', '메일'].map(function (x) { return h('th', { text: x }); }))),
         h('tbody', null, [
           ['휴가 신청', '리더 + 관리자', '●', '● 승인 버튼', '●'], ['휴가 승인/반려', '신청자', '●', '●', '●'], ['휴가 확정', 'HR 채널', '', '●', ''],
-          ['근태 정정 요청', '리더 + 관리자', '●', '● 승인 버튼', '●'], ['공지 게시', '전원', '●', '● 채널', '중요 공지만'], ['칭찬', '받는 사람', '●', '●', ''],
+          ['근태 정정 요청', '관리자', '●', '● 승인 버튼', '●'], ['연장·야간·휴일근무 신청', '관리자', '●', '● 승인 버튼', '●'], ['증명서 · 문서 요청', '관리자 → 신청자', '●', '●', '●'], ['공지 게시', '전원', '●', '● 채널', '중요 공지만'], ['칭찬', '받는 사람', '●', '●', ''],
           ['원온원 생성 · D-1', '참여자', '●', '●', ''], ['퇴근 누락 21:30', '본인', '●', '●', ''], ['주 48시간 초과 (목)', '본인 + 리더', '●', '●', ''],
           ['연차 사용촉진 기한', '본인 + 관리자', '●', '●', '관리자 필수'], ['목표 체크인 (금)', '목표 담당자', '●', '●', ''], ['입사기념일', 'HR 채널', '', '●', '']
         ].map(function (r) { return h('tr', null, r.map(function (c) { return h('td', { text: c }); })); }))))),
