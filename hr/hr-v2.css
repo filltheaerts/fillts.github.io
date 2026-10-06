@@ -720,3 +720,5 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .hww-cn { font-size: 12px; font-weight: 600; color: var(--red); width: 22px; flex: none; padding-top: 2px; }
 .hww-culture b { font-size: 14px; font-weight: 500; }
 .hww-culture p { font-size: 13px; color: var(--gray-600); margin-top: 3px; line-height: 1.6; }
+
+.ws-crew-edit { margin-left: 8px; font-size: 12px; }

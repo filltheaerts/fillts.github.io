@@ -41,7 +41,22 @@
   function inTeam(key) {
     if (S.isAdmin || key === ALL) return true;
     if (/^tf_/.test(key)) { var t = tfs().filter(function (x) { return x.id === key; })[0]; return !!t && (t.members || []).indexOf(S.mid) >= 0; }
-    return (S.members[S.mid] || {}).orgId === key;   // 보안 규칙과 같게 주조직 기준
+    var pg = HR.cache['ws_page:' + key] && HR.cache['ws_page:' + key].data;
+    return (S.members[S.mid] || {}).orgId === key || !!(pg && (pg.crew || []).indexOf(S.mid) >= 0);   // 보안 규칙과 같게: 주조직 또는 지정 진행자
+  }
+  var crewEdit = null;   // 관리자 진행자 지정 중인 공간
+  function crewEditor(key, current) {
+    var pick = current.slice(), m = ui.msg();
+    var box = h('div', { class: 'ws-people pick' }, HR.memberList(false).map(function (x) {
+      return h('label', { class: 'check chip' }, h('input', { type: 'checkbox', checked: pick.indexOf(x.id) >= 0, onchange: function () { var i = pick.indexOf(x.id); if (this.checked && i < 0) pick.push(x.id); if (!this.checked && i >= 0) pick.splice(i, 1); } }), ' ' + x.name);
+    }));
+    return ui.panel('Crew · 진행자 지정 (관리자)', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); crewEdit = null; HR.refresh(); } }),
+      h('p', { class: 'muted small', text: '체크한 사람이 이 공간의 진행자로 맨 위에 표시되고, 소속과 상관없이 이 공간에 프로젝트 · 글을 쓸 수 있습니다.' }), box, m,
+      h('div', { class: 'row' }, ui.btn('저장', function () {
+        var pg = page(key) || {};
+        db.doc('hr_ws_pages/' + key).set({ intro: pg.intro || '', goals: pg.goals || [], slack: pg.slack || '', links: pg.links || [], crew: pick, by: S.mid, updatedAt: FV.serverTimestamp() })
+          .then(function () { crewEdit = null; done(key); ui.toast('진행자를 저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
+      }), ui.btn('취소', function () { crewEdit = null; HR.refresh(); }, 'btn-line')));
   }
   function page(key) { return HR.load('ws_page:' + key, function () { return db.doc('hr_ws_pages/' + key).get().then(function (s) { return s.exists ? s.data() : {}; }); }); }
   function posts(key) { return HR.load('ws_posts:' + key, function () { return db.collection('hr_ws_posts').where('org', '==', key).get().then(HR.rows); }) || []; }
@@ -139,7 +154,7 @@
           e.goals.length < 10 ? ui.btn('+ 목표 추가', function () { e.goals.push({ t: '', d: '', due: '', st: 'idea' }); HR.refresh(); }, 'btn-line btn-sm') : null), m,
         h('div', { class: 'row' }, ui.btn('저장', function () {
           if (e.slack.trim() && !slackId(e.slack)) return ui.err(m, 'Slack 채널 링크는 https://…slack.com/archives/C… 형식이어야 합니다.');
-          var body = { intro: e.intro.trim(), slack: e.slack.trim(), links: cleanLinks(e.links), goals: e.goals.filter(function (g) { return g.t.trim(); }).map(function (g) { return { t: g.t.trim(), d: (g.d || '').trim(), due: g.due || '', st: g.st || 'idea' }; }), by: S.mid, updatedAt: FV.serverTimestamp() };
+          var body = { crew: (p.crew || []), intro: e.intro.trim(), slack: e.slack.trim(), links: cleanLinks(e.links), goals: e.goals.filter(function (g) { return g.t.trim(); }).map(function (g) { return { t: g.t.trim(), d: (g.d || '').trim(), due: g.due || '', st: g.st || 'idea' }; }), by: S.mid, updatedAt: FV.serverTimestamp() };
           db.doc('hr_ws_pages/' + key).set(body).then(function () { editPage = null; done(key); ui.toast('저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
         }), ui.btn('취소', function () { editPage = null; HR.refresh(); }, 'btn-line'))));
     }
@@ -324,9 +339,15 @@
       if (ordering) return ui.put(view, orderPanel());
       if (key === EVERY) return everyProject(view);
       var tfDoc = /^tf_/.test(key) ? tfs().filter(function (x) { return x.id === key; })[0] : null;
-      var who = tfDoc ? (tfDoc.members || []).slice() : HR.memberList(false).filter(function (m) { return key === ALL ? false : m.orgId === key; }).map(function (m) { return m.id; });
-      posts(key).forEach(function (p) { if (p.kind === 'project' && p.status !== 'done') crew(p).forEach(function (x) { if (who.indexOf(x) < 0) who.push(x); }); });
-      if (!parts[2] && (key !== ALL || who.length)) ui.put(view, crewRow(who, '진행자', false));   // 프로젝트 상세에서는 그 프로젝트 진행자만
+      var pgc = key !== EVERY ? page(key) : null, assigned = pgc && (pgc.crew || []).length ? pgc.crew.slice() : null;
+      var who = assigned || (tfDoc ? (tfDoc.members || []).slice() : HR.memberList(false).filter(function (m) { return key === ALL ? false : m.orgId === key; }).map(function (m) { return m.id; }));
+      if (!assigned) posts(key).forEach(function (p) { if (p.kind === 'project' && p.status !== 'done') crew(p).forEach(function (x) { if (who.indexOf(x) < 0) who.push(x); }); });
+      if (!parts[2]) {
+        var cr = crewRow(who, '진행자', false);
+        if (S.isAdmin) cr.appendChild(h('a', { href: '#', class: 'link ws-crew-edit', text: crewEdit === key ? '닫기' : '진행자 지정', onclick: function (e) { e.preventDefault(); crewEdit = crewEdit === key ? null : key; HR.refresh(); } }));
+        ui.put(view, cr);
+        if (S.isAdmin && crewEdit === key) ui.put(view, crewEditor(key, assigned || who));
+      }   // 프로젝트 상세에서는 그 프로젝트 진행자만
       ui.put(view, h('div', { class: 'ws-sub' }, ui.tabs([['intro', '소개 · 목표'], ['projects', '프로젝트'], ['board', '게시판']], sub, 'ws/' + key)));
       if (sub === 'projects') return projects(view, key, parts.slice(2));
       if (sub === 'board') return board(view, key, parts.slice(2));
