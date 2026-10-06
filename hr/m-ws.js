@@ -200,10 +200,14 @@
     var last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), t = new Date(Date.UTC(y, m, Math.min(d0, last)));
     return t.toISOString().slice(0, 10);
   }
-  function quickDates(opts, base, cur, set) {
+  // plus: 지금 들어간 날짜(plusBase)에 더하는 버튼 — 누를 때마다 위 날짜가 올라간다
+  function quickDates(opts, base, cur, set, plus, plusBase) {
+    var calc = function (b0, o) { return o[2] === 'm' ? addMonths(b0, o[1]) : L.addDays(b0, o[1]); };
     return h('div', { class: 'ws-quick' }, opts.map(function (o) {
-      var v = o[2] === 'm' ? addMonths(base(), o[1]) : L.addDays(base(), o[1]);
-      return h('button', { type: 'button', class: cur === v ? 'on' : '', text: o[0], title: fmt.dot(v), onclick: function () { set(o[2] === 'm' ? addMonths(base(), o[1]) : L.addDays(base(), o[1])); HR.refresh(); } });
+      var v = calc(base(), o);
+      return h('button', { type: 'button', class: cur === v ? 'on' : '', text: o[0], title: fmt.dot(v), onclick: function () { set(calc(base(), o)); HR.refresh(); } });
+    }), plus ? h('span', { class: 'ws-quick-sep' }) : null, (plus || []).map(function (o) {
+      return h('button', { type: 'button', class: 'plus', text: o[0], title: '지금 날짜에서 ' + o[0].slice(1) + ' 더하기', onclick: function () { set(calc(plusBase(), o)); HR.refresh(); } });
     }));
   }
   function postForm(view, key, kind, p) {
@@ -222,7 +226,8 @@
         ui.field('시작일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: d.start, onchange: function () { d.start = this.value; } }),
           quickDates([['오늘', 0, 'd'], ['1주 뒤', 7, 'd']], function () { return fmt.today(); }, d.start, function (v) { d.start = v; }))),
         ui.field('마감 예정일 (시작일 기준)', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } }),
-          quickDates([['1주', 7, 'd'], ['2주', 14, 'd'], ['4주', 28, 'd'], ['1달', 1, 'm'], ['4달', 4, 'm']], function () { return d.start || fmt.today(); }, d.due, function (v) { d.due = v; })))) : null,
+          quickDates([['1주', 7, 'd'], ['2주', 14, 'd'], ['1달', 1, 'm'], ['2달', 2, 'm'], ['3달', 3, 'm'], ['6달', 6, 'm']], function () { return d.start || fmt.today(); }, d.due, function (v) { d.due = v; },
+            [['+1주', 7, 'd'], ['+1달', 1, 'm']], function () { return d.due || d.start || fmt.today(); })))) : null,
       kind === 'project' ? h('div', { class: 'field' }, h('label', { text: '프로젝트 특성 (여러 개 선택 가능)' }), h('div', { class: 'ws-flagpick' }, FLAGS.map(function (x) {
         return h('label', { class: 'check chip fl-' + x[0] }, h('input', { type: 'checkbox', checked: d.flags.indexOf(x[0]) >= 0, onchange: function () { var i = d.flags.indexOf(x[0]); if (this.checked && i < 0) d.flags.push(x[0]); if (!this.checked && i >= 0) d.flags.splice(i, 1); } }), ' ' + x[1]);
       }))) : null,

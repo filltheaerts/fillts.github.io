@@ -922,3 +922,7 @@ a.tl-label:hover { background: var(--gray-100); }
 .ws-quick button { border: 1px solid var(--gray-200); background: var(--paper); padding: 3px 9px; font-size: 11px; color: var(--gray-600); cursor: pointer; font-family: inherit; }
 .ws-quick button:hover { border-color: var(--black); color: var(--black); }
 .ws-quick button.on { border-color: var(--black); background: var(--black); color: #fff; }
+
+.ws-quick-sep { width: 1px; background: var(--gray-200); margin: 2px 4px; }
+.ws-quick button.plus { border-style: dashed; color: #1d4ed8; }
+.ws-quick button.plus:hover { border-color: #1d4ed8; }
