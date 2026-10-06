@@ -29,6 +29,23 @@
     })));
   }
 
+  // 상세판 PDF — 로그인한 구성원만 받는다 (hr_about_files/onboarding_pdf_0, _1 … 조각)
+  function downloadPdf(btn) {
+    btn.disabled = true; var label = btn.textContent; btn.textContent = '내려받는 중…';
+    var parts = [];
+    (function next(k) {
+      db.doc('hr_about_files/onboarding_pdf_' + k).get().then(function (s) {
+        if (s.exists && k < 8) { parts.push(s.data().data); return next(k + 1); }
+        if (!parts.length) throw { user: 'PDF가 아직 준비되지 않았습니다.' };
+        var bin = atob(parts.join('')), u = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([u], { type: 'application/pdf' })), a = h('a', { href: url, download: '필츠_온보딩가이드_상세판.pdf' });
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        btn.disabled = false; btn.textContent = label;
+      }).catch(function (x) { btn.disabled = false; btn.textContent = label; x && x.user ? ui.toast(x.user) : ui.fail(x); });
+    })(0);
+  }
+
   function render(view) {
     var P = plan();
     if (!P) { var c = HR.cache.hr_plan_onb; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
@@ -44,7 +61,8 @@
     }
     head.appendChild(h('b')); head.appendChild(h('span', { class: 'onb-bar big' }, fill));
     ui.put(view,
-      h('section', { class: 'onb-hero' }, h('span', { class: 'onb-kicker', text: 'ONBOARDING · 첫 한 달 가이드' }), h('h2', { text: P.title }), h('p', { text: P.lead }), head),
+      h('section', { class: 'onb-hero' }, h('div', { class: 'onb-hero-top' }, h('span', { class: 'onb-kicker', text: 'ONBOARDING · 첫 한 달 가이드' }),
+        ui.btn('↓ PDF 다운로드 (상세판 16쪽)', function () { downloadPdf(this); }, 'btn-sm onb-pdf')), h('h2', { text: P.title }), h('p', { text: P.lead }), head),
       h('ol', { class: 'onb-stages' }, P.stages.map(function (st, si) {
         return h('li', { class: 'onb-stage' },
           h('div', { class: 'onb-stage-head' }, h('span', { class: 'onb-when', text: st.when }), h('h3', { text: st.title }), h('span', { class: 'onb-count' })),

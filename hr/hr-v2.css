@@ -1315,3 +1315,7 @@ a.tl-label:hover { background: var(--gray-100); }
 .ins-sec.sol li::marker { color: #059669; }
 .ins-sec.sol blockquote { border-left-color: #059669; background: #d1fae5; }
 @media (max-width: 760px) { .ins-pair .ins-sec { padding: 14px; } }
+
+.onb-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.onb-hero .onb-pdf { background: #fff; color: var(--black); border-color: #fff; }
+.onb-hero .onb-pdf:hover { background: var(--red); color: #fff; border-color: var(--red); }
