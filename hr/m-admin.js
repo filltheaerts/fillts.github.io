@@ -33,7 +33,7 @@
   }
 
   // 출근 위치 제한 (기본: 월~목 사무실 반경 500m, 금요일 자유) — 퇴근·연장 신청 등은 제한 없음
-  var GEO_PRESETS = [['서울숲 SK V1 TOWER (성수일로8길 5)', 37.5470746, 127.0516163], ['성수 SK V1 CENTER (아차산로17길 48)', 37.5461373, 127.0657873]];
+  var GEO_PRESETS = [['성수 SK V1 타워 (연무장5가길 25)', 37.5435511, 127.0556139]];   // 사무실 주소 (261006 대표 확정)
   function geoForm() {
     var g = S.cfg.geo || {}, m = ui.msg();
     var on = h('input', { type: 'checkbox', checked: !!g.on });
@@ -41,7 +41,7 @@
     var radius = ui.input({ type: 'number', min: '100', max: '5000', step: '50', value: g.radius || 500 });
     var days = g.days || [1, 2, 3, 4], boxes = {};
     var dayRow = h('div', { class: 'row' }, [1, 2, 3, 4, 5, 6, 0].map(function (d) { boxes[d] = h('input', { type: 'checkbox', checked: days.indexOf(d) >= 0 }); return h('label', { class: 'check' }, boxes[d], ' ' + '일월화수목금토'[d]); }));
-    var presets = h('div', { class: 'row' }, GEO_PRESETS.map(function (p) { return ui.btn(p[0], function () { label.value = p[0].split(' (')[0]; lat.value = p[1]; lng.value = p[2]; }, 'btn-line btn-xs'); }),
+    var presets = h('div', { class: 'row' }, GEO_PRESETS.map(function (p) { return ui.btn(p[0], function () { label.value = p[0]; lat.value = p[1]; lng.value = p[2]; }, 'btn-line btn-xs'); }),
       ui.btn('지금 내 위치로', function () {
         if (!navigator.geolocation) return ui.err(m, '위치 확인을 지원하지 않는 브라우저입니다.');
         m.textContent = '위치를 확인하는 중…';
