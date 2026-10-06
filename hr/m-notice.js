@@ -123,14 +123,36 @@
       h('p', { class: 'note', text: '빨간 점은 그 항목의 핵심 목표 지점입니다. 목표가 바뀌면 이 화면이 함께 갱신됩니다.' }));
   }
 
+  /* ---------- 일하는 법 (hr_plan/howwework — 노션 「일하는 방식」 정리본) ---------- */
+  function howWeWork(view) {
+    if (HR.cache.hr_plan_hww && !HR.cache.hr_plan_hww.loading && Date.now() - HR.cache.hr_plan_hww.at > 15000) delete HR.cache.hr_plan_hww;
+    var P = HR.load('hr_plan_hww', function () { return db.doc('hr_plan/howwework').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
+    if (!P) { var c = HR.cache.hr_plan_hww; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
+    var lines = function (t) { return String(t || '').split('\n').map(function (x, i) { return [i ? h('br') : null, x]; }); };
+    ui.put(view,
+      h('div', { class: 'hww-hero' }, h('div', { class: 'label', text: 'How we work · 바인그라피가 일하는 방식' }), h('h2', { class: 'hww-intro' }, P.intro.map(function (x, i) { return [i ? h('br') : null, x]; }))),
+      h('div', { class: 'hww-principles' }, P.principles.map(function (x) {
+        return h('section', { class: 'hww-p' }, h('span', { class: 'hww-no', text: x.no }), h('h3', { text: x.title }), h('blockquote', null, lines(x.quote)), h('p', null, lines(x.body)));
+      })),
+      h('p', { class: 'hww-note', text: P.note }),
+      ui.panel('Growth · ' + P.growth.title, null, h('p', { class: 'muted small', text: P.growth.lead }),
+        h('div', { class: 'hww-growth' }, P.growth.items.map(function (x, i) {
+          return [i ? h('span', { class: 'hww-x', text: '×' }) : null, h('div', { class: 'hww-g' }, h('div', { class: 'hww-g-head' }, h('b', { text: x.k }), h('span', { class: 'hww-han', text: x.h })), h('span', { class: 'hww-g-t', text: x.t }), h('p', { text: x.d }))];
+        }))),
+      ui.panel('Happiness · ' + P.happy.title, null, h('p', { class: 'muted small', text: P.happy.lead }),
+        h('ol', { class: 'hww-happy' }, P.happy.items.map(function (x) { return h('li', null, h('div', null, h('b', { text: x.k }), h('span', { class: 'meta', text: ' — ' + x.t })), h('p', { text: x.d })); }))),
+      ui.panel('Culture · ' + P.culture.title, null, h('p', { class: 'muted small', text: P.culture.lead }),
+        h('ol', { class: 'hww-culture' }, P.culture.items.map(function (x, i) { return h('li', null, h('span', { class: 'hww-cn', text: ('0' + (i + 1)).slice(-2) }), h('div', null, h('b', { text: x.t }), h('p', { text: x.d }))); }))));
+  }
+
   HR.register('notice', {
     render: function (view, parts) {
       var sub = parts[0] || '';
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
-      if (sub && sub !== 'feed' && sub !== 'milestone') return detail(view, sub);
-      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['milestone', '마일스톤'], ['feed', '소식 · 칭찬']], sub, 'notice'));
-      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else listView(view);
+      if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how') return detail(view, sub);
+      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['milestone', '마일스톤'], ['how', '일하는 법'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else listView(view);
     }
   });
 })();
