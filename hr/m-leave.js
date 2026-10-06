@@ -60,12 +60,12 @@
   /* ---------- 내 휴가 ----------
      기본: 연차 / 오전 반차 / 오후 반차 (큰 버튼)
      그 외: 경조사 · 가족·출산 · 건강 · 회사 휴가 (접힌 작은 버튼) */
-  var CATS = [['family_event', '경조사'], ['family', '가족 · 출산'], ['health', '건강'], ['company', '회사 휴가']];
+  var CATS = [['company', '회사 휴가'], ['family_event', '경조사'], ['family', '가족 · 출산'], ['health', '건강']];
   var CAT_OF = {
     wedding_self: 'family_event', wedding_child: 'family_event', condolence_1: 'family_event', condolence_2: 'family_event',
     family_care: 'family', infertility: 'family', paternity: 'family', maternity: 'family',
     sick: 'health', menstrual: 'health',
-    refresh: 'company', special: 'company', emergency: 'company', civil: 'company'
+    refresh: 'company', longservice: 'company', special: 'company', emergency: 'company', civil: 'company'
   };
   HR.policyCat = function (p) { return p.cat || CAT_OF[p.id] || 'company'; };
   HR.LEAVE_CATS = CATS;
@@ -73,7 +73,7 @@
   function policyLine(p) {
     var b = balanceOf(p, S.mid);
     if (b && b.perRequest) return '1회 ' + fmt.days(p.days);
-    if (b && b.locked) return p.tenureYears + '년 근속 후';
+    if (b && b.locked) return p.mode === 'milestone' ? (b.next ? b.next.years + '년 근속 시' : '대상 아님') : p.tenureYears + '년 근속 후';
     if (b) return '잔여 ' + fmt.days(b.left);
     return '';
   }
@@ -113,7 +113,7 @@
     var bal = balanceOf(p, S.mid), prev = fmt.days(days) + (p.paid === false ? ' · 무급' : '');
     var problem = '';
     if (bal && bal.perRequest && days > p.days) problem = '1회 최대 ' + fmt.days(p.days) + '까지 신청할 수 있습니다.';
-    else if (bal && bal.locked) problem = p.tenureYears + '년 근속 후 사용할 수 있습니다.';
+    else if (bal && bal.locked) problem = p.mode === 'milestone' ? (bal.next ? bal.next.years + '년 근속기념일(' + L.addYears(S.members[S.mid].hireDate, bal.next.years) + ')부터 사용할 수 있습니다.' : '사용 기간이 지났습니다.') : p.tenureYears + '년 근속 후 사용할 수 있습니다.';
     else if (bal && !bal.perRequest && bal.left != null) {
       var after = L.round3(bal.left - (bal.pending || 0) - days);
       prev += ' · 신청 후 잔여 ' + fmt.days(after);
@@ -126,6 +126,7 @@
       h('div', { class: 'panel-head' }, h('h3', { class: 'form-title', text: title + ' 신청' }),
         special ? h('a', { href: '#', class: 'link', text: '연차로 돌아가기', onclick: function (e) { e.preventDefault(); F.type = 'annual'; F.unit = 'day'; HR.refresh(); } }) : null),
       special && p.note ? h('p', { class: 'muted small', text: p.note }) : null,
+      special && bal && bal.current && bal.current.bonus ? h('p', { class: 'small', text: bal.current.years + '년 근속 포상금 ' + fmt.won(bal.current.bonus) + '은 급여로 별도 지급됩니다 (근로소득 과세).' }) : null,
       unitSel ? ui.field('단위', unitSel) : null,
       h('div', { class: 'row' },
         ui.field(F.unit === 'day' ? '시작일' : '날짜', sIn),

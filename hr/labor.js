@@ -8,24 +8,30 @@
   var TZ = 'Asia/Seoul';
 
   /* ---------- 휴가 정책 (관리자가 설정에서 수정) ----------
-     mode: annual(법정 연차 자동) | request(신청 시 N일) | yearly(매년 N일) | monthly(매월 N일) | tenure(N년 근속마다 N일)
+     mode: annual(법정 연차 자동) | request(신청 시 N일) | yearly(매년 N일) | monthly(매월 N일) | tenure(N년 근속마다 N일) | milestone(근속 구간별 휴가·포상금)
      days: 일 단위(소수 가능, 0.5 = 4시간)                                   */
   var DEFAULT_POLICIES = [
     { id: 'annual', name: '연차', mode: 'annual', days: 15, paid: true, half: true, hours: true, note: '근로기준법 제60조 · 자동 부여/소멸/촉진' },
-    { id: 'family_care', name: '가족돌봄', mode: 'yearly', days: 10, paid: false, half: false, hours: false, note: '남녀고용평등법 제22조의2 · 연 10일 무급 (일 단위)' },
-    { id: 'infertility', name: '난임 치료', mode: 'yearly', days: 6, paid: true, half: false, hours: false, note: '남녀고용평등법 제18조의3 · 연 6일 중 2일 유급' },
-    { id: 'wedding_self', name: '결혼 - 본인', mode: 'request', days: 5, paid: true, half: false, hours: false, note: '회사 경조휴가' },
-    { id: 'wedding_child', name: '결혼 - 자녀', mode: 'request', days: 1, paid: true, half: false, hours: false, note: '회사 경조휴가' },
-    { id: 'refresh', name: '리프레시', mode: 'tenure', days: 30, tenureYears: 3, paid: true, half: false, hours: false, note: '3년 근속마다 부여, 1년 내 사용' },
-    { id: 'emergency', name: '비상', mode: 'request', days: 1, paid: true, half: true, hours: false, note: '회사 부여' },
-    { id: 'condolence_1', name: '조의 - 부모/배우자/자녀', mode: 'request', days: 5, paid: true, half: false, hours: false, note: '회사 경조휴가' },
-    { id: 'condolence_2', name: '조의 - 조부모/형제/자매', mode: 'request', days: 3, paid: true, half: false, hours: false, note: '회사 경조휴가' },
-    { id: 'special', name: '특별휴가', mode: 'yearly', days: 3.75, paid: true, half: true, hours: true, note: '매년 3일 6시간' },
-    { id: 'paternity', name: '배우자 출산휴가', mode: 'request', days: 20, paid: true, half: false, hours: false, note: '남녀고용평등법 제18조의2 · 유급 20일, 출산 후 120일 내, 3회 분할' },
-    { id: 'maternity', name: '출산전후휴가', mode: 'request', days: 90, paid: true, half: false, hours: false, note: '근로기준법 제74조 · 90일(다태아 120일), 출산 후 45일 이상', calendar: true },
-    { id: 'menstrual', name: '생리휴가', mode: 'monthly', days: 1, paid: false, half: false, hours: false, note: '근로기준법 제73조 · 월 1일 무급, 청구 시 부여' },
-    { id: 'civil', name: '예비군·민방위', mode: 'request', days: 3, paid: true, half: true, hours: false, note: '근로기준법 제10조 · 공민권 행사, 소집 기간' },
-    { id: 'sick', name: '병가', mode: 'request', days: 30, paid: false, half: true, hours: true, note: '회사 규정 (법정 유급 아님)' }
+    // 회사 휴가
+    { id: 'special', name: '특별휴가', mode: 'yearly', days: 5, paid: true, half: true, hours: true, cat: 'company', note: '매년 5일' },
+    { id: 'longservice', name: '장기근속휴가', mode: 'milestone', paid: true, half: false, hours: false, cat: 'company',
+      milestones: [{ years: 3, days: 10, bonus: 2000000 }, { years: 5, days: 15, bonus: 3000000 }, { years: 10, days: 22, bonus: 10000000, label: '1개월' }],
+      note: '3년 10일 + 200만원 · 5년 15일 + 300만원 · 10년 1개월 + 1,000만원 · 근속기념일부터 1년 안에 사용' },
+    { id: 'emergency', name: '비상', mode: 'request', days: 1, paid: true, half: true, hours: false, cat: 'company', note: '회사 부여' },
+    { id: 'civil', name: '예비군·민방위', mode: 'request', days: 3, paid: true, half: true, hours: false, cat: 'company', note: '근로기준법 제10조 · 공민권 행사, 소집 기간' },
+    // 경조사
+    { id: 'wedding_self', name: '결혼 - 본인', mode: 'request', days: 5, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
+    { id: 'wedding_child', name: '결혼 - 자녀', mode: 'request', days: 1, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
+    { id: 'condolence_1', name: '조의 - 부모/배우자/자녀', mode: 'request', days: 5, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
+    { id: 'condolence_2', name: '조의 - 조부모/형제/자매', mode: 'request', days: 3, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
+    // 가족 · 출산
+    { id: 'paternity', name: '배우자 출산휴가', mode: 'request', days: 20, paid: true, half: false, hours: false, cat: 'family', note: '남녀고용평등법 제18조의2 · 유급 20일, 출산 후 120일 내, 3회 분할' },
+    { id: 'maternity', name: '출산전후휴가', mode: 'request', days: 90, paid: true, half: false, hours: false, cat: 'family', note: '근로기준법 제74조 · 90일(다태아 120일), 출산 후 45일 이상' },
+    { id: 'family_care', name: '가족돌봄', mode: 'yearly', days: 10, paid: false, half: false, hours: false, cat: 'family', note: '남녀고용평등법 제22조의2 · 연 10일 무급 (일 단위)' },
+    { id: 'infertility', name: '난임 치료', mode: 'yearly', days: 6, paid: true, half: false, hours: false, cat: 'family', note: '남녀고용평등법 제18조의3 · 연 6일 중 2일 유급' },
+    // 건강
+    { id: 'sick', name: '병가', mode: 'request', days: 30, paid: false, half: true, hours: true, cat: 'health', note: '회사 규정 (법정 유급 아님)' },
+    { id: 'menstrual', name: '생리휴가', mode: 'monthly', days: 1, paid: false, half: false, hours: false, cat: 'health', note: '근로기준법 제73조 · 월 1일 무급, 청구 시 부여' }
   ];
 
   var DEFAULT_CONFIG = {
@@ -354,8 +360,26 @@
       var ut = used(from, to);
       return { granted: p.days, used: ut, left: round3(p.days - ut), period: from + ' ~ ' + addDays(to, -1) };
     }
+    if (p.mode === 'milestone') return milestoneBalance(p, member, used, asOf);
     if (p.mode === 'request') return { granted: p.days, perRequest: true };
     return null;
+  }
+
+  // 장기근속: 근속기념일(3·5·10년…)에 부여, 1년 안에 사용
+  function milestoneBalance(p, member, used, asOf) {
+    var ms = (p.milestones || []).slice().sort(function (a, b) { return a.years - b.years; });
+    if (!member || !member.hireDate || !ms.length) return null;
+    var yrs = Math.floor(fullMonths(member.hireDate, asOf) / 12), cur = null, next = null;
+    ms.forEach(function (x) { if (x.years <= yrs) cur = x; else if (!next) next = x; });
+    var nextText = next ? '다음: ' + next.years + '년 (' + addYears(member.hireDate, next.years) + ')' : '';
+    if (!cur) return { granted: 0, used: 0, left: 0, locked: true, next: next, period: nextText };
+    var from = addYears(member.hireDate, cur.years), to = addYears(from, 1);
+    if (asOf >= to) return { granted: 0, used: 0, left: 0, locked: true, next: next, period: nextText };
+    var u = used(from, to);
+    return { granted: cur.days, used: u, left: round3(cur.days - u), current: cur, next: next, period: from + ' ~ ' + addDays(to, -1) };
+  }
+  function milestonesText(p) {
+    return (p.milestones || []).map(function (x) { return x.years + '년 ' + (x.label || x.days + '일') + (x.bonus ? ' + ' + Math.round(x.bonus / 10000).toLocaleString('ko-KR') + '만원' : ''); }).join(' · ');
   }
 
   root.Labor = {
@@ -367,6 +391,6 @@
     holidayMap: holidayMap, holidayName: holidayName, isWorkday: isWorkday,
     autoBreak: autoBreak, calcDay: calcDay, calcWeek: calcWeek,
     hourlyRate: hourlyRate, premiumPay: premiumPay, weeklyHolidayPay: weeklyHolidayPay, minWageCheck: minWageCheck,
-    leaveDays: leaveDays, leaveSpread: leaveSpread, annualGrants: annualGrants, annualLedger: annualLedger, policyBalance: policyBalance
+    leaveDays: leaveDays, leaveSpread: leaveSpread, milestonesText: milestonesText, annualGrants: annualGrants, annualLedger: annualLedger, policyBalance: policyBalance
   };
 })(typeof window !== 'undefined' ? window : module.exports);

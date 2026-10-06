@@ -46,9 +46,15 @@
         h('td', null, h('input', { type: 'checkbox', checked: p.active !== false, 'aria-label': p.name + ' 사용', onchange: set('active', function (el) { return el.checked; }) })),
         h('td', null, ui.input({ value: p.name, maxlength: '30', 'aria-label': '이름', oninput: set('name') })),
         h('td', null, annual ? h('span', { class: 'muted', text: '기본' }) : ui.select(HR.LEAVE_CATS, HR.policyCat(p), { 'aria-label': '분류', onchange: set('cat') })),
-        h('td', null, annual ? h('span', { class: 'muted', text: '법정 자동' }) : ui.select([['request', '신청 시 부여'], ['yearly', '매년 부여'], ['monthly', '매월 부여'], ['tenure', '근속 시 부여']], p.mode, { 'aria-label': '부여 방식', onchange: set('mode') })),
-        h('td', null, annual ? h('span', { class: 'muted', text: '15~25' }) : ui.input({ type: 'number', step: '0.125', min: '0', value: p.days, 'aria-label': '일수', class: 'w-num', oninput: set('days', function (el) { return +el.value; }) })),
-        h('td', null, p.mode === 'tenure' ? ui.input({ type: 'number', min: '1', value: p.tenureYears || 3, class: 'w-num', 'aria-label': '근속 연수', oninput: set('tenureYears', function (el) { return +el.value; }) }) : null),
+        h('td', null, annual ? h('span', { class: 'muted', text: '법정 자동' }) : ui.select([['request', '신청 시 부여'], ['yearly', '매년 부여'], ['monthly', '매월 부여'], ['tenure', '근속 시 부여'], ['milestone', '근속 구간별']], p.mode, { 'aria-label': '부여 방식', onchange: set('mode') })),
+        h('td', null, annual ? h('span', { class: 'muted', text: '15~25' }) : p.mode === 'milestone' ? ui.input({
+          value: (p.milestones || []).map(function (x) { return x.years + ':' + x.days + ':' + Math.round((x.bonus || 0) / 10000); }).join(', '),
+          'aria-label': '근속년:일수:포상금(만원)', title: '근속년:휴가일수:포상금(만원), 쉼표로 구분 · 예) 3:10:200, 5:15:300, 10:22:1000',
+          oninput: function () {
+            p.milestones = this.value.split(',').map(function (t) { var a = t.trim().split(':'); return { years: +a[0], days: +a[1], bonus: (+a[2] || 0) * 10000 }; })
+              .filter(function (x) { return x.years > 0 && x.days > 0; });
+          } }) : ui.input({ type: 'number', step: '0.125', min: '0', value: p.days, 'aria-label': '일수', class: 'w-num', oninput: set('days', function (el) { return +el.value; }) })),
+        h('td', null, p.mode === 'milestone' ? h('span', { class: 'muted small', text: '년:일:만원' }) : p.mode === 'tenure' ? ui.input({ type: 'number', min: '1', value: p.tenureYears || 3, class: 'w-num', 'aria-label': '근속 연수', oninput: set('tenureYears', function (el) { return +el.value; }) }) : null),
         h('td', null, h('input', { type: 'checkbox', checked: p.paid !== false, 'aria-label': '유급', onchange: set('paid', function (el) { return el.checked; }) })),
         h('td', null, h('input', { type: 'checkbox', checked: !!p.half, 'aria-label': '반차 허용', onchange: set('half', function (el) { return el.checked; }) })),
         h('td', null, h('input', { type: 'checkbox', checked: !!p.hours, 'aria-label': '시간 단위 허용', onchange: set('hours', function (el) { return el.checked; }) })),
