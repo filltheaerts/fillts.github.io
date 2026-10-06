@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var F = { type: 'annual', unit: 'day', start: null, end: null, hours: 2, more: false };
+  var F = { type: 'annual', unit: 'day', start: null, end: null, hours: 2, more: false, noReason: false, reason: '' };
   var V = { year: null, who: null, calMonth: null };
 
   var STATUS = { pending: ['승인 대기', 'warn'], approved: ['승인', 'ok'], rejected: ['반려', 'red'], canceled: ['취소', 'mute'] };
@@ -32,7 +32,7 @@
     return h('li', null,
       h('div', { class: 'grow' },
         h('div', null, ui.tag(st[0], st[1]), ' ', (opts.approve || l.memberId !== S.mid ? HR.name(l.memberId) + ' · ' : '') + p.name + (HR.unitText(l) ? ' ' + HR.unitText(l) : '') + ' · ' + rangeText(l) + ' · ' + fmt.days(l.days)),
-        l.reason ? h('div', { class: 'meta', text: l.reason }) : null,
+        h('div', { class: 'meta', text: l.reason ? l.reason : '사유 미기재' }),
         l.status !== 'pending' && l.decidedBy ? h('div', { class: 'meta', text: '처리 ' + HR.name(l.decidedBy) + (l.decidedVia === 'slack' ? ' · Slack' : '') + ' · ' + fmt.ts(l.decidedAt) }) : null),
       actions);
   }
@@ -106,7 +106,9 @@
     var sIn = ui.input({ id: 'lvStart', type: 'date', value: F.start, onchange: function () { F.start = this.value; if (F.unit !== 'day' || F.end < F.start) F.end = F.start; HR.refresh(); } });
     var eIn = ui.input({ id: 'lvEnd', type: 'date', value: F.end, onchange: function () { F.end = this.value; HR.refresh(); } });
     var hIn = ui.input({ id: 'lvHours', type: 'number', min: '1', max: '7', step: '1', value: F.hours, onchange: function () { F.hours = +this.value || 1; HR.refresh(); } });
-    var reason = ui.input({ id: 'lvReason', maxlength: '200', placeholder: '선택 · 승인자에게만 보입니다' });
+    var reason = ui.input({ id: 'lvReason', maxlength: '200', value: F.reason, disabled: F.noReason ? true : null,
+      placeholder: F.noReason ? '사유 미기재로 신청합니다' : '승인자에게만 보입니다', oninput: function () { F.reason = this.value; } });
+    var noReason = h('input', { type: 'checkbox', id: 'lvNoReason', checked: F.noReason, onchange: function () { F.noReason = this.checked; HR.refresh(); } });
     var days = L.leaveDays(F.unit, F.start, F.end, F.hours, S.hmap);
     var bal = balanceOf(p, S.mid), prev = fmt.days(days) + (p.paid === false ? ' · 무급' : '');
     var problem = '';
@@ -130,16 +132,18 @@
         F.unit === 'day' ? ui.field('종료일', eIn) : null,
         F.unit === 'hours' ? ui.field('시간', hIn) : null),
       ui.field('사유', reason),
+      h('label', { class: 'check', for: 'lvNoReason' }, noReason, ' 사유 기재 안 함'),
       h('p', { class: 'muted small', text: prev }),
       problem ? h('p', { class: 'form-msg', text: problem }) : null, m,
       h('button', { class: 'btn', type: 'submit', text: '신청하기', disabled: problem && !S.isAdmin ? true : null }));
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (problem && !S.isAdmin) return;
+      if (!F.noReason && !F.reason.trim()) { ui.err(m, '사유를 입력하거나 「사유 기재 안 함」을 체크하세요.'); reason.focus(); return; }
       db.collection('hr_leave').add({
         memberId: S.mid, type: F.type, unit: F.unit, start: F.start, end: F.unit === 'day' ? F.end : F.start,
-        hours: F.unit === 'hours' ? F.hours : 0, days: days, reason: reason.value.trim(), status: 'pending', createdAt: FV.serverTimestamp()
-      }).then(function () { ui.toast(title + '를 신청했습니다. 승인되면 알려 드릴게요.'); }).catch(function (x) { ui.fail(x, m); });
+        hours: F.unit === 'hours' ? F.hours : 0, days: days, reason: F.noReason ? '' : F.reason.trim(), status: 'pending', createdAt: FV.serverTimestamp()
+      }).then(function () { F.reason = ''; F.noReason = false; ui.toast(title + '를 신청했습니다. 승인되면 알려 드릴게요.'); }).catch(function (x) { ui.fail(x, m); });
     });
 
     // 다른 휴가 (카테고리별 작은 버튼, 기본 접힘)
