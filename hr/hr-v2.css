@@ -290,3 +290,27 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 .slip-confirm.bad { border-color: var(--red); background: rgba(200, 16, 46, 0.04); }
 .slip-confirm.bad strong { color: var(--red); }
 .warn-text { color: var(--warn); }
+
+/* INFO 첫 화면 — 오늘의 구성원 · LIVE */
+.today-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; }
+@media (max-width: 900px) { .today-wrap { grid-template-columns: 1fr; } }
+.today-list { list-style: none; display: flex; flex-direction: column; }
+.today-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px; flex-wrap: wrap; }
+.today-list li:last-child { border-bottom: 0; }
+.today-list li.now { box-shadow: inset 2px 0 0 var(--warn); padding-left: 10px; }
+.today-list li .who { font-weight: 500; }
+.today-list li .meta { flex: 1; min-width: 0; }
+.today-list.small li { padding: 6px 0; }
+.today-hol { font-size: 13px; color: var(--red); margin-bottom: 8px; }
+.today-add { margin-top: 12px; border-top: 1px solid var(--gray-100); padding-top: 12px; }
+.today-add summary { cursor: pointer; font-size: 13px; color: var(--gray-600); }
+.today-add summary:hover { color: var(--black); }
+.today-add[open] summary { margin-bottom: 12px; }
+.today-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.live-board { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.live-label { font-size: 11px; font-weight: 400; margin-left: 4px; color: var(--gray-600); }
+.live-label.in { color: var(--ok); }
+.live-label.away { color: var(--red); }
+.live-label.meet, .live-label.field { color: var(--warn); }
+.dot.meet { background: var(--warn); }
+.dot.field { background: var(--warn); box-shadow: 0 0 0 2px rgba(178, 106, 0, 0.18); }

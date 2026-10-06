@@ -225,7 +225,7 @@
     if (!gl.children.length) gl.appendChild(h('li', { class: 'empty', text: '진행 중인 목표가 없습니다. 목표관리에서 이번 분기 목표를 세워 보세요.' }));
     right.appendChild(ui.panel('My goals', h('a', { href: '#goals', class: 'link', text: '목표관리' }), gl));
 
-    ui.put(view, h('div', { class: 'home-grid' }, left, right));
+    ui.put(view, HR.today.panel(), h('div', { class: 'home-grid' }, left, right));
     void me;
   }
 

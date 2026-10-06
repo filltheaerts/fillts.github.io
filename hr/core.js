@@ -18,7 +18,7 @@
   var S = HR.S = {
     user: null, mid: null, role: 'employee', isAdmin: false, isLead: false,
     cfg: Object.assign({}, L.DEFAULT_CONFIG), hmap: L.holidayMap(L.DEFAULT_CONFIG),
-    members: {}, orgs: {}, presence: {}, away: [], notices: [], feed: [], goals: [],
+    members: {}, orgs: {}, presence: {}, away: [], sched: [], notices: [], feed: [], goals: [],
     myPunches: [], myFixes: [], leaves: [], fixes: [], onesM: [], onesL: [], onesAll: [],
     notify: [], priv: null, pay: {}, users: {}, invites: {}, status: null, ready: false
   };
@@ -436,6 +436,7 @@
     sub(db.collection('hr_orgs'), function (s) { S.orgs = {}; HR.rows(s).forEach(function (o) { S.orgs[o.id] = o; }); });
     sub(db.collection('hr_presence'), function (s) { S.presence = {}; HR.rows(s).forEach(function (p) { S.presence[p.id] = p; }); });
     sub(db.collection('hr_away').where('end', '>=', L.addMonths(t, -2)), function (s) { S.away = HR.rows(s); });
+    sub(db.collection('hr_sched').where('date', '>=', t), function (s) { S.sched = HR.rows(s); });
     sub(db.collection('hr_notice').orderBy('createdAt', 'desc').limit(60), function (s) { S.notices = HR.rows(s); });
     sub(db.collection('hr_feed').orderBy('createdAt', 'desc').limit(60), function (s) { S.feed = HR.rows(s); });
     sub(db.collection('hr_goals'), function (s) { S.goals = HR.rows(s); });
