@@ -1143,3 +1143,11 @@ a.tl-label:hover { background: var(--gray-100); }
 }
 .kr-table .kr-pct { white-space: nowrap; }
 .kr-of { display: block; font-size: 11px; color: var(--gray-600); font-weight: 400; }
+
+/* INFO 첫 화면 — 위(오늘의 구성원 | Live) · 아래(근무 | 공지 · 목표) 칸 비율 · 간격을 같게, 좌우 박스 아래 끝을 맞춘다 */
+.today-wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: stretch; margin-bottom: 20px; }
+.today-wrap > .panel { height: 100%; box-sizing: border-box; margin: 0; }
+.home-grid { align-items: stretch; }
+.home-grid > .stack { display: flex; flex-direction: column; }
+.home-grid > .stack > .panel:last-child { flex: 1 1 auto; }
+@media (max-width: 900px) { .today-wrap { grid-template-columns: 1fr; } .home-grid > .stack > .panel:last-child { flex: 0 0 auto; } }
