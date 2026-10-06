@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var G = { period: null, level: '*', sel: null, creating: false, oneSel: null };
+  var G = { period: null, level: '*', sel: null, creating: false, editing: null, draft: null, oneSel: null };
+  function num(n) { return (+n || 0).toLocaleString('ko-KR'); }
   var LEVEL = { company: ['전사', 'red'], team: ['팀', 'warn'], personal: ['개인', 'mute'] };
   var STAT = { on: ['순항', 'ok'], risk: ['주의', 'warn'], off: ['위험', 'red'], done: ['완료', 'mute'] };
 
@@ -48,14 +49,14 @@
     if (!roots.length) tree.appendChild(h('li', { class: 'empty', text: '이 기간의 목표가 없습니다. 전사 목표부터 세우고, 팀·개인 목표를 연결해 보세요.' }));
 
     var sel = all.filter(function (g) { return g.id === selId; })[0] || S.goals.filter(function (g) { return g.id === selId; })[0];
-    var right = G.creating ? createForm() : sel ? detail(sel) : ui.panel('How it works', null,
+    var right = G.creating ? goalForm(null) : sel && G.editing === sel.id ? goalForm(sel) : sel ? detail(sel) : ui.panel('How it works', null,
       h('ul', { class: 'plain' }, ['전사 목표(관리자) → 팀 목표(리더) → 개인 목표(구성원) 순으로 연결합니다.', '목표마다 측정 가능한 핵심결과(KR)를 1~5개 둡니다. 진척도는 KR 달성률 평균입니다.', '매주 금요일 체크인 리마인드가 Slack으로 갑니다. 진척도와 한 줄 회고를 남기세요.', '모든 목표는 전 구성원에게 공개됩니다.'].map(function (x) { return h('li', { text: x }); })));
 
     ui.put(view,
       h('div', { class: 'toolbar' },
         ui.field('기간', ui.select(periods(), G.period, { id: 'glPeriod', onchange: function () { G.period = this.value; HR.refresh(); } }), 'inline'),
         ui.field('수준', ui.select([['*', '전체'], ['company', '전사'], ['team', '팀'], ['personal', '개인']], G.level, { id: 'glLevel', onchange: function () { G.level = this.value; HR.refresh(); } }), 'inline'),
-        ui.btn('목표 추가', function () { G.creating = true; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
+        ui.btn('목표 추가', function () { G.creating = true; G.editing = null; G.draft = null; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
       h('div', { class: 'one-grid' }, h('div', null, tree), right));
   }
 
@@ -67,14 +68,14 @@
     var body = h('tbody');
     krs.forEach(function (k, i) {
       var cur = edit ? ui.input({ type: 'number', step: 'any', value: k.current == null ? '' : k.current, 'aria-label': k.t + ' 현재값', onchange: function () { krs[i].current = +this.value; } }) : null;
-      body.appendChild(h('tr', null, h('td', { text: k.t }), h('td', { class: 'num', text: (k.start || 0) + (k.unit || '') }), h('td', { class: 'num', text: k.target + (k.unit || '') }),
-        h('td', { class: 'num' }, edit ? cur : (k.current || 0) + (k.unit || '')), h('td', { class: 'num', text: Math.round(krPct(k) * 100) + '%' })));
+      body.appendChild(h('tr', null, h('td', { text: k.t }), h('td', { class: 'num', text: num(k.start) + (k.unit || '') }), h('td', { class: 'num', text: num(k.target) + (k.unit || '') }),
+        h('td', { class: 'num' }, edit ? cur : num(k.current) + (k.unit || '')), h('td', { class: 'num', text: Math.round(krPct(k) * 100) + '%' })));
     });
     tb.appendChild(body);
     var status = ui.select([['on', '순항'], ['risk', '주의'], ['off', '위험'], ['done', '완료']], g.status || 'on', { id: 'ciStatus' });
     var note = h('textarea', { id: 'ciNote', rows: '3', maxlength: '1000', placeholder: '이번 주 진척, 막힌 점, 다음 주 계획' });
     var checkin = edit ? h('form', { class: 'one-section' }, ui.label('Check-in'), h('div', { class: 'row' }, ui.field('상태', status)), ui.field('회고', note), msgEl,
-      h('button', { class: 'btn btn-sm', type: 'submit', text: '체크인 저장' })) : null;
+      h('button', { class: 'btn btn-sm', type: 'submit', text: '진척 · 체크인 저장' })) : null;
     if (checkin) checkin.addEventListener('submit', function (e) {
       e.preventDefault();
       var np = krs.length ? krs.reduce(function (s, k) { return s + krPct(k); }, 0) / krs.length : (status.value === 'done' ? 1 : 0);
@@ -93,7 +94,9 @@
     var parent = g.parentId ? S.goals.filter(function (x) { return x.id === g.parentId; })[0] : null;
     return h('section', { class: 'panel one-detail' },
       h('div', { class: 'panel-head' }, h('div', null, h('div', { class: 'label', text: LEVEL[g.level][0] + ' 목표 · ' + g.period + ' · ' + HR.name(g.ownerMid) }), h('h3', { text: g.title })),
-        edit ? ui.confirmBtn('삭제', function () { db.doc('hr_goals/' + g.id).delete().then(function () { HR.go('goals'); }).catch(ui.fail); }) : null),
+        edit ? h('div', { class: 'row' },
+          ui.btn('수정', function () { G.editing = g.id; G.creating = false; G.draft = null; HR.refresh(); }, 'btn-line btn-xs'),
+          ui.confirmBtn('삭제', function () { db.doc('hr_goals/' + g.id).delete().then(function () { HR.go('goals'); }).catch(ui.fail); })) : null),
       g.desc ? h('p', { class: 'body', text: g.desc }) : null,
       parent ? h('p', { class: 'meta' }, '상위 목표 · ', h('a', { class: 'link', href: '#goals/g/' + parent.id, text: parent.title })) : null,
       h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: Math.round(p * 100) + '%' })),
@@ -101,39 +104,64 @@
       h('div', { class: 'one-section' }, ui.label('History'), cl));
   }
 
-  function createForm() {
-    var level = ui.select([['personal', '개인'], S.isLead ? ['team', '팀'] : null, S.isAdmin ? ['company', '전사'] : null].filter(Boolean), S.isAdmin ? 'company' : 'personal', { id: 'ngLevel' });
-    var title = ui.input({ id: 'ngTitle', maxlength: '120', placeholder: '예: 젤클렌저 런칭 첫 달 재구매율 25% 달성' });
-    var desc = h('textarea', { id: 'ngDesc', rows: '2', maxlength: '1000', placeholder: '왜 중요한가 (선택)' });
-    var period = ui.select(periods(), G.period || curPeriod(), { id: 'ngPeriod' });
-    var parent = ui.select([['', '(연결 안 함)']].concat(S.goals.filter(function (g) { return g.level !== 'personal'; }).map(function (g) { return [g.id, '[' + LEVEL[g.level][0] + '] ' + g.title]; })), '', { id: 'ngParent' });
-    var rows = [{ t: '', start: 0, target: 100, unit: '%' }], krBox = h('div', { class: 'stack sm' }), m = ui.msg();
+  // 목표 만들기 · 수정 (g가 있으면 수정). 입력 중인 내용은 G.draft에 보관해 화면이 다시 그려져도 유지
+  function goalForm(g) {
+    var key = g ? g.id : 'new';
+    if (!G.draft || G.draft.key !== key) {
+      G.draft = g ? {
+        key: key, level: g.level, title: g.title || '', desc: g.desc || '', period: g.period, parentId: g.parentId || '',
+        rows: (g.krs || []).map(function (k) { return { t: k.t, start: k.start || 0, target: k.target, current: k.current == null ? (k.start || 0) : k.current, unit: k.unit || '' }; })
+      } : { key: key, level: S.isAdmin ? 'company' : 'personal', title: '', desc: '', period: G.period || curPeriod(), parentId: '', rows: [{ t: '', start: 0, target: 100, current: 0, unit: '%' }] };
+    }
+    var D = G.draft;
+    var levels = [['personal', '개인'], S.isLead ? ['team', '팀'] : null, S.isAdmin ? ['company', '전사'] : null].filter(Boolean);
+    if (g && !levels.some(function (x) { return x[0] === D.level; })) levels.push([D.level, LEVEL[D.level][0]]);
+    var level = ui.select(levels, D.level, { id: 'ngLevel', onchange: function () { D.level = this.value; } });
+    var title = ui.input({ id: 'ngTitle', maxlength: '120', value: D.title, placeholder: '예: 2027년 1분기 매출 3억 원', oninput: function () { D.title = this.value; } });
+    var desc = h('textarea', { id: 'ngDesc', rows: '2', maxlength: '1000', placeholder: '왜 중요한가 (선택)', oninput: function () { D.desc = this.value; } }); desc.value = D.desc;
+    var period = ui.select(periods().concat(periods().some(function (p) { return p[0] === D.period; }) ? [] : [[D.period, D.period]]), D.period, { id: 'ngPeriod', onchange: function () { D.period = this.value; } });
+    var parent = ui.select([['', '(연결 안 함)']].concat(S.goals.filter(function (x) { return x.level !== 'personal' && (!g || x.id !== g.id); }).map(function (x) { return [x.id, '[' + LEVEL[x.level][0] + '] ' + x.title]; })), D.parentId, { id: 'ngParent', onchange: function () { D.parentId = this.value; } });
+    var krBox = h('div', { class: 'stack sm' }), m = ui.msg();
     function drawKr() {
       ui.clear(krBox);
-      rows.forEach(function (r, i) {
-        krBox.appendChild(h('div', { class: 'kr-row' },
-          ui.input({ value: r.t, placeholder: '핵심결과 ' + (i + 1), 'aria-label': '핵심결과', oninput: function () { r.t = this.value; } }),
+      krBox.appendChild(h('div', { class: 'kr-row kr-head' }, ['핵심결과', '시작', '목표', g ? '현재' : '단위', g ? '단위' : ''].map(function (x) { return h('span', { text: x }); })));
+      D.rows.forEach(function (r, i) {
+        var cells = [
+          ui.input({ value: r.t, placeholder: '예: 매출', 'aria-label': '핵심결과 ' + (i + 1), oninput: function () { r.t = this.value; } }),
           ui.input({ type: 'number', step: 'any', value: r.start, 'aria-label': '시작값', oninput: function () { r.start = +this.value; } }),
-          ui.input({ type: 'number', step: 'any', value: r.target, 'aria-label': '목표값', oninput: function () { r.target = +this.value; } }),
-          ui.input({ value: r.unit, maxlength: '6', 'aria-label': '단위', oninput: function () { r.unit = this.value; } }),
-          h('button', { type: 'button', class: 'x-del', text: '삭제', onclick: function () { rows.splice(i, 1); drawKr(); } })));
+          ui.input({ type: 'number', step: 'any', value: r.target, 'aria-label': '목표값', oninput: function () { r.target = +this.value; } })];
+        if (g) cells.push(ui.input({ type: 'number', step: 'any', value: r.current, 'aria-label': '현재값', oninput: function () { r.current = +this.value; } }));
+        cells.push(ui.input({ value: r.unit, maxlength: '6', placeholder: '원, %, 건', 'aria-label': '단위', oninput: function () { r.unit = this.value; } }));
+        cells.push(h('button', { type: 'button', class: 'x-del', text: '삭제', onclick: function () { D.rows.splice(i, 1); drawKr(); } }));
+        krBox.appendChild(h('div', { class: 'kr-row' + (g ? ' with-cur' : '') }, cells));
       });
-      if (rows.length < 5) krBox.appendChild(h('button', { type: 'button', class: 'link', text: '핵심결과 추가', onclick: function () { rows.push({ t: '', start: 0, target: 100, unit: '%' }); drawKr(); } }));
+      if (D.rows.length < 5) krBox.appendChild(h('button', { type: 'button', class: 'link', text: '핵심결과 추가', onclick: function () { D.rows.push({ t: '', start: 0, target: 100, current: 0, unit: '%' }); drawKr(); } }));
     }
     drawKr();
+    var close = function (e) { if (e) e.preventDefault(); G.draft = null; if (g) G.editing = null; else G.creating = false; HR.refresh(); };
     var form = h('form', { class: 'panel' },
-      h('div', { class: 'panel-head' }, ui.label('New goal'), h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); G.creating = false; HR.refresh(); } })),
+      h('div', { class: 'panel-head' }, ui.label(g ? 'Edit goal' : 'New goal'), h('a', { href: '#', class: 'link', text: g ? '취소' : '닫기', onclick: close })),
       h('div', { class: 'row' }, ui.field('수준', level), ui.field('기간', period)), ui.field('목표', title), ui.field('설명', desc), ui.field('상위 목표', parent),
-      h('div', { class: 'field' }, h('label', { text: '핵심결과 · 시작 · 목표 · 단위' }), krBox), m,
-      h('button', { class: 'btn btn-sm', type: 'submit', text: '목표 만들기' }));
+      h('div', { class: 'field' }, h('label', { text: '핵심결과' }), krBox),
+      h('p', { class: 'muted small', text: '예) 매출 · 시작 0 · 목표 300000000 · 단위 원 → 진척도는 (현재 − 시작) ÷ (목표 − 시작)으로 계산합니다.' }), m,
+      h('div', { class: 'row' }, h('button', { class: 'btn btn-sm', type: 'submit', text: g ? '수정 저장' : '목표 만들기' }), g ? h('a', { href: '#', class: 'btn btn-line btn-sm', text: '취소', onclick: close }) : null));
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var krs = rows.filter(function (r) { return r.t.trim(); }).map(function (r) { return { t: r.t.trim(), start: +r.start || 0, target: +r.target, current: +r.start || 0, unit: r.unit.trim() }; });
-      if (!title.value.trim()) return ui.err(m, '목표를 입력하세요.');
+      var krs = D.rows.filter(function (r) { return String(r.t).trim(); }).map(function (r) {
+        return { t: String(r.t).trim(), start: +r.start || 0, target: +r.target, current: g ? (+r.current || 0) : (+r.start || 0), unit: String(r.unit || '').trim() };
+      });
+      if (!D.title.trim()) return ui.err(m, '목표를 입력하세요.');
       if (!krs.length) return ui.err(m, '핵심결과를 1개 이상 입력하세요.');
-      db.collection('hr_goals').add({ ownerMid: S.mid, level: level.value, orgId: (S.members[S.mid] || {}).orgId || '', title: title.value.trim(), desc: desc.value.trim(), period: period.value,
-        parentId: parent.value, krs: krs, status: 'on', progress: 0, createdAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() })
-        .then(function (ref) { G.creating = false; G.period = period.value; HR.go('goals/g/' + ref.id); }).catch(function (x) { ui.fail(x, m); });
+      if (krs.some(function (k) { return isNaN(k.target) || k.target === k.start; })) return ui.err(m, '목표값은 시작값과 달라야 합니다.');
+      var prog = krs.reduce(function (s, k) { return s + krPct(k); }, 0) / krs.length;
+      var data = { level: D.level, title: D.title.trim(), desc: D.desc.trim(), period: D.period, parentId: D.parentId, krs: krs, progress: prog, updatedAt: FV.serverTimestamp() };
+      var job = g ? db.doc('hr_goals/' + g.id).update(data)
+        : db.collection('hr_goals').add(Object.assign(data, { ownerMid: S.mid, orgId: (S.members[S.mid] || {}).orgId || '', status: 'on', createdAt: FV.serverTimestamp() }));
+      job.then(function (ref) {
+        G.draft = null; G.period = D.period;
+        if (g) { G.editing = null; ui.toast('목표를 수정했습니다.'); HR.refresh(); }
+        else { G.creating = false; HR.go('goals/g/' + ref.id); }
+      }).catch(function (x) { ui.fail(x, m); });
     });
     return form;
   }
@@ -222,7 +250,7 @@
       var sub = parts[0] || '';
       ui.put(view, ui.head('Goals', '목표관리'), ui.tabs([['', '목표'], ['one', '원온원']], sub === 'g' ? '' : sub, 'goals'));
       if (sub === 'one') ones(view, parts[1]);
-      else { if (sub === 'g') G.creating = false; goalsView(view, sub === 'g' ? parts[1] : null); }
+      else { if (sub === 'g') { G.creating = false; if (G.editing && G.editing !== parts[1]) { G.editing = null; G.draft = null; } } goalsView(view, sub === 'g' ? parts[1] : null); }
     }
   });
 })();

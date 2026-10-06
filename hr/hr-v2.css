@@ -242,3 +242,9 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 .chip.on { border-color: var(--black); box-shadow: inset 0 -2px 0 var(--red); }
 .chip-sub { font-size: 10px; color: var(--gray-400); }
 @media (max-width: 560px) { .quick-btn { padding: 14px 12px; } .quick-name { font-size: 14px; } }
+
+/* 목표 수정 폼: 현재값 열 포함 */
+.kr-row.with-cur { grid-template-columns: minmax(0, 1fr) 90px 110px 110px 56px auto; }
+.kr-row.kr-head { font-size: 10px; letter-spacing: 0.08em; color: var(--gray-600); }
+.kr-row.kr-head span { padding-bottom: 2px; }
+@media (max-width: 560px) { .kr-row.with-cur { grid-template-columns: minmax(0, 1fr) 70px 70px; } .kr-row.with-cur input:nth-child(5) { display: none; } }
