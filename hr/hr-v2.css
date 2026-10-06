@@ -673,3 +673,18 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .ws-crew { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0 2px; }
 .ws-crew .meta { margin-right: 4px; font-size: 11px; letter-spacing: 0.06em; }
 .ws-crew .chip.lead { background: var(--black); color: var(--white); border-color: var(--black); }
+
+/* WORK — 작은 머리글 + 유닛별 탭 묶음 */
+.ws-top { display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--gray-200); }
+.ws-kicker { font-size: 11px; letter-spacing: 0.12em; color: #1d4ed8; font-weight: 600; }
+.ws-nav { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.ws-group { display: flex; align-items: center; gap: 2px; border: 1px solid var(--gray-200); background: var(--paper); padding: 3px; }
+.ws-group-name { font-size: 10px; letter-spacing: 0.1em; color: var(--gray-400); font-weight: 600; padding: 0 8px 0 6px; border-right: 1px solid var(--gray-200); margin-right: 2px; }
+.ws-group a { font-size: 13px; color: var(--gray-600); padding: 6px 10px; white-space: nowrap; }
+.ws-group a:hover { color: var(--black); background: var(--gray-100); }
+.ws-group a.active { color: var(--white); background: var(--black); }
+.ws-group a.ws-every { color: #1d4ed8; font-weight: 500; }
+.ws-group a.ws-every.active { color: var(--white); background: #1d4ed8; }
+.ws-group.tf .ws-group-name { color: #6d28d9; }
+.ws-group.ws-tools { border-style: dashed; }
+.ws-group.ws-tools a { color: var(--gray-400); font-size: 12px; }

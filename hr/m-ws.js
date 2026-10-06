@@ -13,11 +13,14 @@
   /* ---------- 공간 ---------- */
   function tfs() { return HR.load('ws_tf', function () { return db.collection('hr_ws_tf').get().then(HR.rows); }) || []; }
   function spaces() {
-    var orgs = Object.keys(S.orgs).sort(function (a, b) { return (S.orgs[a].order || 0) - (S.orgs[b].order || 0) || S.orgs[a].name.localeCompare(S.orgs[b].name, 'ko'); })
-      .map(function (k) { return [k, S.orgs[k].name, 'org']; });
-    var tf = tfs().filter(function (t) { return t.active !== false; }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); }).map(function (t) { return [t.id, 'TF · ' + t.name, 'tf']; });
-    var list = [[ALL, S.cfg.companyName + ' 전사', 'all']].concat(orgs, tf), my = (S.priv && S.priv.wsOrder) || [];
-    var rank = function (t, i) { var k = my.indexOf(t[0]); return k < 0 ? 1000 + i : k; };
+    var parents = {}; Object.keys(S.orgs).forEach(function (k) { var pid = S.orgs[k].parentId; if (pid && S.orgs[pid]) parents[pid] = true; });
+    var unitOrder = function (k) { var pid = S.orgs[k].parentId; return pid && S.orgs[pid] ? (S.orgs[pid].order || 0) : 99; };
+    var orgs = Object.keys(S.orgs).filter(function (k) { return !parents[k]; }).sort(function (a, b) { return unitOrder(a) - unitOrder(b) || (S.orgs[a].order || 0) - (S.orgs[b].order || 0) || S.orgs[a].name.localeCompare(S.orgs[b].name, 'ko'); })
+      .map(function (k) { var pid = S.orgs[k].parentId; return [k, S.orgs[k].name, 'org', pid && S.orgs[pid] ? S.orgs[pid].name : '']; });
+    var tf = tfs().filter(function (t) { return t.active !== false; }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); }).map(function (t) { return [t.id, t.name, 'tf', 'TF']; });
+    var list = [[ALL, '전사', 'all', '']].concat(orgs, tf), my = (S.priv && S.priv.wsOrder) || [];
+    var groups = []; list.forEach(function (t) { if (groups.indexOf(t[3]) < 0) groups.push(t[3]); });
+    var rank = function (t, i) { var k = my.indexOf(t[0]); return groups.indexOf(t[3]) * 10000 + (k < 0 ? 1000 + i : k); };
     return list.map(function (t, i) { return [t, rank(t, i)]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; });
   }
   var ordering = false;
@@ -27,14 +30,14 @@
     var ul = h('ol', { class: 'list goal-order-list' }, ss.map(function (t, i) {
       var move = function (k) { return function () { var keys = ss.map(function (x) { return x[0]; }), j = i + k; if (j < 0 || j >= keys.length) return; var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp; save(keys); }; };
       return h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
-        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
-        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === ss.length - 1, onclick: move(1) })),
-        h('div', { class: 'grow', text: t[1] }));
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0 || ss[i - 1][3] !== t[3], onclick: move(-1) }),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === ss.length - 1 || ss[i + 1][3] !== t[3], onclick: move(1) })),
+        h('div', { class: 'grow', text: (t[3] ? t[3] + ' · ' : '') + t[1] }));
     }));
     return ui.panel('My order · 내 탭 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); ordering = false; HR.refresh(); } }), ul,
-      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 나에게만 적용되고, 「전체 프로젝트」는 항상 맨 앞에 있습니다.' }));
+      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 나에게만 적용됩니다. 같은 유닛(STUDIO · DIRECT · TF) 안에서 순서가 바뀌고, 「전체 프로젝트」는 항상 맨 앞입니다.' }));
   }
-  function spaceName(key) { var s = spaces().filter(function (x) { return x[0] === key; })[0]; return s ? s[1] : key; }
+  function spaceName(key) { var s = spaces().filter(function (x) { return x[0] === key; })[0]; return s ? (s[0] === ALL ? S.cfg.companyName + ' 전사' : (s[3] ? s[3] + ' · ' : '') + s[1]) : key; }
   function inTeam(key) {
     if (S.isAdmin || key === ALL) return true;
     if (/^tf_/.test(key)) { var t = tfs().filter(function (x) { return x.id === key; })[0]; return !!t && (t.members || []).indexOf(S.mid) >= 0; }
@@ -305,12 +308,18 @@
       var ss = spaces(), me = S.members[S.mid] || {};
       var key = parts[0] === EVERY ? EVERY : parts[0] && ss.some(function (t) { return t[0] === parts[0]; }) ? parts[0] : (parts[0] && /^tf_/.test(parts[0]) ? parts[0] : (me.orgId && S.orgs[me.orgId] ? me.orgId : ALL));
       var sub = parts[1] || 'intro';
-      var tabs = h('nav', { class: 'subtabs ws-teams', 'aria-label': '팀 · TF' },
-        h('a', { href: '#ws/' + EVERY, class: 'ws-every' + (key === EVERY ? ' active' : ''), text: '전체 프로젝트' }),
-        ss.map(function (t) { return h('a', { href: '#ws/' + t[0], class: (t[0] === key ? 'active ' : '') + (t[2] === 'tf' ? 'ws-tf' : ''), text: t[1] }); }),
-        h('a', { href: '#', class: 'ws-add', text: '+ TF', onclick: function (e) { e.preventDefault(); tfForm = true; ordering = false; HR.refresh(); } }),
-        h('a', { href: '#', class: 'ws-add', text: '⇅ 순서', onclick: function (e) { e.preventDefault(); ordering = !ordering; tfForm = false; HR.refresh(); } }));
-      ui.put(view, ui.head('Work', 'WORK · 팀 · TF 공간'), tabs);
+      var groupsEl = [], cur = null;
+      ss.forEach(function (t) {
+        if (!cur || cur.name !== t[3]) { cur = { name: t[3], el: h('div', { class: 'ws-group' + (t[2] === 'tf' ? ' tf' : '') }, t[3] ? h('span', { class: 'ws-group-name', text: t[3] }) : null) }; groupsEl.push(cur); }
+        cur.el.appendChild(h('a', { href: '#ws/' + t[0], class: t[0] === key ? 'active' : '', text: t[1] }));
+      });
+      var tabs = h('nav', { class: 'ws-nav', 'aria-label': '팀 · TF' },
+        h('div', { class: 'ws-group' }, h('a', { href: '#ws/' + EVERY, class: 'ws-every' + (key === EVERY ? ' active' : ''), text: '전체 프로젝트' })),
+        groupsEl.map(function (g) { return g.el; }),
+        h('div', { class: 'ws-group ws-tools' },
+          h('a', { href: '#', class: 'ws-add', text: '+ TF', onclick: function (e) { e.preventDefault(); tfForm = true; ordering = false; HR.refresh(); } }),
+          h('a', { href: '#', class: 'ws-add', text: '⇅ 순서', onclick: function (e) { e.preventDefault(); ordering = !ordering; tfForm = false; HR.refresh(); } })));
+      ui.put(view, h('div', { class: 'ws-top' }, h('span', { class: 'ws-kicker', text: 'WORK · 팀 · TF 공간' }), tabs));
       if (tfForm) return newTf(view);
       if (ordering) return ui.put(view, orderPanel());
       if (key === EVERY) return everyProject(view);
