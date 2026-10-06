@@ -90,6 +90,40 @@
     return f;
   }
 
+  // 기본 링크 (바로가기): 이름 · 설명 · 주소 — 구성원 열람, 관리자 등록
+  var linkOpen = false;
+  function linksPanel() {
+    var links = (HR.load('hr_about_links', function () { return db.collection('hr_about_links').get().then(HR.rows); }) || [])
+      .slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var grid = h('div', { class: 'link-grid' });
+    links.forEach(function (l) {
+      grid.appendChild(h('div', { class: 'link-card' },
+        h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', class: 'link-main' },
+          h('span', { class: 'link-title', text: l.title + ' ↗' }), l.desc ? h('span', { class: 'meta', text: l.desc }) : null,
+          h('span', { class: 'link-host', text: (l.url.match(/^https?:\/\/([^\/]+)/) || [])[1] || '' })),
+        S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_about_links/' + l.id).delete().then(function () { HR.invalidate('hr_about_links'); }).catch(ui.fail); }) : null));
+    });
+    if (!links.length) grid.appendChild(h('p', { class: 'empty', text: S.isAdmin ? '자주 쓰는 사이트를 등록하세요. 예: 회사 Google Drive · 브랜드 가이드 · 자사몰 관리자 · 모두싸인 · 회사 캘린더' : '등록된 링크가 없습니다.' }));
+    var form = null;
+    if (S.isAdmin) {
+      if (!linkOpen) form = ui.btn('+ 링크 추가', function () { linkOpen = true; HR.refresh(); }, 'btn-line btn-sm');
+      else {
+        var title = ui.input({ maxlength: '40', placeholder: '예: 회사 Google Drive' }), desc = ui.input({ maxlength: '80', placeholder: '예: 브랜드 자료 · 계약서 원본 폴더' });
+        var url = ui.input({ type: 'url', placeholder: 'https://…' }), m = ui.msg();
+        form = h('form', { class: 'link-form' }, h('div', { class: 'row' }, ui.field('이름', title), ui.field('주소', url)), ui.field('설명', desc), m,
+          h('div', { class: 'row' }, h('button', { class: 'btn btn-sm', type: 'submit', text: '등록' }), ui.btn('취소', function () { linkOpen = false; HR.refresh(); }, 'btn-line btn-sm')));
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          if (!title.value.trim()) return ui.err(m, '이름을 입력하세요.');
+          if (!/^https:\/\/[^\s]+$/.test(url.value.trim())) return ui.err(m, 'https:// 로 시작하는 주소를 입력하세요.');
+          db.collection('hr_about_links').add({ title: title.value.trim(), desc: desc.value.trim(), url: url.value.trim(), order: Date.now(), by: S.mid, at: FV.serverTimestamp() })
+            .then(function () { linkOpen = false; HR.invalidate('hr_about_links'); ui.toast('링크를 추가했습니다.'); }).catch(function (x) { ui.fail(x, m); });
+        });
+      }
+    }
+    return ui.panel('Links · 기본 링크', null, grid, form);
+  }
+
   function render(view) {
     var info = HR.load('hr_about', function () { return db.doc('hr_about/main').get().then(function (s) { return s.exists ? s.data() : {}; }); }) || {};
     var docs = HR.load('hr_about_docs', function () { return db.collection('hr_about_docs').get().then(HR.rows); }) || [];
@@ -113,7 +147,7 @@
       ui.panel('Company · 회사 소개', null,
         info.intro ? h('div', { class: 'about-intro', text: info.intro }) : h('p', { class: 'empty', text: S.isAdmin ? '「소개 편집」으로 회사 소개를 작성하세요.' : '아직 회사 소개가 없습니다.' }),
         rows.length ? ui.kv(rows, 'kv wide') : null),
-      h('div', { class: 'stack' }, ui.panel('Documents · 기본 서류', null, dl), S.isAdmin ? addDoc() : null)));
+      h('div', { class: 'stack' }, linksPanel(), ui.panel('Documents · 기본 서류', null, dl), S.isAdmin ? addDoc() : null)));
   }
 
   HR.register('about', { render: render });

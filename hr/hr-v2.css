@@ -412,3 +412,12 @@ td .tag + .tag { margin-left: 4px; }
 .cert-req { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .cert-row { flex-wrap: wrap; }
 .cert-upload { flex-basis: 100%; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--gray-100); margin-top: 8px; }
+
+/* 기본안내 — 기본 링크 */
+.link-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.link-card { border: 1px solid var(--gray-200); display: flex; align-items: flex-start; gap: 6px; padding: 12px 12px 12px 14px; }
+.link-card:hover { border-color: var(--black); }
+.link-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.link-title { font-size: 13px; font-weight: 500; }
+.link-host { font-size: 11px; color: var(--gray-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-form { display: flex; flex-direction: column; gap: 8px; }
