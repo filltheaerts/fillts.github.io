@@ -563,3 +563,14 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .pay-wht div { display: flex; flex-direction: column; gap: 2px; }
 .pay-wht b { font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .pay-wht { grid-template-columns: 1fr; } }
+
+/* 재무관리 */
+.fin-trend { display: flex; align-items: flex-end; gap: 10px; height: 180px; padding-top: 18px; overflow-x: auto; }
+.fin-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 44px; height: 100%; }
+.fin-col-bar { flex: 1; width: 26px; display: flex; align-items: flex-end; background: var(--gray-100); }
+.fin-col-fill { display: block; width: 100%; background: var(--black); }
+.fin-col:last-child .fin-col-fill { background: var(--red); }
+.fin-col-val { font-size: 10px; color: var(--gray-600); font-variant-numeric: tabular-nums; }
+.fin-col-lab { font-size: 11px; color: var(--gray-600); }
+.fin-pct { display: inline-flex; align-items: center; gap: 8px; min-width: 140px; justify-content: flex-end; }
+.fin-pct .pb-bar { width: 80px; display: inline-block; }

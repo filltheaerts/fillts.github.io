@@ -563,7 +563,7 @@
   /* ============================================
      라우터 · 렌더
      ============================================ */
-  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq'];
+  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance'];
   HR.register = function (id, mod) { HR.modules[id] = mod; };
   HR.go = function (hash) { if (location.hash !== '#' + hash) location.hash = hash; else route(); };
   var current = { menu: 'info', parts: [] };
@@ -571,7 +571,7 @@
     if (!S.mid) return;
     var parts = (location.hash || '#info').slice(1).split('/').filter(Boolean);
     var menu = parts.shift() || 'info';
-    if (MENUS.indexOf(menu) < 0 || (menu === 'admin' && !S.isAdmin)) { menu = 'info'; parts = []; }
+    if (MENUS.indexOf(menu) < 0 || ((menu === 'admin' || menu === 'finance') && !S.isAdmin)) { menu = 'info'; parts = []; }
     var moved = current.menu !== menu || current.parts.join('/') !== parts.join('/');
     current = { menu: menu, parts: parts };
     document.querySelectorAll('[data-menu]').forEach(function (a) { a.classList.toggle('active', a.dataset.menu === menu); });
