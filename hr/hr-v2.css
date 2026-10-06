@@ -1103,3 +1103,43 @@ a.tl-label:hover { background: var(--gray-100); }
 .kr-tip td { white-space: normal; line-height: 1.6; }
 @media (max-width: 760px) { .kr-table th:nth-child(2), .kr-table td:nth-child(2) { display: none; } .kr-table .kr-in { width: 76px; max-width: 76px; } .kr-table .kr-unit-in { width: 44px; max-width: 44px; } .kr-bar { max-width: 80px; } }
 .table.kr-table { min-width: 0; }
+
+/* 비전 · 강점 — 대표 메시지 · 히스토리 · PDF */
+.wh-wrap { margin-top: 18px; }
+.wh-msg { background: #fff; border: 1px solid var(--gray-200); border-left: 4px solid var(--red); padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+.wh-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: var(--red); }
+.wh-msg p { font-size: 14px; line-height: 1.85; color: var(--gray-800); }
+.wh-list { list-style: none; display: flex; flex-direction: column; }
+.wh-item { border-bottom: 1px solid var(--gray-100); }
+.wh-item:last-child { border-bottom: 0; }
+.wh-head { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 12px 0; cursor: pointer; text-align: left; font-family: inherit; color: inherit; }
+.wh-no { width: 24px; height: 24px; border-radius: 50%; background: var(--gray-100); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.wh-head b { font-size: 13px; white-space: nowrap; }
+.wh-sum { font-size: 12px; color: var(--gray-600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.wh-arrow { color: var(--gray-400); transition: transform 0.15s; }
+.wh-item.open .wh-arrow { transform: rotate(180deg); }
+.wh-item .wh-body { display: none; padding: 0 0 14px 34px; }
+.wh-item.open .wh-body { display: flex; }
+.wh-body { flex-direction: column; gap: 10px; }
+.wh-sec h5 { font-size: 11px; letter-spacing: 0.06em; color: var(--gray-600); font-weight: 600; margin-bottom: 4px; }
+.wh-sec p, .wh-sec li { font-size: 13px; line-height: 1.7; }
+.wh-sec ol { padding-left: 18px; }
+.wh-sec li span { color: var(--gray-600); }
+.wh-pdf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 4px; }
+.btn-disabled { opacity: 0.45; }
+/* 히스토리 PDF 문서 (A4 · 여러 쪽) */
+.wh-doc { background: #fff; color: #0a0a0a; width: 210mm; max-width: 100%; box-sizing: border-box; padding: 18mm 18mm; font-family: 'Noto Sans KR', sans-serif; font-size: 10.5pt; line-height: 1.6; display: flex; flex-direction: column; gap: 6mm; }
+.wh-doc-head { display: flex; justify-content: space-between; font-size: 8.5pt; color: #737373; border-bottom: 1px solid #d4d4d4; padding-bottom: 3mm; }
+.wh-doc h1 { font-size: 20pt; font-weight: 600; }
+.wh-doc-msg { font-size: 10pt; color: #404040; background: #f5f5f5; padding: 4mm 5mm; border-left: 3px solid #c8102e; }
+.wh-doc-rec { border-top: 2px solid #0a0a0a; padding-top: 4mm; break-inside: avoid-page; }
+.wh-doc-rec h2 { font-size: 12pt; font-weight: 600; margin-bottom: 3mm; }
+.wh-doc-rec h2 span { color: #c8102e; }
+.wh-doc .wh-body { display: flex; }
+@media print {
+  body.printing-hist .print-area { display: block; }
+  body.printing-hist .wh-doc { width: auto; padding: 0; }
+  body.printing-hist .cert { display: none; }
+}
+.kr-table .kr-pct { white-space: nowrap; }
+.kr-of { display: block; font-size: 11px; color: var(--gray-600); font-weight: 400; }

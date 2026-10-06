@@ -14,6 +14,8 @@
     return out;
   }
   function curPeriod() { var t = fmt.today(); return t.slice(0, 4) + '-Q' + (Math.floor((+t.slice(5, 7) - 1) / 3) + 1); }
+  // 달성률 표기: 아주 작은 값도 0%로 뭉개지지 않게 (예: 10 / 30000 → 0.03%)
+  function pctText(v) { var p = v * 100; return (p > 0 && p < 1 ? Math.round(p * 100) / 100 : Math.round(p * 10) / 10) + '%'; }
   function krPct(k) { var span = (+k.target) - (+k.start || 0); if (!span) return +k.current >= +k.target ? 1 : 0; return Math.max(0, Math.min(1, ((+k.current || 0) - (+k.start || 0)) / span)); }
   function pct(g) { var ks = g.krs || []; if (!ks.length) return g.status === 'done' ? 1 : 0; return ks.reduce(function (s, k) { return s + krPct(k); }, 0) / ks.length; }
   function canEdit(g) { return S.isAdmin || g.ownerMid === S.mid || (S.role === 'manager' && g.level === 'team'); }
@@ -23,7 +25,7 @@
     var p = pct(g), st = STAT[g.status] || STAT.on;
     return h('li', null, h('a', { class: 'grow goal-mini', href: '#goals/g/' + g.id },
       h('div', null, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), ' ', g.title),
-      h('div', { class: 'row' }, bar(p), h('span', { class: 'mono small', text: Math.round(p * 100) + '%' }), ui.tag(st[0], st[1]))));
+      h('div', { class: 'row' }, bar(p), h('span', { class: 'mono small', text: pctText(p) }), ui.tag(st[0], st[1]))));
   }
   HR.goals = { mini: mini };
 
@@ -41,7 +43,7 @@
         h('a', { class: 'goal-card' + (g.id === selId ? ' active' : ''), href: '#goals/g/' + g.id },
           h('div', { class: 'goal-top' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), h('span', { class: 'meta', text: HR.name(g.ownerMid) + ' · 핵심결과 ' + (g.krs || []).length + '개' }), ui.tag(st[0], st[1])),
           h('div', { class: 'goal-title', text: g.title }),
-          h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: Math.round(p * 100) + '%' }))),
+          h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: pctText(p) }))),
         kids.length ? h('ul', { class: 'goal-children' }, kids.map(function (k) { return card(k, depth + 1); })) : null);
     }
     var mine = (S.priv && S.priv.goalOrder) || [], rk = function (g) { var i = mine.indexOf(g.id); return i < 0 ? 999 : i; };   // 내 순서(INFO 첫 화면과 같음)
@@ -88,9 +90,19 @@
     // 목표 · 현재 · 단위를 여기서 바로 고친다 — 예: 매출 최종 목표 30000 / 현재 누적 20000 → 67%
     krs.forEach(function (k, i) {
       var pc = h('td', { class: 'num kr-pct' }), bar = h('span', { class: 'kr-bar' }, h('i'));
-      var redraw = function () { var v = krPct(krs[i]); pc.firstChild ? (pc.firstChild.textContent = Math.round(v * 1000) / 10 + '%') : pc.appendChild(h('b', { text: Math.round(v * 1000) / 10 + '%' })); bar.firstChild.style.width = Math.round(v * 100) + '%'; };
-      var numIn = function (key, label) { return ui.input({ type: 'number', step: 'any', inputmode: 'decimal', class: 'kr-in', value: k[key] == null ? '' : k[key], 'aria-label': k.t + ' ' + label, oninput: function () { krs[i][key] = this.value === '' ? 0 : +this.value; redraw(); } }); };
-      var unitIn = ui.input({ class: 'kr-unit-in', value: k.unit || '', maxlength: '10', placeholder: '만원', 'aria-label': k.t + ' 단위', oninput: function () { krs[i].unit = this.value.trim(); } });
+      var redraw = function () {
+        var v = krPct(krs[i]); ui.clear(pc);
+        pc.appendChild(h('b', { text: pctText(v) }));
+        pc.appendChild(h('span', { class: 'kr-of', text: num(krs[i].current || 0) + ' / ' + num(krs[i].target || 0) + (krs[i].unit || '') }));
+        bar.firstChild.style.width = Math.max(v > 0 ? 1 : 0, Math.round(v * 100)) + '%';
+      };
+      var numIn = function (key, label) { return ui.input({ type: 'number', step: 'any', inputmode: 'decimal', class: 'kr-in', value: k[key] == null ? '' : k[key], 'aria-label': k.t + ' ' + label, oninput: function () {
+        krs[i][key] = this.value === '' ? 0 : +this.value;
+        // 금액 목표인데 단위가 기본값 %로 남아 있으면 비운다 (30000% 같은 표기 방지)
+        if (key === 'target' && krs[i].unit === '%' && +this.value > 100) { krs[i].unit = ''; unitIn.value = ''; }
+        redraw();
+      } }); };
+      var unitIn = ui.input({ class: 'kr-unit-in', value: k.unit || '', maxlength: '10', placeholder: '만원', 'aria-label': k.t + ' 단위', oninput: function () { krs[i].unit = this.value.trim(); redraw(); } });
       body.appendChild(h('tr', null, h('td', null, h('div', { text: k.t }), bar), h('td', { class: 'num', text: num(k.start) + (edit ? '' : (k.unit || '')) }),
         h('td', { class: 'num' }, edit ? numIn('target', '최종 목표값') : num(k.target) + (k.unit || '')),
         h('td', { class: 'num' }, edit ? numIn('current', '현재 누적값') : num(k.current) + (k.unit || '')),
@@ -116,7 +128,7 @@
     var cl = h('ul', { class: 'list' });
     cis.forEach(function (c) {
       var st = STAT[c.status] || STAT.on;
-      cl.appendChild(h('li', null, h('div', { class: 'grow' }, h('div', null, ui.tag(st[0], st[1]), ' ', Math.round((c.progress || 0) * 100) + '%'), c.text ? h('div', { class: 'body', text: c.text }) : null, h('div', { class: 'meta', text: HR.name(c.by) + ' · ' + fmt.ts(c.at) }))));
+      cl.appendChild(h('li', null, h('div', { class: 'grow' }, h('div', null, ui.tag(st[0], st[1]), ' ', pctText(c.progress || 0)), c.text ? h('div', { class: 'body', text: c.text }) : null, h('div', { class: 'meta', text: HR.name(c.by) + ' · ' + fmt.ts(c.at) }))));
     });
     if (!cl.children.length) cl.appendChild(h('li', { class: 'empty', text: '아직 체크인이 없습니다.' }));
     var parent = g.parentId ? S.goals.filter(function (x) { return x.id === g.parentId; })[0] : null;
@@ -127,7 +139,7 @@
           ui.confirmBtn('삭제', function () { db.doc('hr_goals/' + g.id).delete().then(function () { HR.go('goals'); }).catch(ui.fail); })) : null),
       g.desc ? h('p', { class: 'body', text: g.desc }) : null,
       parent ? h('p', { class: 'meta' }, '상위 목표 · ', h('a', { class: 'link', href: '#goals/g/' + parent.id, text: parent.title })) : null,
-      h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: Math.round(p * 100) + '%' })),
+      h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: pctText(p) })),
       h('div', { class: 'table-wrap flat' }, tb), checkin,
       h('div', { class: 'one-section' }, ui.label('History'), cl));
   }
