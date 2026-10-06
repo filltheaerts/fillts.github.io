@@ -105,6 +105,7 @@
 
   /* ---------- 마일스톤: 브랜드 핵심 목표 7항목 (hr_plan/milestones — 로그인 구성원만, 공개 저장소에 숫자를 싣지 않는다) ---------- */
   function milestones(view) {
+    if (HR.cache.hr_plan_ms && !HR.cache.hr_plan_ms.loading && Date.now() - HR.cache.hr_plan_ms.at > 15000) delete HR.cache.hr_plan_ms;   // 열 때 최신으로
     var P = HR.load('hr_plan_ms', function () { return db.doc('hr_plan/milestones').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!P) { var c = HR.cache.hr_plan_ms; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 마일스톤이 없습니다.' : '불러오는 중…')); }
     var lanes = h('div', { class: 'ms-lanes' }, P.sections.map(function (sec) {

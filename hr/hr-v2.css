@@ -646,7 +646,7 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 /* 공지사항 › 마일스톤 */
 .ms-hero { display: flex; flex-direction: column; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid var(--gray-200); }
 .ms-headline { font-size: 26px; font-weight: 500; line-height: 1.35; }
-.ms-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.ms-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 8px; }
 @media (max-width: 760px) { .ms-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ms-kpis div { border: 1px solid var(--gray-200); background: var(--paper); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
 .ms-kpis b { font-size: 15px; font-weight: 500; }
