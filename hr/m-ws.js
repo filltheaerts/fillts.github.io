@@ -140,6 +140,33 @@
     }));
     return h('div', { class: 'stack' }, ul, arr.length < 10 ? ui.btn('+ 링크 추가 (시트 · 슬라이드 · 문서 · 드라이브 · 노션 …)', function () { arr.push({ t: '', url: '' }); HR.refresh(); }, 'btn-line btn-sm') : null);
   }
+  function subsEditor(arr) {
+    var move = function (i, k) { return function () { var j = i + k, t = arr[i]; arr[i] = arr[j]; arr[j] = t; HR.refresh(); }; };
+    return h('div', { class: 'ws-subs-edit' }, arr.map(function (x, i) {
+      var body = h('textarea', { rows: '3', maxlength: '4000', placeholder: '무엇을 · 누가 · 어떻게 — 세부 내용', oninput: function () { x.body = this.value; } }); body.value = x.body;
+      return h('div', { class: 'ws-sub-edit' + (x.done ? ' done' : '') },
+        h('div', { class: 'ws-sub-edit-head' }, h('span', { class: 'ws-sub-no', text: 'SUB ' + (i + 1) }),
+          h('input', { type: 'text', class: 'ws-sub-title', value: x.t, maxlength: '80', placeholder: '서브 프로젝트 이름 *', oninput: function () { x.t = this.value; } }),
+          i > 0 ? ui.btn('↑', move(i, -1), 'btn-line btn-xs') : null, i < arr.length - 1 ? ui.btn('↓', move(i, 1), 'btn-line btn-xs') : null,
+          ui.btn('삭제', function () { arr.splice(i, 1); HR.refresh(); }, 'btn-line btn-xs')),
+        h('div', { class: 'form-grid ws-sub-dates' },
+          ui.field('시작일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: x.start, onchange: function () { x.start = this.value; } }),
+            quickDates([['오늘', 0, 'd'], ['1주 뒤', 7, 'd']], function () { return fmt.today(); }, x.start, function (v) { x.start = v; }))),
+          ui.field('마감 예정일', h('div', { class: 'ws-datef' }, h('input', { type: 'date', value: x.due, onchange: function () { x.due = this.value; } }),
+            quickDates([['1주', 7, 'd'], ['2주', 14, 'd'], ['1달', 1, 'm'], ['2달', 2, 'm']], function () { return x.start || fmt.today(); }, x.due, function (v) { x.due = v; },
+              [['+1주', 7, 'd'], ['+1달', 1, 'm']], function () { return x.due || x.start || fmt.today(); })))),
+        ui.field('내용', body),
+        x.links.length ? h('div', { class: 'field' }, h('label', { text: '링크' }), linksEditor(x.links))
+          : ui.btn('+ 링크 추가 (구글 드라이브 · 시트 · 문서 …)', function () { x.links.push({ t: '', url: '' }); HR.refresh(); }, 'btn-line btn-xs'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: x.done, onchange: function () { x.done = this.checked; this.closest('.ws-sub-edit').classList.toggle('done', this.checked); } }), ' 완료'));
+    }), arr.length < 20 ? ui.btn('+ 서브 프로젝트 추가', function () { arr.push({ t: '', start: '', due: '', body: '', done: false, links: [] }); HR.refresh(); }, 'btn-line btn-sm') : null);
+  }
+  function cleanSubs(arr) {
+    return (arr || []).filter(function (x) { return (x.t || '').trim(); }).slice(0, 20).map(function (x) {
+      return { t: x.t.trim().slice(0, 80), start: x.start || '', due: x.due || '', body: (x.body || '').slice(0, 4000), done: !!x.done, links: cleanLinks(x.links || []) };
+    });
+  }
+  function subPeriod(x) { return x.start || x.due ? (x.start ? fmt.dot(x.start).slice(2) : '') + ' → ' + (x.due ? fmt.dot(x.due).slice(2) : '') : '일정 미정'; }
   function cleanLinks(arr) { return arr.map(function (l) { return { t: (l.t || '').trim().slice(0, 60), url: (l.url || '').trim() }; }).filter(function (l) { return /^https:\/\/\S+$/.test(l.url); }).slice(0, 10); }
 
   /* ---------- 소개 · 목표 ---------- */
@@ -214,7 +241,8 @@
     var dk = p ? p.id : 'new:' + key + kind;
     var d = draftPost && draftPost.key === dk ? draftPost
       : (draftPost = { key: dk, title: p ? p.title : '', body: p ? p.body : (kind === 'project' ? PROJECT_TEMPLATE : ''), status: p ? p.status : 'idea', owner: p ? p.owner : S.mid, people: p ? (p.people || []).slice() : [], flags: p ? (p.flags || []).slice() : [], start: p ? p.start || '' : '', due: p ? p.due || '' : '',
-        tags: p ? (p.tags || []).join(', ') : '', links: p ? (p.links || []).map(function (l) { return Object.assign({}, l); }) : [{ t: '', url: '' }] });
+        tags: p ? (p.tags || []).join(', ') : '', links: p ? (p.links || []).map(function (l) { return Object.assign({}, l); }) : [{ t: '', url: '' }],
+        subs: p ? (p.subs || []).map(function (x) { return { t: x.t || '', start: x.start || '', due: x.due || '', body: x.body || '', done: !!x.done, links: (x.links || []).map(function (l) { return Object.assign({}, l); }) }; }) : [] });
     var m = ui.msg(), back = kind === 'project' ? 'projects' : 'board';
     var body = h('textarea', { rows: '16', maxlength: '20000', oninput: function () { d.body = this.value; } }); body.value = d.body;
     var f = h('form', { class: 'panel ws-form' }, ui.label((p ? 'Edit · ' : 'New · ') + (kind === 'project' ? '프로젝트' : '글') + ' · ' + spaceName(key)),
@@ -235,16 +263,20 @@
         return h('label', { class: 'check chip' }, h('input', { type: 'checkbox', checked: d.people.indexOf(x.id) >= 0, onchange: function () { var i = d.people.indexOf(x.id); if (this.checked && i < 0) d.people.push(x.id); if (!this.checked && i >= 0) d.people.splice(i, 1); } }), ' ' + x.name);
       }))) : null,
       h('div', { class: 'field' }, h('label', { text: '핵심 링크 — 스프레드시트 · 프레젠테이션 · 문서 · 드라이브 · 노션' }), linksEditor(d.links)),
+      kind === 'project' ? h('div', { class: 'field ws-subs-field' }, h('label', { text: '서브 프로젝트 — 필요할 때만 추가 (이름 · 기간 · 내용 · 링크)' }), subsEditor(d.subs)) : null,
       ui.field(kind === 'project' ? '현황 · 구조' : '내용', body), h('p', { class: 'meta', text: FORMAT_HELP }), m,
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: '저장' }), ui.btn('취소', function () { draftPost = null; HR.go('ws/' + key + '/' + back + (p ? '/' + p.id : '')); }, 'btn-line')));
     f.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!d.title.trim()) return ui.err(m, '제목을 입력하세요.');
       if (kind === 'project' && d.start && d.due && d.start > d.due) return ui.err(m, '마감 예정일이 시작일보다 빠릅니다.');
+      var badSub = kind === 'project' ? d.subs.filter(function (x) { return x.start && x.due && x.start > x.due; })[0] : null;
+      if (badSub) return ui.err(m, '서브 프로젝트 「' + (badSub.t || '이름 없음') + '」의 마감 예정일이 시작일보다 빠릅니다.');
+      if (kind === 'project' && d.subs.some(function (x) { return !x.t.trim() && (x.body.trim() || x.start || x.due); })) return ui.err(m, '서브 프로젝트 이름을 적어 주세요.');
       var bad = d.links.filter(function (l) { return l.url.trim() && !/^https:\/\/\S+$/.test(l.url.trim()); });
       if (bad.length) return ui.err(m, '링크는 https:// 로 시작해야 합니다: ' + bad[0].url);
       var data = { org: key, kind: kind, title: d.title.trim(), body: d.body, status: kind === 'project' ? d.status : 'post', owner: kind === 'project' ? d.owner : S.mid, flags: kind === 'project' ? FLAGS.map(function (x) { return x[0]; }).filter(function (k) { return d.flags.indexOf(k) >= 0; }) : [], start: kind === 'project' ? d.start || '' : '', due: kind === 'project' ? d.due : '',
-        tags: kind === 'project' ? d.tags.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8) : [], links: cleanLinks(d.links),
+        tags: kind === 'project' ? d.tags.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8) : [], links: cleanLinks(d.links), subs: kind === 'project' ? cleanSubs(d.subs) : [],
         people: kind === 'project' ? d.people.filter(function (x) { return x !== d.owner; }).slice(0, 20) : [], updatedAt: FV.serverTimestamp() };
       var op = p ? db.doc('hr_ws_posts/' + p.id).update(data).then(function () { return p.id; })
         : db.collection('hr_ws_posts').add(Object.assign(data, { createdBy: S.mid, createdAt: FV.serverTimestamp() })).then(function (r) { return r.id; });
@@ -286,6 +318,14 @@
           h('span', { class: 'meta', text: [p.kind === 'project' ? '담당 ' + HR.name(p.owner) : HR.name(p.createdBy), p.start ? '시작 ' + fmt.dot(p.start) : '', p.due ? '마감 예정 ' + fmt.dot(p.due) : '', '작성 ' + fmt.ts(p.createdAt) + (p.updatedAt ? ' · 수정 ' + fmt.ts(p.updatedAt) : '')].filter(Boolean).join(' · ') }),
           (p.tags || []).map(function (t) { return ui.tag('#' + t, 'mute'); })),
         (p.links || []).length ? h('div', { class: 'ws-links big' }, p.links.map(linkChip)) : null,
+        (p.subs || []).length ? h('section', { class: 'ws-subs' }, h('div', { class: 'ws-subs-head' }, h('b', { text: '서브 프로젝트' }),
+            h('span', { class: 'meta', text: p.subs.filter(function (x) { return x.done; }).length + ' / ' + p.subs.length + ' 완료' })),
+          h('ol', null, p.subs.map(function (x, i) {
+            return h('li', { class: 'ws-subitem' + (x.done ? ' done' : '') }, h('div', { class: 'ws-sub-top' }, h('span', { class: 'ws-sub-no', text: 'SUB ' + (i + 1) }), h('b', { text: x.t }),
+                x.done ? ui.tag('완료', 'ok') : null, h('span', { class: 'ws-sub-period', text: subPeriod(x) })),
+              x.body ? h('div', { class: 'ws-sub-body' }, String(x.body).split('\n').map(function (l) { return l.trim() ? h('p', { text: l }) : null; })) : null,
+              (x.links || []).length ? h('div', { class: 'ws-links small' }, x.links.map(linkChip)) : null);
+          }))) : null,
         richText(p.body),
         h('div', { class: 'row ws-actions' },
           h('div', { class: 'row' }, ui.btn('링크 복사 (Slack에 공유)', function () { copy(p.title + '\n' + hrLink(key + '/' + back + '/' + p.id), '제목과 링크를 복사했습니다. Slack에 붙여 넣으세요.'); }, 'btn-line btn-sm'),
@@ -330,7 +370,7 @@
         sec.appendChild(h('a', { class: 'ws-prow', href: '#ws/' + p.org + '/projects/' + p.id },
           projOrdering ? h('span', { class: 'ws-pmove' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', disabled: i === 0, onclick: move(-1) }), h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', disabled: i === items.length - 1, onclick: move(1) })) : h('span'),
           showSpace ? spaceBadge(p.org) : null,
-          h('span', { class: 'ws-ptitle' }, flagBadges(p), h('span', { class: 'ws-ptitle-t', text: p.title })),
+          h('span', { class: 'ws-ptitle' }, flagBadges(p), h('span', { class: 'ws-ptitle-t', text: p.title }), (p.subs || []).length ? h('span', { class: 'ws-subcount', text: '서브 ' + p.subs.filter(function (x) { return x.done; }).length + '/' + p.subs.length }) : null),
           h('span', { class: 'ws-pmeta' }, HR.name(p.owner) + ((p.people || []).length ? ' 외 ' + p.people.length : '')),
           h('span', { class: 'ws-pdate ws-pstart' }, p.start ? fmt.dot(p.start) : '—'),
           h('span', { class: 'ws-pdate ws-pdue' }, p.due ? fmt.dot(p.due) : '—', p.due && p.status !== 'done' ? dday(p.due) : null),
@@ -354,6 +394,7 @@
   function createdDay(p) { return p.createdAt && p.createdAt.toDate ? L.kstDate(p.createdAt.toDate()) : ''; }
   // 위치는 CSSOM으로 준다 — CSP가 인라인 style 속성을 막는다
   function at(el, left, width) { el.style.left = left + '%'; if (width !== undefined) el.style.width = width + '%'; return el; }
+  var tlFold = {}, tlOpen = {};   // 프로젝트별 서브 접기 · 서브별 상세 펼치기
   function timelineOf(list, showSpace) {
     var today = fmt.today(), T = dnum(today);
     var spanOf = function (p) {
@@ -364,7 +405,10 @@
     // 보이는 기간: 선택값(3 · 6 · 12개월) 또는 자동(모든 막대 + 오늘 앞뒤 여유)
     var lo = T - 14, hi = T + 60;
     if (tlSpan) { lo = T - 14; hi = lo + tlSpan * 30; }
-    else list.forEach(function (p) { var x = spanOf(p); lo = Math.min(lo, x.s - 7); hi = Math.max(hi, (x.e || x.s + 14) + 14); });
+    else list.forEach(function (p) {
+      var x = spanOf(p); lo = Math.min(lo, x.s - 7); hi = Math.max(hi, (x.e || x.s + 14) + 14);
+      (p.subs || []).forEach(function (sb) { [sb.start, sb.due].forEach(function (dd) { if (dd) { lo = Math.min(lo, dnum(dd) - 7); hi = Math.max(hi, dnum(dd) + 14); } }); });
+    });
     var first = new Date((lo) * 864e5), mStart = Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1) / 864e5;
     lo = mStart;
     var total = Math.max(30, hi - lo), pct = function (d) { return Math.max(0, Math.min(100, (d - lo) / total * 100)); };
@@ -397,8 +441,39 @@
         grid.appendChild(h('div', { class: 'tl-row' },
           h('a', { class: 'tl-label', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? spaceBadge(p.org) : null,
             h('span', { class: 'tl-name' }, flagBadges(p), h('span', { class: 'ws-ptitle-t', text: p.title })),
-            h('span', { class: 'tl-sub' + (over ? ' over' : ''), text: HR.name(p.owner) + ' · ' + (x.due ? '~ ' + fmt.dot(x.due).slice(2) + (over ? ' 지남' : '') : '마감 미정') })),
+            h('span', { class: 'tl-sub' + (over ? ' over' : ''), text: HR.name(p.owner) + ' · ' + (x.due ? '~ ' + fmt.dot(x.due).slice(2) + (over ? ' 지남' : '') : '마감 미정') }),
+            (p.subs || []).length ? h('span', { class: 'tl-subtoggle', role: 'button', text: (tlFold[p.id] ? '▸ ' : '▾ ') + '서브 ' + p.subs.filter(function (y) { return y.done; }).length + '/' + p.subs.length + ' 완료',
+              onclick: function (e) { e.preventDefault(); e.stopPropagation(); tlFold[p.id] = !tlFold[p.id]; HR.refresh(); } }) : null),
           h('div', { class: 'tl-track' }, todayLine(), bar, outside)));
+        // 서브 프로젝트: 프로젝트 바로 아래에 트리로 이어 붙인다 — 기간 · 일수 · 내용 첫 줄, 누르면 전체 내용 · 링크가 펼쳐진다
+        var subs = p.subs || [];
+        if (subs.length && !tlFold[p.id]) subs.forEach(function (sb, si) {
+          var key = p.id + ':' + si, open = !!tlOpen[key], last = si === subs.length - 1;
+          var has = sb.start || sb.due, a = has ? dnum(sb.start || sb.due) : 0, z = has ? dnum(sb.due || sb.start) + 1 : 0;
+          var days = has ? z - a : 0, late = sb.due && !sb.done && dnum(sb.due) < T;
+          var per = has ? subPeriod(sb) + ' · ' + days + '일' : '일정 미정';
+          var first = String(sb.body || '').split('\n').filter(function (l) { return l.trim(); })[0] || '';
+          var track = h('div', { class: 'tl-track' }, todayLine());
+          if (has) {
+            var l2 = pct(a), w2 = Math.max(pct(z) - l2, 0.6);
+            var sbar = at(h('button', { type: 'button', class: 'tl-bar tl-subbar st-' + (sb.done ? 'done' : (p.status || 'idea')) + (late ? ' late' : ''), title: sb.t + ' · ' + per,
+              onclick: function () { tlOpen[key] = !tlOpen[key]; HR.refresh(); } }, w2 >= 12 ? h('span', { class: 'tl-bar-t', text: sb.t + ' · ' + per }) : w2 >= 6 ? h('span', { class: 'tl-bar-t', text: sb.t }) : null), l2, w2);
+            track.appendChild(sbar);
+            if (w2 < 6) track.appendChild(at(h('span', { class: 'tl-bar-out sub', text: sb.t + ' · ' + per }), Math.min(l2 + w2, 100)));
+          }
+          grid.appendChild(h('div', { class: 'tl-row tl-subrow' + (last && !open ? ' last' : '') + (open ? ' open' : '') },
+            h('button', { type: 'button', class: 'tl-label tl-sublabel' + (last ? ' last' : ''), onclick: function () { tlOpen[key] = !tlOpen[key]; HR.refresh(); } },
+              h('span', { class: 'tl-subname' }, h('span', { class: 'tl-subcheck' + (sb.done ? ' on' : ''), text: sb.done ? '✓' : '' }), h('span', { class: 'tl-subname-t', text: sb.t }), h('span', { class: 'tl-subcaret', text: open ? '▴' : '▾' })),
+              h('span', { class: 'tl-sub' + (late ? ' over' : ''), text: per + (late ? ' · 지남' : '') }),
+              first ? h('span', { class: 'tl-subdesc', text: first }) : null),
+            track));
+          if (open) grid.appendChild(h('div', { class: 'tl-row tl-subdetail' + (last ? ' last' : '') },
+            h('div', { class: 'tl-label tl-sublabel tl-subline' + (last ? ' last' : '') }),
+            h('div', { class: 'tl-subdetail-body' },
+              h('div', { class: 'tl-subdetail-head' }, h('b', { text: sb.t }), sb.done ? ui.tag('완료', 'ok') : late ? ui.tag('마감 지남', 'red') : null, h('span', { class: 'meta', text: per })),
+              sb.body ? h('div', { class: 'ws-sub-body' }, String(sb.body).split('\n').map(function (l) { return l.trim() ? h('p', { text: l }) : null; })) : h('p', { class: 'meta', text: '적힌 내용이 없습니다.' }),
+              (sb.links || []).length ? h('div', { class: 'ws-links small' }, sb.links.map(linkChip)) : null)));
+        });
       });
     });
     if (!list.length) grid.appendChild(h('div', { class: 'tl-row empty', text: '프로젝트가 없습니다.' }));
