@@ -103,14 +103,33 @@
     ui.put(view, h('div', { class: 'two-col' }, form, ui.panel('Feed', null, ul)));
   }
 
+  /* ---------- 마일스톤: 브랜드 핵심 목표 7항목 (hr_plan/milestones — 로그인 구성원만, 공개 저장소에 숫자를 싣지 않는다) ---------- */
+  function milestones(view) {
+    var P = HR.load('hr_plan_ms', function () { return db.doc('hr_plan/milestones').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
+    if (!P) { var c = HR.cache.hr_plan_ms; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 마일스톤이 없습니다.' : '불러오는 중…')); }
+    var lanes = h('div', { class: 'ms-lanes' }, P.sections.map(function (sec) {
+      return h('section', { class: 'ms-lane ms-' + sec.id },
+        h('div', { class: 'ms-head' }, h('span', { class: 'ms-no', text: sec.no }), h('b', { text: sec.name })),
+        h('ol', { class: 'ms-track' }, sec.items.map(function (it) {
+          return h('li', { class: (it.key ? 'key ' : '') + (it.tbd ? 'tbd' : '') }, h('span', { class: 'ms-when', text: it.when }), h('span', { class: 'ms-dot' }),
+            h('span', { class: 'ms-title', text: it.title }), it.sub ? h('span', { class: 'ms-sub', text: it.sub }) : null);
+        })));
+    }));
+    ui.put(view,
+      h('div', { class: 'ms-hero' }, h('div', { class: 'label', text: 'Milestones · ' + fmt.dot(P.asOf) + ' 기준' }), h('h2', { class: 'ms-headline', text: P.headline }), h('p', { class: 'muted', text: P.lead }),
+        h('div', { class: 'ms-kpis' }, (P.kpis || []).map(function (k) { return h('div', null, h('span', { class: 'meta', text: k[0] }), h('b', { text: k[1] })); }))),
+      h('div', { class: 'org-wrap' }, lanes),
+      h('p', { class: 'note', text: '빨간 점은 그 항목의 핵심 목표 지점입니다. 목표가 바뀌면 이 화면이 함께 갱신됩니다.' }));
+  }
+
   HR.register('notice', {
     render: function (view, parts) {
       var sub = parts[0] || '';
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
-      if (sub && sub !== 'feed') return detail(view, sub);
-      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['feed', '소식 · 칭찬']], sub, 'notice'));
-      if (sub === 'feed') feed(view); else listView(view);
+      if (sub && sub !== 'feed' && sub !== 'milestone') return detail(view, sub);
+      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['milestone', '마일스톤'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else listView(view);
     }
   });
 })();
