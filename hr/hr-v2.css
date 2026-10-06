@@ -1476,3 +1476,10 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .ws-doing.on { border-color: #1d4ed8; color: #1d4ed8; background: #eef2ff; font-weight: 600; }
 .ws-doing.on .ws-doing-dot { opacity: 1; }
 .ws-doing-note { margin: 0; }
+
+.qs-rows { list-style: decimal; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.qs-rows li::marker { color: var(--gray-400); font-size: 12px; }
+.qs-rows input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--gray-200); font-family: inherit; font-size: 14px; }
+.qs-rows input:focus { outline: none; border-color: #1d4ed8; }
+.tl-subadd, .tl-subsort, .tl-subtoggle { white-space: nowrap; flex: none; display: inline-block; width: auto !important; }
+.tl-subadd-row { flex-wrap: wrap; width: auto !important; max-width: 100%; }

@@ -531,12 +531,22 @@
     var m = ui.msg(), close = function () { wrap.remove(); document.removeEventListener('keydown', esc); };
     var esc = function (e) { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', esc);
-    var ta = h('textarea', { rows: '8', maxlength: '2000', placeholder: '한 줄에 하나씩 — 예)\n상세페이지 촬영\n카페24 결제 세팅\n오픈 이벤트' });
-    var auto = h('input', { type: 'checkbox' });
-    var count = h('span', { class: 'meta' });
-    ta.addEventListener('input', function () { var n = ta.value.split('\n').filter(function (l) { return l.trim(); }).length; count.textContent = n ? n + '개 추가 예정' : ''; });
+    // 기본 5칸 · 「+ 칸 추가」 · Enter = 다음 칸(마지막이면 새 칸)
+    var rows = h('ol', { class: 'qs-rows' }), auto = h('input', { type: 'checkbox' }), count = h('span', { class: 'meta' });
+    var inputs = function () { return [].slice.call(rows.querySelectorAll('input')); };
+    var recount = function () { var n = inputs().filter(function (x) { return x.value.trim(); }).length; count.textContent = n ? n + '개 추가 예정' : ''; };
+    var addRow = function (focus) {
+      if (inputs().length >= 20) return;
+      var inp = h('input', { type: 'text', maxlength: '80', placeholder: '서브 프로젝트 이름', oninput: recount, onkeydown: function (e) {
+        if (e.key !== 'Enter' || e.isComposing) return;
+        e.preventDefault(); var all = inputs(), i = all.indexOf(this);
+        if (i === all.length - 1) addRow(true); else all[i + 1].focus();
+      } });
+      rows.appendChild(h('li', null, inp)); if (focus) inp.focus();
+    };
+    for (var r0 = 0; r0 < 5; r0++) addRow(false);
     var add = function () {
-      var names = ta.value.split('\n').map(function (l) { return l.replace(/^\s*[-·•\d.)]+\s*/, '').trim(); }).filter(Boolean);
+      var names = inputs().map(function (x) { return x.value.replace(/^\s*[-·•\d.)]+\s*/, '').trim(); }).filter(Boolean);
       if (!names.length) return ui.err(m, '이름을 한 줄에 하나씩 적어 주세요.');
       var subs = (p.subs || []).slice();
       if (subs.length + names.length > 20) return ui.err(m, '서브 프로젝트는 최대 20개입니다. 지금 ' + subs.length + '개가 있습니다.');
@@ -551,13 +561,13 @@
     };
     var panel = h('div', { class: 'sm-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': '간단 서브 추가' },
       h('div', { class: 'sm-head' }, h('span', { class: 'sm-kicker', text: '간단 서브 추가 · ' + p.title }), h('button', { type: 'button', class: 'sm-x', 'aria-label': '닫기', text: '×', onclick: close })),
-      h('p', { class: 'muted small', text: '서브 프로젝트 이름만 한 줄에 하나씩 적으세요. 일정 · 내용은 나중에 하나씩 눌러서 채우면 됩니다.' }),
-      ta, count,
+      h('p', { class: 'muted small', text: '이름만 칸마다 적으세요. Enter를 누르면 다음 칸으로 넘어갑니다. 일정 · 내용은 나중에 하나씩 눌러서 채우면 됩니다.' }),
+      rows, h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '+ 칸 추가', onclick: function () { addRow(true); } }), count),
       h('label', { class: 'check' }, auto, ' 앞 서브 마감 후부터 1주씩 자동으로 일정 배치'), m,
       h('div', { class: 'row sm-actions' }, h('button', { type: 'button', class: 'btn', text: '한 번에 추가', onclick: add }), ui.btn('취소', close, 'btn-line')));
     var wrap = h('div', { id: 'subModal', class: 'sm-wrap', onclick: function (e) { if (e.target === wrap) close(); } }, panel);
     document.body.appendChild(wrap);
-    setTimeout(function () { ta.focus(); }, 0);
+    setTimeout(function () { inputs()[0].focus(); }, 0);
   }
   var tlFold = {}, tlOpen = {};   // 프로젝트별 서브 접기 · 서브별 상세 펼치기
   function timelineOf(list, showSpace) {
