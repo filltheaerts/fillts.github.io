@@ -29,7 +29,39 @@
       Object.keys(f).forEach(function (k) { d[k] = k === 'autoOutHours' ? Math.max(0, +f[k].value || 0) : f[k].value.trim(); });
       cfgRef().set(d, { merge: true }).then(function () { ui.ok(m, '저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
     });
-    ui.put(view, form);
+    ui.put(view, form, geoForm());
+  }
+
+  // 출근 위치 제한 (기본: 월~목 사무실 반경 500m, 금요일 자유) — 퇴근·연장 신청 등은 제한 없음
+  var GEO_PRESETS = [['서울숲 SK V1 TOWER (성수일로8길 5)', 37.5470746, 127.0516163], ['성수 SK V1 CENTER (아차산로17길 48)', 37.5461373, 127.0657873]];
+  function geoForm() {
+    var g = S.cfg.geo || {}, m = ui.msg();
+    var on = h('input', { type: 'checkbox', checked: !!g.on });
+    var label = ui.input({ value: g.label || '', maxlength: '60', placeholder: '예: 서울숲 SK V1 TOWER' }), lat = ui.input({ type: 'number', step: 'any', value: g.lat || '' }), lng = ui.input({ type: 'number', step: 'any', value: g.lng || '' });
+    var radius = ui.input({ type: 'number', min: '100', max: '5000', step: '50', value: g.radius || 500 });
+    var days = g.days || [1, 2, 3, 4], boxes = {};
+    var dayRow = h('div', { class: 'row' }, [1, 2, 3, 4, 5, 6, 0].map(function (d) { boxes[d] = h('input', { type: 'checkbox', checked: days.indexOf(d) >= 0 }); return h('label', { class: 'check' }, boxes[d], ' ' + '일월화수목금토'[d]); }));
+    var presets = h('div', { class: 'row' }, GEO_PRESETS.map(function (p) { return ui.btn(p[0], function () { label.value = p[0].split(' (')[0]; lat.value = p[1]; lng.value = p[2]; }, 'btn-line btn-xs'); }),
+      ui.btn('지금 내 위치로', function () {
+        if (!navigator.geolocation) return ui.err(m, '위치 확인을 지원하지 않는 브라우저입니다.');
+        m.textContent = '위치를 확인하는 중…';
+        navigator.geolocation.getCurrentPosition(function (p) { lat.value = p.coords.latitude.toFixed(6); lng.value = p.coords.longitude.toFixed(6); ui.ok(m, '현재 위치를 넣었습니다 (오차 약 ' + Math.round(p.coords.accuracy) + 'm). 저장을 누르세요.'); },
+          function () { ui.err(m, '위치를 확인하지 못했습니다. 위치 권한을 허용하세요.'); }, { enableHighAccuracy: true, timeout: 12000 });
+      }, 'btn-line btn-xs'));
+    var f = h('form', { class: 'panel' }, ui.label('Clock-in location · 출근 위치 제한'),
+      h('label', { class: 'check' }, on, ' 정해진 요일에는 사무실 반경 안에서만 출근 버튼 허용'),
+      ui.field('적용 요일', dayRow), presets,
+      h('div', { class: 'form-grid' }, ui.field('위치 이름', label), ui.field('위도', lat), ui.field('경도', lng), ui.field('반경 (m)', radius)), m,
+      h('button', { class: 'btn btn-sm', type: 'submit', text: '저장' }),
+      h('p', { class: 'note', text: '출근 버튼을 누를 때 휴대폰·PC 위치로 사무실과의 거리를 확인합니다. 좌표는 저장하지 않고 거리(m)만 출근 기록에 남깁니다. 퇴근 · 연장/야간/휴일 신청 · 정정은 위치와 상관없이 누를 수 있습니다. 정확한 위치는 사무실에서 「지금 내 위치로」를 눌러 맞추는 것이 가장 정확합니다.' }));
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var d = { on: on.checked, label: label.value.trim(), lat: +lat.value || 0, lng: +lng.value || 0, radius: Math.max(100, +radius.value || 500),
+        days: Object.keys(boxes).filter(function (k) { return boxes[k].checked; }).map(Number) };
+      if (d.on && (!d.lat || !d.lng)) return ui.err(m, '위도·경도를 입력하세요.');
+      cfgRef().set({ geo: d }, { merge: true }).then(function () { ui.ok(m, '저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
+    });
+    return f;
   }
 
   function policies(view) {

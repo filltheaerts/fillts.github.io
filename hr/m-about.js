@@ -14,6 +14,7 @@
     return btoa(bin);
   }
   function fromB64(b64) { var bin = atob(b64), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function pairs(info) { return (info.items || []).map(function (x) { return Array.isArray(x) ? x : [x.k, x.v]; }); }
   function isDrive(u) { return /^https:\/\/(drive|docs)\.google\.com\//.test(u); }
 
   function openDoc(d) {
@@ -36,14 +37,14 @@
     var intro = h('textarea', { rows: '8', maxlength: '4000', placeholder: '회사 소개, 비전, 브랜드, 근무 장소·출입 안내 등' });
     intro.value = info.intro || '';
     var items = h('textarea', { rows: '6', maxlength: '2000', placeholder: '한 줄에 하나씩  예) 설립일: 2024-12-02' });
-    items.value = (info.items || []).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n');
+    items.value = pairs(info).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n');
     var m = ui.msg();
     var f = h('form', { class: 'panel' }, ui.label('Edit · 관리자'), ui.field('회사 소개', intro), ui.field('추가 항목 (라벨: 값)', items),
       h('p', { class: 'muted small', text: '회사명·대표자·사업자등록번호·주소는 설정 › 회사 기준 값을 그대로 보여 줍니다.' }), m,
       h('div', { class: 'row' }, h('button', { class: 'btn btn-sm', type: 'submit', text: '저장' }), ui.btn('취소', function () { editing = false; HR.refresh(); }, 'btn-line btn-sm')));
     f.addEventListener('submit', function (e) {
       e.preventDefault();
-      var list = items.value.split('\n').map(function (l) { var i = l.indexOf(':'); return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1).trim()] : null; }).filter(function (x) { return x && x[0] && x[1]; }).slice(0, 30);
+      var list = items.value.split('\n').map(function (l) { var i = l.indexOf(':'); return i > 0 ? { k: l.slice(0, i).trim(), v: l.slice(i + 1).trim() } : null; }).filter(function (x) { return x && x.k && x.v; }).slice(0, 30);   // Firestore는 배열 안 배열 불가 → {k, v}
       db.doc('hr_about/main').set({ intro: intro.value.trim(), items: list, updatedAt: FV.serverTimestamp(), by: S.mid })
         .then(function () { editing = false; HR.invalidate('hr_about'); ui.toast('저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
     });
@@ -93,7 +94,7 @@
     var info = HR.load('hr_about', function () { return db.doc('hr_about/main').get().then(function (s) { return s.exists ? s.data() : {}; }); }) || {};
     var docs = HR.load('hr_about_docs', function () { return db.collection('hr_about_docs').get().then(HR.rows); }) || [];
     var c = S.cfg;
-    var rows = [['회사명', c.companyName], ['대표자', c.ceoName], ['사업자등록번호', c.bizNo], ['주소', c.companyAddress]].filter(function (x) { return x[1]; }).concat(info.items || []);
+    var rows = [['회사명', c.companyName], ['대표자', c.ceoName], ['사업자등록번호', c.bizNo], ['주소', c.companyAddress]].filter(function (x) { return x[1]; }).concat(pairs(info));
     ui.put(view, ui.head('About', '기본안내', S.isAdmin && !editing ? ui.btn('소개 편집', function () { editing = true; HR.refresh(); }, 'btn-line btn-sm') : null));
     if (editing && S.isAdmin) ui.put(view, editForm(info));
     var dl = h('ul', { class: 'list' });
@@ -107,7 +108,7 @@
           b.commit().then(function () { HR.invalidate('hr_about_docs'); }).catch(ui.fail);
         }) : null));
     });
-    if (!dl.children.length) dl.appendChild(h('li', { class: 'empty', text: '등록된 서류가 없습니다.' }));
+    if (!dl.children.length) dl.appendChild(h('li', { class: 'empty', text: S.isAdmin ? '등록된 서류가 없습니다. 추천: 사업자등록증 · 법인 등기사항전부증명서 · 법인 통장 사본 · 4대보험 사업장 가입자명부 · 취업규칙 · 회사 로고(CI)' : '등록된 서류가 없습니다.' }));
     ui.put(view, h('div', { class: 'two-col about-grid' },
       ui.panel('Company · 회사 소개', null,
         info.intro ? h('div', { class: 'about-intro', text: info.intro }) : h('p', { class: 'empty', text: S.isAdmin ? '「소개 편집」으로 회사 소개를 작성하세요.' : '아직 회사 소개가 없습니다.' }),

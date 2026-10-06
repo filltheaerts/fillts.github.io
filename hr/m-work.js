@@ -7,12 +7,42 @@
   try { mode = localStorage.getItem('hrMode') || 'office'; } catch (e) { /* 무시 */ }
 
   /* ---------- 출퇴근 ---------- */
+  /* 출근 위치 제한: 설정 › 회사 기준의 요일(기본 월~목)에는 사무실 반경 안에서만 출근. 퇴근·신청은 제한 없음 */
+  function geoRule(date) {
+    var g = S.cfg.geo;
+    if (!g || !g.on || !g.lat || !g.lng) return null;
+    var wd = L.weekday(date);   // 0=일 … 6=토
+    return (g.days || [1, 2, 3, 4]).indexOf(wd) >= 0 ? g : null;
+  }
+  function distM(a, b, c, d) {
+    var R = 6371000, r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2);
+    return Math.round(2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y)));
+  }
+  function checkGeo(g) {
+    return new Promise(function (ok, no) {
+      if (!navigator.geolocation) return no({ user: '이 브라우저는 위치 확인을 지원하지 않습니다.' });
+      navigator.geolocation.getCurrentPosition(function (p) {
+        var d = distM(p.coords.latitude, p.coords.longitude, +g.lat, +g.lng), acc = Math.min(p.coords.accuracy || 0, 150);
+        if (d - acc <= (+g.radius || 500)) ok(d);
+        else no({ user: (g.label || '사무실') + ' 반경 ' + (+g.radius || 500) + 'm 안에서만 출근할 수 있습니다. 지금 약 ' + (d >= 1000 ? (d / 1000).toFixed(1) + 'km' : d + 'm') + ' 떨어져 있습니다. (금요일·외근은 관리자에게 문의)' });
+      }, function (e) {
+        no({ user: e.code === 1 ? '위치 권한이 꺼져 있습니다. 브라우저 설정에서 fillts.com의 위치 접근을 허용한 뒤 다시 누르세요.' : '현재 위치를 확인하지 못했습니다. 잠시 후 다시 누르세요.' });
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    });
+  }
   function punch(kind, btns, msgEl) {
     var t = fmt.today(), date = t, pres = S.presence[S.mid];
     if (kind === 'out' && pres && pres.state === 'in' && pres.dk && L.daysBetween(fmt.dkToDate(pres.dk), t) <= 1) date = fmt.dkToDate(pres.dk); // 퇴근은 출근일에 귀속 (자정 넘김 포함)
     btns.forEach(function (b) { b.disabled = true; });
-    var b = db.batch();
-    b.set(db.collection('hr_punch').doc(), { memberId: S.mid, kind: kind, mode: mode, dk: fmt.dk(date), ym: fmt.ymNum(date), at: FV.serverTimestamp(), uid: S.user.uid });
+    var g = kind === 'in' ? geoRule(date) : null;
+    if (g) msgEl.textContent = '위치를 확인하는 중…';
+    (g ? checkGeo(g) : Promise.resolve(null)).then(function (dist) { msgEl.textContent = ''; write(kind, date, dist, btns, msgEl); })
+      .catch(function (x) { ui.err(msgEl, x.user || '위치를 확인하지 못했습니다.'); btns.forEach(function (y) { y.disabled = false; }); });
+  }
+  function write(kind, date, dist, btns, msgEl) {
+    var b = db.batch(), rec = { memberId: S.mid, kind: kind, mode: mode, dk: fmt.dk(date), ym: fmt.ymNum(date), at: FV.serverTimestamp(), uid: S.user.uid };
+    if (dist != null) rec.geo = dist;
+    b.set(db.collection('hr_punch').doc(), rec);
     b.set(db.doc('hr_presence/' + S.mid), { state: kind, mode: mode, dk: fmt.dk(date), at: FV.serverTimestamp() });
     b.commit().then(function () { ui.toast(kind === 'in' ? A.modeName(mode) + ' 출근을 기록했습니다.' : '퇴근을 기록했습니다. 수고하셨습니다.'); })
       .catch(function (e) { ui.fail(e, msgEl); btns.forEach(function (x) { x.disabled = false; }); });
@@ -45,7 +75,8 @@
     return h('section', { class: 'panel punch' },
       h('div', { class: 'panel-head' }, head, modes), clock,
       state, h('div', { class: 'row' }, bIn, bOut), msgEl,
-      ah ? h('p', { class: 'muted small', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null);
+      ah ? h('p', { class: 'muted small', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null,
+      geoRule(t) ? h('p', { class: 'muted small', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다 (위치 권한 필요 · 좌표는 저장하지 않고 거리만 남깁니다).' }) : null);
   }
   function weekPanel() {
     var t = fmt.today(), mon = L.mondayOf(t), days = A.days(S.myPunches, S.myFixes, { member: S.members[S.mid], from: mon, to: L.addDays(mon, 6), leaves: HR.leavesOf(S.mid) }), w = A.week(days, mon);

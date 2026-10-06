@@ -249,5 +249,11 @@
       h('p', { class: 'note', text: '직원 행에서 「올리기」를 눌러 그 직원의 명세서만 올립니다. 올리기 전에 PDF 본문을 읽어 ① 대상자 이름 ② 사번 ③ 귀속월 ④ 다른 직원 이름·사번 ⑤ 파일 이름 ⑥ 다른 직원에게 올린 같은 파일 여부를 검사합니다. 하나라도 어긋나면 대상자 이름을 직접 입력해야 올라가고, 다른 직원에게 이미 올린 파일은 올릴 수 없습니다. 파일은 본인과 관리자만 열 수 있습니다 (보안 규칙으로 서버에서 차단).' }));
   }
 
+  // 다른 화면(증명서 발급본 업로드 등)에서 쓰는 PDF 본문 추출
+  HR.pdfText = function (buf) {
+    return loadPdfjs().then(function (lib) { return lib.getDocument({ data: new Uint8Array(buf.slice(0)), cMapUrl: PDFJS + 'cmaps/', cMapPacked: true, isEvalSupported: false, disableFontFace: true }).promise; })
+      .then(function (pdf) { var jobs = []; for (var i = 1; i <= Math.min(pdf.numPages, 5); i++) jobs.push(pdf.getPage(i).then(function (pg) { return pg.getTextContent().then(function (tc) { return tc.items.map(function (x) { return x.str; }).join(' '); }); })); return Promise.all(jobs); })
+      .then(function (t) { return t.join(' '); });
+  };
   HR.payslip = { memberTab: memberTab, adminPage: adminPage };
 })();

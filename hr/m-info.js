@@ -195,6 +195,7 @@
       S.leaves.filter(function (l) { return l.status === 'pending' && (S.isAdmin || (S.members[l.memberId] || {}).leaderId === S.mid) && l.memberId !== S.mid; })
         .forEach(function (l) { todo.appendChild(HR.leave.item(l, { approve: true })); });
       if (S.isAdmin) S.fixes.forEach(function (f) { todo.appendChild(HR.work.fixItem(f, true)); });   // 근태 정정은 관리자만 승인 (본인 것 포함)
+      if (S.isAdmin) HR.certs.todo().forEach(function (li) { todo.appendChild(li); });   // 증명서 요청
       if (S.isAdmin) (S.ots || []).filter(function (o) { return o.status === 'pending'; }).forEach(function (o) { todo.appendChild(HR.work.otItem(o, true)); });   // 연장·야간·휴일근무 신청
       if (todo.children.length) right.appendChild(ui.panel('To do · 승인 대기 ' + todo.children.length, null, todo));
     }
@@ -474,11 +475,11 @@
     if (sub === 'growth') return tabGrowth(view, mid);
     if (sub === 'edu') return tabEdu(view, mid);
     if (sub === 'pay') return tabPay(view, mid);
-    if (sub === 'docs') return tabDocs(view, mid, m, 'docs');
+    if (sub === 'docs') return HR.certs.tab(view, mid);   // 재직·경력증명서 요청 → 승인 → 발급본 업로드 (m-certs.js)
     if (sub === 'contract') return tabDocs(view, mid, m, 'contract');
     if (sub === 'notes' && admin) return tabNotes(view, mid);
     if (sub === 'notify' && self) { tabNotify(view); return ui.put(view, HR.app.panel()); }   // 알림 설정 아래에 홈 화면 앱 아이콘 안내
   }
-  HR.info = { render: render };
+  HR.info = { render: render, printCert: printCert, privOf: privOf };
   HR.register('info', { render: function (view, parts) { render(view, S.mid, parts[0] || '', 'info'); } });
 })();

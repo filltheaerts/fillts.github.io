@@ -361,3 +361,54 @@ td .tag + .tag { margin-left: 4px; }
 .app-guide.on { border-color: var(--black); }
 .app-steps { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .ok-text { color: var(--ok); font-size: 13px; }
+
+/* 채용예정 — 가로 조직도 */
+.pt { min-width: 1040px; display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px; }
+.pt-root { position: relative; padding-bottom: 28px; }
+.pt-root::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 1px; height: 28px; background: var(--gray-400); }
+.pt-ceo { background: var(--black); color: var(--white); padding: 12px 28px; text-align: center; min-width: 260px; }
+.pt-ceo .pt-unit-desc { color: var(--gray-400); }
+.pt-cols { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; width: 100%; padding-top: 22px; }
+.pt-cols::before { content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: var(--gray-400); }
+.pt-col { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.pt-col::before { content: ""; position: absolute; top: -22px; left: 50%; width: 1px; height: 22px; background: var(--gray-400); }
+.pt-unit { border: 1px solid var(--black); background: var(--paper); padding: 10px 12px; text-align: center; }
+.pt-col.u-studio .pt-unit { border-color: var(--red); box-shadow: inset 0 3px 0 var(--red); }
+.pt-unit-name { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
+.pt-unit-desc { font-size: 11px; color: var(--gray-600); margin-top: 3px; line-height: 1.4; }
+.pt-group { border: 1px solid var(--gray-200); background: var(--paper); padding: 8px 10px 10px; }
+.pt-group-name { font-size: 11px; letter-spacing: 0.06em; color: var(--gray-600); padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--gray-100); }
+.pt-slots { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ps { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 3px 0; cursor: default; }
+.ps-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; border: 1.5px solid var(--black); background: var(--paper); }
+.ps.is-in .ps-dot { background: var(--ok); border-color: var(--ok); }
+.ps.is-plus .ps-dot { border-style: dashed; border-color: var(--gray-400); }
+.ps.is-plus .ps-role { color: var(--gray-600); }
+.ps.is-due .ps-dot { background: var(--red); border-color: var(--red); }
+.ps-role { flex: 1; min-width: 0; }
+.ps-when { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--gray-600); }
+.ps.is-lead .ps-role { font-weight: 500; }
+.ps.is-due .ps-when { color: var(--red); font-weight: 500; }
+.pt-legend { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 12px; margin: 4px 0 6px; }
+.pt-legend .ps { padding: 0; }
+.pt-years { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 0; min-width: 900px; border-top: 2px solid var(--black); }
+.pt-year { padding: 10px 12px 4px; border-right: 1px solid var(--gray-100); }
+.pt-year:last-child { border-right: 0; }
+.pt-year-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.pt-year ul { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.pt-year li { display: flex; gap: 8px; }
+.pt-year li.next { color: var(--red); font-weight: 500; }
+.pt-year li.past { color: var(--gray-400); }
+.pt-when { font-variant-numeric: tabular-nums; color: var(--gray-600); width: 38px; flex: none; }
+.pt-year li.next .pt-when { color: var(--red); }
+.plan-goal { font-size: 20px; font-weight: 500; line-height: 1.45; margin: 8px 0 4px; }
+.plan-flow { color: var(--gray-600); }
+
+/* 증명서 요청 */
+.cert-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.cert-kind { border: 1px solid var(--gray-200); padding: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.cert-kind-name { font-size: 15px; font-weight: 500; }
+.cert-kind p { font-size: 13px; }
+.cert-req { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.cert-row { flex-wrap: wrap; }
+.cert-upload { flex-basis: 100%; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--gray-100); margin-top: 8px; }

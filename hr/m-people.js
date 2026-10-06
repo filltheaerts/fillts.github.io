@@ -91,42 +91,51 @@
   function plan(view) {
     var P = HR.load('hr_plan', function () { return db.doc('hr_plan/org').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
     if (!P) { var c = HR.cache.hr_plan; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 채용예정 조직도가 없습니다.' : '불러오는 중…')); }
-    var ym = fmt.today().slice(0, 7), all = [];
-    var grid = h('div', { class: 'plan-grid' });
+    var ym = fmt.today().slice(0, 7), all = [], top = [];
+    // 한 자리 = 한 줄: ● 직책 · 합류 시기 (설명은 마우스를 올리면)
+    function slot(s, unit, group) {
+      if (s.seq) all.push({ s: s, unit: unit, group: group });
+      var w = whenYm(s.when || ''), due = s.st !== 'in' && w <= ym;
+      return h('li', { class: 'ps ' + (s.st === 'in' ? 'is-in' : s.plus ? 'is-plus' : 'is-lead') + (due ? ' is-due' : ''), title: [s.note, s.by].filter(Boolean).join(' · ') },
+        h('span', { class: 'ps-dot' }), h('span', { class: 'ps-role', text: s.role }),
+        h('span', { class: 'ps-when', text: s.st === 'in' ? '재직' : s.when }));
+    }
+    var cols = h('div', { class: 'pt-cols' });
     P.units.forEach(function (u) {
-      var card = h('section', { class: 'plan-unit u-' + u.id }, h('div', { class: 'plan-unit-name', text: u.name }), h('div', { class: 'meta', text: u.desc || '' }));
+      var col = h('div', { class: 'pt-col u-' + u.id }, h('div', { class: 'pt-unit' }, h('div', { class: 'pt-unit-name', text: u.name }), h('div', { class: 'pt-unit-desc', text: u.desc || '' })));
       u.groups.forEach(function (g) {
-        var ul = h('ul', { class: 'plan-slots' });
-        g.slots.forEach(function (s) {
-          if (s.seq) all.push({ s: s, unit: u.name, group: g.name });
-          ul.appendChild(h('li', { class: (s.st === 'in' ? 'is-in' : s.plus ? 'is-plus' : 'is-lead') },
-            h('div', { class: 'plan-role' }, (s.plus ? '＋ ' : '') + s.role, s.direct ? h('span', { class: 'plan-direct', text: 'CEO DIRECT' }) : null),
-            h('div', { class: 'plan-sub' }, whenTag(s, ym), h('span', { class: 'meta', text: [s.note, s.by].filter(Boolean).join(' · ') }))));
-        });
-        card.appendChild(h('div', { class: 'plan-group' }, h('div', { class: 'label', text: g.name }), ul));
+        var slots = g.slots.filter(function (s) { if (u.id === 'ceo' && s.st === 'in') { top.push(s); return false; } return true; });
+        if (!slots.length) return;
+        col.appendChild(h('div', { class: 'pt-group' }, u.id === 'ceo' ? null : h('div', { class: 'pt-group-name', text: g.name }), h('ul', { class: 'pt-slots' }, slots.map(function (s) { return slot(s, u.name, g.name); }))));
       });
-      grid.appendChild(card);
+      cols.appendChild(col);
     });
-    // 합류 순서 타임라인
+    var root = h('div', { class: 'pt-root' }, h('div', { class: 'pt-ceo' }, h('div', { class: 'pt-unit-name', text: 'CEO · 대표이사' }),
+      h('div', { class: 'pt-unit-desc', text: top.map(function (s) { return s.role; }).filter(function (r) { return r !== '대표이사'; }).join(' · ') + ' 겸직' })));
+    var legend = h('div', { class: 'pt-legend' }, h('span', { class: 'ps is-in' }, h('span', { class: 'ps-dot' }), '재직'), h('span', { class: 'ps is-lead' }, h('span', { class: 'ps-dot' }), '리더 합류 예정'),
+      h('span', { class: 'ps is-plus' }, h('span', { class: 'ps-dot' }), '팀원 충원'), h('span', { class: 'ps is-due' }, h('span', { class: 'ps-dot' }), '이번 달 · 시기 도래'), h('span', { class: 'meta', text: '항목에 마우스를 올리면 설명이 보입니다' }));
+
+    // 합류 순서 — 연도별 가로 타임라인
     all.sort(function (a, b) { return a.s.seq - b.s.seq; });
-    var next = all.filter(function (x) { return whenYm(x.s.when) >= ym; })[0];
-    var tl = h('ol', { class: 'plan-timeline' }), lastY = '';
-    all.forEach(function (x) {
-      var y = whenYm(x.s.when).slice(0, 4);
-      if (y !== lastY) { tl.appendChild(h('li', { class: 'plan-year', text: y })); lastY = y; }
-      tl.appendChild(h('li', { class: 'plan-step' + (x === next ? ' next' : '') + (whenYm(x.s.when) < ym ? ' past' : '') },
-        h('span', { class: 'plan-seq', text: ('0' + x.s.seq).slice(-2) }), h('span', { class: 'plan-when', text: x.s.when }),
-        h('span', { class: 'plan-what' }, h('b', { text: (x.s.plus ? '＋ ' : '') + x.s.role }), h('span', { class: 'meta', text: ' ' + x.unit + ' · ' + x.group + ' · ' + x.s.by })),
-        x === next ? ui.tag('다음', 'red') : null));
+    var next = all.filter(function (x) { return whenYm(x.s.when) >= ym; })[0], years = {};
+    all.forEach(function (x) { var y = whenYm(x.s.when).slice(0, 4); (years[y] = years[y] || []).push(x); });
+    var tl = h('div', { class: 'pt-years' });
+    Object.keys(years).sort().forEach(function (y) {
+      var rev = (P.revenue || []).filter(function (r) { return r[0] === y; })[0];
+      tl.appendChild(h('div', { class: 'pt-year' }, h('div', { class: 'pt-year-head' }, h('b', { text: y }), rev ? h('span', { class: 'meta', text: '매출 ' + rev[1] }) : null),
+        h('ul', null, years[y].map(function (x) {
+          return h('li', { class: (x === next ? 'next ' : '') + (whenYm(x.s.when) < ym ? 'past' : ''), title: x.unit + ' · ' + x.group + ' · ' + x.s.by },
+            h('span', { class: 'pt-when', text: x.s.when }), h('span', { text: (x.s.plus ? '＋ ' : '') + x.s.role }));
+        }))));
     });
+
     ui.put(view,
-      h('div', { class: 'plan-head' }, h('div', null, h('div', { class: 'label', text: 'Hiring plan · ' + fmt.dot(P.asOf) + ' 편제' }), h('p', { class: 'plan-flow', text: P.flow })),
-        h('p', { class: 'meta', text: '원본: ' + P.source })),
+      h('div', { class: 'plan-head' }, h('div', null, h('div', { class: 'label', text: 'Hiring plan · ' + fmt.dot(P.asOf) + ' 편제' }), P.goal ? h('h2', { class: 'plan-goal', text: P.goal }) : null, h('p', { class: 'plan-flow', text: P.flow }))),
       h('ul', { class: 'plain plan-summary' }, P.summary.map(function (x) { return h('li', { text: x }); })),
-      h('div', { class: 'org-wrap' }, grid),
-      h('div', { class: 'two-col' }, ui.panel('합류 순서', null, tl),
-        h('div', { class: 'stack' }, ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))),
-          ui.panel('매출 목표 (연말)', null, h('div', { class: 'plan-rev' }, P.revenue.map(function (r) { return h('div', null, h('div', { class: 'meta', text: r[0] }), h('b', { text: r[1] })); }))))));
+      legend,
+      h('div', { class: 'org-wrap' }, h('div', { class: 'pt' }, root, cols)),
+      ui.panel('합류 순서', next ? h('span', { class: 'meta', text: '다음: ' + next.s.when + ' ' + next.s.role }) : null, h('div', { class: 'org-wrap' }, tl)),
+      ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))));
   }
 
   /* ---------- 구성원 추가 (관리자) ---------- */
