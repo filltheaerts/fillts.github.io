@@ -72,6 +72,63 @@
       S.isAdmin ? h('p', { class: 'note' }, '조직은 ', h('a', { href: '#admin/org', class: 'link', text: '설정 › 조직' }), '에서 만들고, 구성원 배치는 각 구성원 INFO › 정보 › 조직 · 직책에서 바꿉니다.') : null);
   }
 
+  /* ---------- 채용예정 조직도 (hr_plan/org — 천우재 조직도 원본을 옮긴 것, 실명 없이 직책만) ---------- */
+  // 합류 시기 표기(26.10 / 27.2Q / 2031) → 비교용 'YYYY-MM'
+  function whenYm(w) {
+    var m;
+    if ((m = /^(\d{2})\.(\d{2})$/.exec(w))) return '20' + m[1] + '-' + m[2];
+    if ((m = /^(\d{2})\.(\d)Q$/.exec(w))) return '20' + m[1] + '-' + ('0' + ((+m[2] - 1) * 3 + 1)).slice(-2);
+    if ((m = /^(\d{4})$/.exec(w))) return m[1] + '-01';
+    return '9999-12';
+  }
+  function whenTag(s, ym) {
+    if (s.st === 'in') return ui.tag('재직', 'ok');
+    var w = whenYm(s.when || '');
+    if (w.slice(0, 7) === ym) return ui.tag('이번 달 · ' + s.when, 'red');
+    if (w < ym) return ui.tag('합류 시기 지남 · ' + s.when, 'red');
+    return ui.tag((s.plus ? '충원 ' : '합류 ') + s.when, s.plus ? 'mute' : 'warn');
+  }
+  function plan(view) {
+    var P = HR.load('hr_plan', function () { return db.doc('hr_plan/org').get().then(function (s) { return s.exists ? JSON.parse(s.data().json) : null; }); });
+    if (!P) { var c = HR.cache.hr_plan; return ui.put(view, ui.empty(c && c.at && !c.loading ? '등록된 채용예정 조직도가 없습니다.' : '불러오는 중…')); }
+    var ym = fmt.today().slice(0, 7), all = [];
+    var grid = h('div', { class: 'plan-grid' });
+    P.units.forEach(function (u) {
+      var card = h('section', { class: 'plan-unit u-' + u.id }, h('div', { class: 'plan-unit-name', text: u.name }), h('div', { class: 'meta', text: u.desc || '' }));
+      u.groups.forEach(function (g) {
+        var ul = h('ul', { class: 'plan-slots' });
+        g.slots.forEach(function (s) {
+          if (s.seq) all.push({ s: s, unit: u.name, group: g.name });
+          ul.appendChild(h('li', { class: (s.st === 'in' ? 'is-in' : s.plus ? 'is-plus' : 'is-lead') },
+            h('div', { class: 'plan-role' }, (s.plus ? '＋ ' : '') + s.role, s.direct ? h('span', { class: 'plan-direct', text: 'CEO DIRECT' }) : null),
+            h('div', { class: 'plan-sub' }, whenTag(s, ym), h('span', { class: 'meta', text: [s.note, s.by].filter(Boolean).join(' · ') }))));
+        });
+        card.appendChild(h('div', { class: 'plan-group' }, h('div', { class: 'label', text: g.name }), ul));
+      });
+      grid.appendChild(card);
+    });
+    // 합류 순서 타임라인
+    all.sort(function (a, b) { return a.s.seq - b.s.seq; });
+    var next = all.filter(function (x) { return whenYm(x.s.when) >= ym; })[0];
+    var tl = h('ol', { class: 'plan-timeline' }), lastY = '';
+    all.forEach(function (x) {
+      var y = whenYm(x.s.when).slice(0, 4);
+      if (y !== lastY) { tl.appendChild(h('li', { class: 'plan-year', text: y })); lastY = y; }
+      tl.appendChild(h('li', { class: 'plan-step' + (x === next ? ' next' : '') + (whenYm(x.s.when) < ym ? ' past' : '') },
+        h('span', { class: 'plan-seq', text: ('0' + x.s.seq).slice(-2) }), h('span', { class: 'plan-when', text: x.s.when }),
+        h('span', { class: 'plan-what' }, h('b', { text: (x.s.plus ? '＋ ' : '') + x.s.role }), h('span', { class: 'meta', text: ' ' + x.unit + ' · ' + x.group + ' · ' + x.s.by })),
+        x === next ? ui.tag('다음', 'red') : null));
+    });
+    ui.put(view,
+      h('div', { class: 'plan-head' }, h('div', null, h('div', { class: 'label', text: 'Hiring plan · ' + fmt.dot(P.asOf) + ' 편제' }), h('p', { class: 'plan-flow', text: P.flow })),
+        h('p', { class: 'meta', text: '원본: ' + P.source })),
+      h('ul', { class: 'plain plan-summary' }, P.summary.map(function (x) { return h('li', { text: x }); })),
+      h('div', { class: 'org-wrap' }, grid),
+      h('div', { class: 'two-col' }, ui.panel('합류 순서', null, tl),
+        h('div', { class: 'stack' }, ui.panel('원칙', null, h('ul', { class: 'plain' }, P.rules.map(function (x) { return h('li', { text: x }); }))),
+          ui.panel('매출 목표 (연말)', null, h('div', { class: 'plan-rev' }, P.revenue.map(function (r) { return h('div', null, h('div', { class: 'meta', text: r[0] }), h('b', { text: r[1] })); }))))));
+  }
+
   /* ---------- 구성원 추가 (관리자) ---------- */
   function addForm(view) {
     var f = {
@@ -82,23 +139,16 @@
       type: ui.select([['정규직', '정규직'], ['계약직', '계약직'], ['단시간', '단시간'], ['인턴', '인턴']], '정규직'),
       weeklyHours: ui.input({ type: 'number', min: '1', max: '40', step: '0.5', value: '40' }),
       leaderId: ui.select([['', '(없음)']].concat(HR.memberList(false).map(function (m) { return [m.id, m.name]; })), S.mid),
-      role: ui.select([['employee', '구성원'], ['manager', '리더'], ['admin', '관리자']], 'employee'),
-      payType: ui.select([['monthly', '월급'], ['hourly', '시급']], 'monthly'), pay: ui.input({ type: 'number', min: '0', step: '10', placeholder: '선택' })
+      role: ui.select([['employee', '구성원'], ['manager', '리더'], ['admin', '관리자']], 'employee')
     };
-    var invite = h('input', { type: 'checkbox', checked: true }), m = ui.msg(), check = h('p', { class: 'muted small' });
-    function payCheck() {
-      var c = L.minWageCheck({ payType: f.payType.value, amount: +f.pay.value }, S.cfg);
-      check.textContent = c ? '통상시급 ' + fmt.won(c.rate) + (c.ok ? ' · 최저임금 충족' : ' · 최저임금(' + fmt.won(c.min) + ') 미달') : '';
-      check.classList.toggle('red-text', !!c && !c.ok);
-    }
-    f.pay.addEventListener('input', payCheck); f.payType.addEventListener('change', payCheck);
+    var invite = h('input', { type: 'checkbox', checked: true }), m = ui.msg();
     var form = h('form', { class: 'panel' },
       ui.label('New member'),
       h('div', { class: 'form-grid' },
         ui.field('이름 *', f.name), ui.field('회사 이메일 *', f.email), ui.field('주조직', f.orgId), ui.field('직책', f.orgRole), ui.field('직무', f.job), ui.field('직위', f.position),
         ui.field('입사일 *', f.hireDate), ui.field('입사 유형', f.hireType), ui.field('고용 형태', f.type), ui.field('주 소정근로시간', f.weeklyHours),
-        ui.field('리더', f.leaderId), ui.field('HR 권한', f.role), ui.field('급여 형태', f.payType), ui.field('금액 (원)', f.pay)),
-      check, h('label', { class: 'check' }, invite, ' 저장과 함께 초대 등록 (직원이 이 이메일로 가입하면 자동 연결)'), m,
+        ui.field('리더', f.leaderId), ui.field('HR 권한', f.role)),
+      h('label', { class: 'check' }, invite, ' 저장과 함께 초대 등록 (직원이 이 이메일로 가입하면 자동 연결)'), m,
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: '구성원 추가' }), h('a', { class: 'btn btn-line', href: '#people', text: '취소' })),
       h('p', { class: 'note', text: '생일·연락처·주소는 직원 본인이 INFO에서 입력합니다. 주민등록번호는 이 시스템에 저장하지 않습니다. 근로계약서는 구성원 INFO › 계약서에 교부일과 함께 등록하세요 (근로기준법 제17조).' }));
     form.addEventListener('submit', function (e) {
@@ -113,7 +163,6 @@
         job: f.job.value.trim(), jobFamily: '', position: f.position.value.trim(), grade: '', hireDate: f.hireDate.value, groupHireDate: '', hireType: f.hireType.value,
         type: f.type.value, weeklyHours: +f.weeklyHours.value || 40, status: '재직', leaveDate: '', leaderId: f.leaderId.value, leaveAdjs: [], slackId: ''
       });
-      if (f.pay.value) b.set(db.doc('hr_pay/' + ref.id), { payType: f.payType.value, amount: +f.pay.value, note: '', updatedAt: FV.serverTimestamp() });
       if (invite.checked) b.set(db.doc('hr_invites/' + email), { memberId: ref.id, role: f.role.value, createdAt: FV.serverTimestamp() });
       b.commit().then(function () { ui.toast(f.name.value.trim() + '님을 추가했습니다.' + (invite.checked ? ' 가입 안내: fillts.com/hr' : '')); HR.go('people/' + ref.id); })
         .catch(function (x) { ui.fail(x, m); });
@@ -125,13 +174,13 @@
     render: function (view, parts) {
       var sub = parts[0] || '';
       if (sub === 'new' && S.isAdmin) return addForm(view);
-      if (sub && sub !== 'chart') {
+      if (sub && sub !== 'chart' && sub !== 'plan') {
         if (sub === S.mid) { HR.go('info' + (parts[1] ? '/' + parts[1] : '')); return; }
         ui.put(view, h('a', { href: '#people', class: 'back', text: '← 구성원' }));
         return HR.info.render(view, sub, parts[1] || '', 'people/' + sub);
       }
-      ui.put(view, ui.head('People', '구성원'), ui.tabs([['', '구성원 ' + HR.memberList(false).length], ['chart', '조직도']], sub, 'people'));
-      if (sub === 'chart') chart(view); else list(view);
+      ui.put(view, ui.head('People', '구성원'), ui.tabs([['', '구성원 ' + HR.memberList(false).length], ['chart', '조직도'], ['plan', '채용예정']], sub, 'people'));
+      if (sub === 'chart') chart(view); else if (sub === 'plan') plan(view); else list(view);
     }
   });
 })();

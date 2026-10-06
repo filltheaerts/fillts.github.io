@@ -1,14 +1,120 @@
-/* fillts HR — INFO 첫 화면: 오늘의 구성원 (휴가 · 기념일 · 외근 · 미팅 · 출장 · 재택) + LIVE (구성원별 지금 상태)
-   외근·미팅·출장·재택은 구성원이 직접 등록한다 (hr_sched, 전 구성원 공개). 휴가는 승인된 hr_away, 출퇴근은 hr_presence. */
+/* fillts HR — INFO 첫 화면: 오늘의 구성원 (휴가 · 기념일 · 미팅 · 외근 · 출장 · 재택) + LIVE (구성원별 지금 상태)
+   미팅·외근·출장·재택은 각 구성원의 Google 캘린더에서 가져온다 (본인 브라우저가 본인 캘린더를 읽어 hr_sched에 시간·종류만 기록).
+   제목·장소·참석자는 저장하지 않는다. 휴가는 승인된 hr_away, 출퇴근은 hr_presence. */
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var KINDS = [['meeting', '미팅'], ['field', '외근'], ['trip', '출장'], ['remote', '재택']];
   var KNAME = { meeting: '미팅', field: '외근', trip: '출장', remote: '재택' };
   var KTAG = { meeting: 'warn', field: 'ok', trip: 'ok', remote: 'mute' };
-  var HALF = 13 * 60;   // 오전/오후 반차 경계
-  var addOpen = false;  // 다시 그려도 등록 폼 펼침 상태 유지
+  var HALF = 13 * 60;          // 오전/오후 반차 경계
+  var DAYS_AHEAD = 7;          // 오늘부터 며칠치 캘린더를 가져올지
+  var TOK_KEY = 'hrGcalTok', SYNC_EVERY = 15 * 60000;
+  var CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+  var FIELD_RE = /외근|출장|방문|현장|박람회|전시|미팅\s*외부|외부\s*미팅|공장|실사|촬영/;
+  var INSIDE_RE = /필츠|fillts|사무실|회의실|zoom|meet|teams|webex|화상|온라인|online|전화|call/i;
 
+  /* ---------- Google 캘린더 연동 ---------- */
+  var G = { syncing: false, lastAt: 0, err: '' };
+  function token() {
+    try { var t = JSON.parse(sessionStorage.getItem(TOK_KEY) || 'null'); return t && t.exp > Date.now() && t.uid === (S.user && S.user.uid) ? t.v : null; } catch (e) { return null; }
+  }
+  function saveToken(cred) {
+    if (!cred || !cred.accessToken || !S.user) return;
+    try { sessionStorage.setItem(TOK_KEY, JSON.stringify({ v: cred.accessToken, exp: Date.now() + 55 * 60000, uid: S.user.uid })); } catch (e) { /* 무시 */ }
+  }
+  function provider() {
+    var p = new firebase.auth.GoogleAuthProvider();
+    p.addScope(CAL_SCOPE);
+    p.setCustomParameters({ hd: 'fillts.com', login_hint: (S.user && S.user.email) || '' });
+    return p;
+  }
+  function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
+  function connect() {
+    var u = firebase.auth().currentUser;
+    if (!u) return;
+    if (isMobile()) { try { sessionStorage.setItem('hrGcalPending', '1'); } catch (e) { /* 무시 */ } u.reauthenticateWithRedirect(provider()).catch(fail); return; }
+    u.reauthenticateWithPopup(provider()).then(function (r) { saveToken(r.credential); G.err = ''; sync(true); }).catch(fail);
+  }
+  function fail(x) {
+    if (x && (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request')) return;
+    G.err = x && x.code === 'auth/user-mismatch' ? '로그인한 회사 계정으로 연결하세요.' : '캘린더를 연결하지 못했습니다.' + (x && x.code ? ' (' + x.code + ')' : '');
+    HR.refresh();
+  }
+  // 모바일 redirect로 돌아온 경우
+  function onRedirect(r) {
+    var pend = false;
+    try { pend = sessionStorage.getItem('hrGcalPending') === '1'; sessionStorage.removeItem('hrGcalPending'); } catch (e) { /* 무시 */ }
+    if (r && r.credential && pend) { var wait = setInterval(function () { if (S.user) { clearInterval(wait); saveToken(r.credential); sync(true); } }, 300); }
+  }
+  if (HR.redirectResult !== undefined) onRedirect(HR.redirectResult); else HR.onRedirectResult = onRedirect;   // 결과는 core.js가 한 번만 받아 넘긴다
+
+  // 캘린더 일정 → { kind, date, from, to } (해당 없으면 null)
+  function classify(ev) {
+    if (ev.status === 'cancelled' || ev.transparency === 'transparent') return null;
+    var me = (ev.attendees || []).filter(function (a) { return a.self; })[0];
+    if (me && me.responseStatus === 'declined') return null;
+    var type = ev.eventType || 'default', title = ev.summary || '', loc = ev.location || '';
+    if (type === 'outOfOffice' || type === 'focusTime' || type === 'birthday' || type === 'fromGmail') return null;   // 휴가는 HR 휴가 기록을 쓴다
+    if (type === 'workingLocation') {
+      var wl = (ev.workingLocationProperties || {}).type;
+      return wl === 'homeOffice' ? 'remote' : wl === 'customLocation' ? 'field' : null;
+    }
+    var allDay = !!(ev.start && ev.start.date);
+    if (/출장/.test(title)) return 'trip';
+    if (FIELD_RE.test(title)) return 'field';
+    if (allDay) return null;   // 제목에 외근·출장이 없는 종일 일정은 상태로 보지 않는다
+    if (loc && !INSIDE_RE.test(loc)) return 'field';
+    return 'meeting';
+  }
+  function expand(ev, kind, from, to) {
+    var out = [];
+    if (ev.start.date) {   // 종일: end는 다음 날(배타)
+      for (var d = ev.start.date; d < ev.end.date && d <= to; d = L.addDays(d, 1)) if (d >= from) out.push({ date: d, from: '', to: '' });
+    } else {
+      var s = new Date(ev.start.dateTime), e = new Date(ev.end.dateTime), sd = L.kstDate(s), ed = L.kstDate(e);
+      if (sd === ed || ed < sd) out.push({ date: sd, from: L.kstHM(s), to: L.kstHM(e) });
+      else for (var x = sd; x <= ed && x <= to; x = L.addDays(x, 1)) out.push({ date: x, from: x === sd ? L.kstHM(s) : '', to: x === ed ? L.kstHM(e) : '' });
+    }
+    return out.filter(function (o) { return o.date >= from && o.date <= to; }).map(function (o) { o.kind = kind; return o; });
+  }
+  function hash(s) { var x = 0; for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return (x >>> 0).toString(36); }
+
+  function sync(force) {
+    var tok = token();
+    if (!tok || G.syncing || !S.mid) return;
+    if (!force && Date.now() - G.lastAt < SYNC_EVERY) return;
+    G.syncing = true;
+    var from = fmt.today(), to = L.addDays(from, DAYS_AHEAD);
+    var q = 'timeMin=' + encodeURIComponent(from + 'T00:00:00+09:00') + '&timeMax=' + encodeURIComponent(L.addDays(to, 1) + 'T00:00:00+09:00') +
+      '&singleEvents=true&orderBy=startTime&maxResults=250&eventTypes=default&eventTypes=workingLocation&eventTypes=outOfOffice';
+    fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + q, { headers: { Authorization: 'Bearer ' + tok } })
+      .then(function (r) {
+        if (r.status === 401 || r.status === 403) { try { sessionStorage.removeItem(TOK_KEY); } catch (e) { /* 무시 */ } throw { user: r.status === 403 ? '캘린더 읽기 권한이 없습니다. 연결을 다시 눌러 「캘린더 보기」를 허용하세요.' : '연결이 만료됐습니다. 다시 연결하세요.' }; }
+        if (!r.ok) throw { user: '캘린더를 읽지 못했습니다 (' + r.status + ').' };
+        return r.json();
+      })
+      .then(function (j) {
+        var want = {};
+        (j.items || []).forEach(function (ev) {
+          var k = classify(ev);
+          if (k) expand(ev, k, from, to).forEach(function (o) { want[S.mid + '_' + o.date.replace(/-/g, '') + '_' + hash(ev.id + o.date)] = o; });
+        });
+        var b = db.batch(), n = 0;
+        (S.sched || []).filter(function (s) { return s.memberId === S.mid && s.src === 'gcal' && !want[s.id]; }).forEach(function (s) { b.delete(db.doc('hr_sched/' + s.id)); n++; });
+        Object.keys(want).forEach(function (id) {
+          var o = want[id], cur = (S.sched || []).filter(function (s) { return s.id === id; })[0];
+          if (cur && cur.kind === o.kind && cur.from === o.from && cur.to === o.to) return;
+          b.set(db.doc('hr_sched/' + id), { memberId: S.mid, kind: o.kind, date: o.date, from: o.from, to: o.to, title: '', src: 'gcal', at: FV.serverTimestamp() }); n++;
+        });
+        return n ? b.commit() : null;
+      })
+      .then(function () { G.lastAt = Date.now(); G.err = ''; try { localStorage.setItem('hrGcalLast', String(G.lastAt)); } catch (e) { /* 무시 */ } })
+      .catch(function (x) { G.err = x && x.user ? x.user : '캘린더 동기화에 실패했습니다.'; if (!(x && x.user)) console.warn(x); })
+      .then(function () { G.syncing = false; HR.refresh(); });
+  }
+  setInterval(function () { sync(false); }, 60000);
+
+  /* ---------- 상태 계산 ---------- */
   function schedOf(mid, d) {
     return (S.sched || []).filter(function (s) { return s.memberId === mid && s.date === d; })
       .sort(function (a, b) { return (a.from || '') < (b.from || '') ? -1 : 1; });
@@ -35,81 +141,63 @@
     if (lv.st === 'away') return { dot: 'away', label: '휴가', sub: HR.policy(lv.away.type).name };
     var half = awayOf(m.id, t).filter(function (a) { return (a.unit === 'am' && nm < HALF) || (a.unit === 'pm' && nm >= HALF); })[0];
     if (half) return { dot: 'away', label: half.unit === 'am' ? '오전 반차' : '오후 반차', sub: HR.policy(half.type).name };
-    var trip = sc.filter(function (s) { return s.kind === 'trip'; })[0];
-    if (trip) return { dot: 'field', label: '출장', sub: trip.title || '' };
+    var trip = sc.filter(function (s) { return s.kind === 'trip' && nowIn(s, nm); })[0];
+    if (trip) return { dot: 'field', label: '출장 중', sub: trip.to ? '~' + trip.to : '' };
     var meet = sc.filter(function (s) { return s.kind === 'meeting' && nowIn(s, nm); })[0];
-    if (meet) return { dot: 'meet', label: '미팅 중', sub: span(meet) + (meet.title ? ' · ' + meet.title : '') };
+    if (meet) return { dot: 'meet', label: '미팅 중', sub: meet.to ? '~' + meet.to : '' };
     var field = sc.filter(function (s) { return s.kind === 'field' && nowIn(s, nm); })[0];
-    if (field) return { dot: 'field', label: '외근 중', sub: span(field) + (field.title ? ' · ' + field.title : '') };
+    if (field) return { dot: 'field', label: '외근 중', sub: field.to ? '~' + field.to : '' };
+    var next = sc.filter(function (s) { return s.from && L.hmToMin(s.from) > nm && s.kind !== 'remote'; })[0];
+    var nextTxt = next ? '다음 ' + KNAME[next.kind] + ' ' + next.from : '';
     if (lv.st === 'in') {
       var mode = HR.att.modeName(lv.mode) || '사무실';
-      return { dot: 'in', label: '근무 중', sub: mode + ' · ' + (lv.sched ? lv.sinceHM + ' 자동 출근' : L.kstHM(new Date(lv.since)) + ' 출근') };
+      return { dot: 'in', label: '근무 중', sub: [mode + ' · ' + (lv.sched ? lv.sinceHM : L.kstHM(new Date(lv.since))) + ' 출근', nextTxt].filter(Boolean).join(' · ') };
     }
-    var next = sc.filter(function (s) { return s.from && L.hmToMin(s.from) > nm; })[0];
     if (lv.st === 'out' && lv.today) return { dot: 'out', label: '퇴근', sub: lv.at ? L.kstHM(new Date(lv.at)) : '' };
     var remote = sc.filter(function (s) { return s.kind === 'remote'; })[0];
-    return { dot: 'none', label: remote ? '재택 예정' : '미출근', sub: next ? '다음 ' + KNAME[next.kind] + ' ' + next.from : '' };
+    return { dot: 'none', label: remote ? '재택 예정' : '미출근', sub: nextTxt };
   }
 
-  function addForm() {
-    var t = fmt.today();
-    var kind = ui.select(KINDS, 'meeting', { 'aria-label': '종류' }), date = ui.input({ type: 'date', value: t, 'aria-label': '날짜' });
-    var from = ui.input({ type: 'time', 'aria-label': '시작' }), to = ui.input({ type: 'time', 'aria-label': '종료' });
-    var title = ui.input({ maxlength: '60', placeholder: '예: 성수 OEM 미팅, 코엑스 박람회', 'aria-label': '내용' }), m = ui.msg();
-    var f = h('form', { class: 'today-form' },
-      h('div', { class: 'row' }, ui.field('종류', kind), ui.field('날짜', date), ui.field('시작', from), ui.field('종료', to)),
-      ui.field('내용 (전 구성원 공개)', title), m, h('button', { class: 'btn btn-sm', type: 'submit', text: '일정 등록' }));
-    f.addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (!date.value) return ui.err(m, '날짜를 고르세요.');
-      if (from.value && to.value && to.value <= from.value) return ui.err(m, '종료 시각이 시작보다 늦어야 합니다.');
-      if (kind.value === 'meeting' && !from.value) return ui.err(m, '미팅은 시작 시각을 입력하세요.');
-      db.collection('hr_sched').add({ memberId: S.mid, kind: kind.value, date: date.value, from: from.value || '', to: to.value || '', title: title.value.trim(), at: FV.serverTimestamp() })
-        .then(function () { title.value = ''; from.value = ''; to.value = ''; ui.toast(KNAME[kind.value] + ' 일정을 등록했습니다.'); }).catch(function (x) { ui.fail(x, m); });
-    });
-    return f;
+  /* ---------- 화면 ---------- */
+  function calBar() {
+    var tok = token(), last = G.lastAt;
+    if (!last) try { last = +localStorage.getItem('hrGcalLast') || 0; } catch (e) { /* 무시 */ }
+    if (tok && !G.lastAt && !G.syncing) setTimeout(function () { sync(true); }, 0);
+    return h('div', { class: 'cal-bar' },
+      h('span', { class: 'meta', text: G.syncing ? '내 Google 캘린더를 읽는 중…' : tok ? '내 Google 캘린더 연결됨' + (last ? ' · ' + L.kstHM(new Date(last)) + ' 동기화' : '')
+        : last ? '마지막 동기화 ' + fmt.dot(L.kstDate(new Date(last))) + ' ' + L.kstHM(new Date(last)) + ' · 새 일정을 반영하려면 다시 연결하세요' : '내 미팅·외근을 Google 캘린더에서 가져옵니다' }),
+      tok ? ui.btn('지금 동기화', function () { sync(true); }, 'btn-line btn-xs') : ui.btn('Google 캘린더 연결', connect, 'btn-xs'),
+      G.err ? h('span', { class: 'meta red-text', text: G.err }) : null);
   }
 
   function panel() {
     var t = fmt.today(), nm = L.kstMin(new Date()), members = HR.memberList(false);
-    // 오늘 — 이벤트 목록
     var groups = { away: [], anniv: [], sched: [] };
     members.forEach(function (m) {
-      awayOf(m.id, t).forEach(function (a) { groups.away.push(h('li', null, ui.tag(a.unit === 'am' ? '오전 반차' : a.unit === 'pm' ? '오후 반차' : '휴가', 'red'), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: HR.policy(a.type).name + (a.unit === 'hours' ? ' · 시간 단위' : '') + (a.end > a.start ? ' · ' + fmt.date(a.end) + '까지' : '') }))); });
+      awayOf(m.id, t).forEach(function (a) { groups.away.push(h('li', null, ui.tag(a.unit === 'am' ? '오전 반차' : a.unit === 'pm' ? '오후 반차' : '휴가', 'red'), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: HR.policy(a.type).name + (a.end > a.start ? ' · ' + fmt.date(a.end) + '까지' : '') }))); });
       var an = anniv(m, t);
       if (an) groups.anniv.push(h('li', null, ui.tag('기념일', 'ok'), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: an })));
       schedOf(m.id, t).forEach(function (s) {
-        groups.sched.push(h('li', { class: nowIn(s, nm) && s.kind !== 'remote' ? 'now' : '' }, ui.tag(KNAME[s.kind], KTAG[s.kind]), h('span', { class: 'who', text: m.name }),
-          h('span', { class: 'meta', text: span(s) + (s.title ? ' · ' + s.title : '') }),
-          s.memberId === S.mid ? ui.confirmBtn('삭제', function () { db.doc('hr_sched/' + s.id).delete().catch(ui.fail); }) : null));
+        groups.sched.push(h('li', { class: nowIn(s, nm) && s.kind !== 'remote' ? 'now' : '' }, ui.tag(KNAME[s.kind], KTAG[s.kind]), h('span', { class: 'who', text: m.name }), h('span', { class: 'meta', text: span(s) })));
       });
     });
     var today = h('ul', { class: 'today-list' }, groups.away, groups.anniv, groups.sched);
-    if (!today.children.length) today.appendChild(h('li', { class: 'empty', text: '오늘 휴가·기념일·외근·미팅 일정이 없습니다.' }));
+    if (!today.children.length) today.appendChild(h('li', { class: 'empty', text: '오늘 휴가·기념일·미팅·외근이 없습니다.' }));
     var hol = S.hmap[t] ? h('p', { class: 'today-hol', text: '오늘은 ' + S.hmap[t] + '입니다.' }) : null;
 
-    // 내 앞으로의 일정 (오늘 이후)
-    var mine = (S.sched || []).filter(function (s) { return s.memberId === S.mid && s.date > t; }).sort(function (a, b) { return (a.date + a.from) < (b.date + b.from) ? -1 : 1; });
-    var ml = mine.length ? h('ul', { class: 'today-list small' }, mine.slice(0, 5).map(function (s) {
-      return h('li', null, ui.tag(KNAME[s.kind], KTAG[s.kind]), h('span', { class: 'meta', text: fmt.date(s.date) + ' ' + span(s) + (s.title ? ' · ' + s.title : '') }),
-        ui.confirmBtn('삭제', function () { db.doc('hr_sched/' + s.id).delete().catch(ui.fail); }));
-    })) : null;
-    var formWrap = h('details', { class: 'today-add', open: addOpen, ontoggle: function () { addOpen = formWrap.open; } }, h('summary', { text: '+ 내 외근 · 미팅 · 출장 · 재택 등록' }), addForm(), ml ? h('div', null, h('div', { class: 'label', text: 'My upcoming' }), ml) : null);
-
-    // LIVE — 구성원별 지금 상태
     var board = h('div', { class: 'board live-board' }), cnt = {};
     members.forEach(function (m) {
       var s = liveOf(m, t, nm);
       cnt[s.label] = (cnt[s.label] || 0) + 1;
       board.appendChild(h('a', { class: 'board-card', href: m.id === S.mid ? '#info' : '#people/' + m.id },
-        h('span', { class: 'dot ' + s.dot }), h('div', null, h('div', { class: 'who' }, m.name, ' ', h('span', { class: 'live-label ' + s.dot, text: s.label })), h('div', { class: 'meta', text: s.sub }))));
+        h('span', { class: 'dot ' + s.dot }), h('div', null, h('div', { class: 'who' }, m.name, ' ', h('span', { class: 'live-label ' + s.dot, text: s.label })), s.sub ? h('div', { class: 'meta', text: s.sub }) : null)));
     });
     var summary = Object.keys(cnt).map(function (k) { return k + ' ' + cnt[k]; }).join(' · ');
 
     return h('div', { class: 'today-wrap' },
-      ui.panel('Today · 오늘의 구성원 ' + fmt.date(t), null, hol, today, formWrap),
+      ui.panel('Today · 오늘의 구성원 ' + fmt.date(t), null, hol, today, calBar()),
       ui.panel('Live', h('span', { class: 'meta', text: summary }), board));
   }
 
-  HR.today = { panel: panel, liveOf: liveOf };
+  HR.today = { panel: panel, liveOf: liveOf, classify: classify, sync: sync };
 })();

@@ -22,27 +22,17 @@
     var days = A.days(S.myPunches, S.myFixes, { member: me, from: L.addDays(t, -1), to: t, leaves: HR.leavesOf(S.mid) });
     var head = ui.label('Today · ' + fmt.date(t)), clock = h('div', { class: 'clock', id: 'clock', text: L.kstHM(new Date()) });
     var state = h('div', { class: 'punch-state' });
-    // 자동 근무 일정이 있는 구성원(예: 대표): 버튼 없이 자동 기록
-    if (me.autoIn && me.autoOut) {
-      if (!L.isWorkday(t, S.hmap)) state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '쉬는 날입니다');
-      else if (live.st === 'away') state.append(HR.policy(live.away.type).name + ' 중입니다');
-      else if (live.st === 'in') state.append('근무 중 · ', h('b', { text: me.autoIn }), ' 자동 출근');
-      else if (live.st === 'out') state.append('오늘 ', h('b', { text: me.autoIn + ' – ' + me.autoOut }), ' 자동 기록');
-      else state.append(me.autoIn + ' 자동 출근 예정');
-      return h('section', { class: 'panel punch' }, h('div', { class: 'panel-head' }, head, ui.tag('자동 근무 ' + me.autoIn + '–' + me.autoOut, 'mute')), clock, state,
-        h('p', { class: 'muted small', text: '근무일마다 출퇴근 버튼 없이 자동으로 기록됩니다. 다르게 일한 날은 근무 › 내 근무에서 정정하세요.' }));
-    }
     var working = live.st === 'in';
     var autoOutToday = live.st === 'out' && live.auto && live.today;
     var td = days[working || autoOutToday ? fmt.dkToDate(live.dk) : t];
     var ah = +S.cfg.autoOutHours || 0;
-    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || '' }), ' 출근 · ' + A.modeName(live.mode) + (ah ? ' · ' + L.kstHM(new Date(live.since + ah * 3600000)) + ' 자동 퇴근' : ''));
+    if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || live.sinceHM || '' }), ' 출근 · ' + A.modeName(live.mode) + (ah && live.since ? ' · ' + L.kstHM(new Date(live.since + ah * 3600000)) + ' 자동 퇴근' : ''));
     else if (autoOutToday) state.append('자동 퇴근 처리 · ', h('b', { text: (td ? td.inHM : '') + ' – ' + L.kstHM(new Date(live.at)) }), ' · 더 일했다면 퇴근을 눌러 실제 시각을 남기세요');
     else if (td && td.outHM) state.append('오늘 ', h('b', { text: td.inHM + ' – ' + td.outHM }), ' · 근로 ' + L.minToHM(td.calc ? td.calc.work : 0));
     else state.append(S.hmap[t] ? S.hmap[t] + ' · 쉬는 날입니다' : '아직 출근 기록이 없습니다');
     var msgEl = ui.msg();
     var bIn = ui.btn('출근', null), bOut = ui.btn('퇴근', null, 'btn-line');
-    bIn.disabled = working || autoOutToday || !!(days[t] && days[t].src === 'punch'); bOut.disabled = !working && !autoOutToday;
+    bIn.disabled = working || autoOutToday || !!days[t]; bOut.disabled = !working && !autoOutToday;
     bIn.onclick = function () { punch('in', [bIn, bOut], msgEl); };
     bOut.onclick = function () { punch('out', [bIn, bOut], msgEl); };
     var modes = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '근무 형태' });
@@ -167,13 +157,12 @@
     fixPanel = h('form', { class: 'panel' },
       h('div', { class: 'panel-head' }, ui.label('Correction · ' + fmt.date(date)), h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); fixPanel.remove(); fixPanel = null; } })),
       h('div', { class: 'row' }, ui.field('출근', inI), ui.field('퇴근', outI), ui.field('휴게(분)', brkI)),
-      ui.field('사유', rsn), m, h('button', { class: 'btn btn-sm', type: 'submit', text: S.isAdmin ? '바로 반영' : '정정 요청' }));
+      ui.field('사유', rsn), m, h('button', { class: 'btn btn-sm', type: 'submit', text: '정정 요청' }));
     fixPanel.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!rsn.value.trim()) return ui.err(m, '사유를 입력하세요.');
-      var d = { memberId: S.mid, date: date, in: inI.value, out: outI.value, brk: brkI.value === '' ? '' : +brkI.value, reason: rsn.value.trim(), status: S.isAdmin ? 'approved' : 'pending', createdAt: FV.serverTimestamp() };
-      if (S.isAdmin) { d.decidedBy = S.mid; d.decidedAt = FV.serverTimestamp(); }
-      db.collection('hr_fix').add(d).then(function () { fixPanel.remove(); fixPanel = null; ui.toast(S.isAdmin ? '반영했습니다.' : '정정 요청을 보냈습니다. 리더에게 Slack 알림이 갑니다.'); T.data = null; HR.refresh(); })
+      var d = { memberId: S.mid, date: date, in: inI.value, out: outI.value, brk: brkI.value === '' ? '' : +brkI.value, reason: rsn.value.trim(), status: 'pending', createdAt: FV.serverTimestamp() };   // 관리자 본인 것도 승인을 거친다
+      db.collection('hr_fix').add(d).then(function () { fixPanel.remove(); fixPanel = null; ui.toast('정정 요청을 보냈습니다. 관리자가 승인하면 반영됩니다.'); T.data = null; HR.refresh(); })
         .catch(function (x) { ui.fail(x, m); });
     });
     view.querySelector('#wkTable').after(fixPanel);
@@ -188,7 +177,7 @@
     HR.memberList(false).forEach(function (m) {
       var lv = A.live(m), st = lv.st === 'in' || lv.st === 'away' || lv.st === 'out' ? lv.st : 'none', sub = '미출근';
       if (lv.st === 'away') sub = HR.policy(lv.away.type).name;
-      else if (lv.st === 'in') sub = (lv.sched ? lv.sinceHM + ' 자동' : L.kstHM(new Date(lv.since))) + ' · ' + A.modeName(lv.mode);
+      else if (lv.st === 'in') sub = (lv.sched ? lv.sinceHM : L.kstHM(new Date(lv.since))) + ' · ' + A.modeName(lv.mode);
       else if (lv.st === 'out') sub = lv.auto ? '자동 퇴근' : '퇴근';
       if (lv.st === 'out' && !lv.today) { st = 'none'; sub = '미출근'; }
       counts[st]++;
@@ -235,13 +224,13 @@
   HR.work.fixItem = fixItem;
   function fixes(view) {
     var pend = h('ul', { class: 'list' }), my = h('ul', { class: 'list' });
-    if (S.isLead) {
-      S.fixes.filter(function (f) { return f.memberId !== S.mid || S.isAdmin; }).forEach(function (f) { pend.appendChild(fixItem(f, true)); });
+    if (S.isAdmin) {   // 근태 정정은 관리자만 승인 (본인 것 포함)
+      S.fixes.forEach(function (f) { pend.appendChild(fixItem(f, true)); });
       if (!pend.children.length) pend.appendChild(h('li', { class: 'empty', text: '대기 중인 정정 요청이 없습니다.' }));
     }
     S.myFixes.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (f) { my.appendChild(fixItem(f, false)); });
     if (!my.children.length) my.appendChild(h('li', { class: 'empty', text: '정정 요청 내역이 없습니다. 근무 기록 표의 「정정」으로 요청합니다.' }));
-    ui.put(view, h('div', { class: 'two-col' }, S.isLead ? ui.panel('Pending approval', null, pend) : null, ui.panel('My requests', null, my)));
+    ui.put(view, h('div', { class: 'two-col' }, S.isAdmin ? ui.panel('Pending approval', null, pend) : null, ui.panel('My requests', null, my)));
   }
 
   /* CSV (근로기준법 제48조 임금대장 근로시간 기재 보조) */
@@ -261,7 +250,7 @@
   HR.register('work', {
     render: function (view, parts) {
       var sub = parts[0] || '';
-      var pendingN = S.fixes.filter(function (f) { return f.memberId !== S.mid || S.isAdmin; }).length;
+      var pendingN = S.isAdmin ? S.fixes.length : 0;
       ui.put(view, ui.head('Work', '근무'), ui.tabs([['', '내 근무'], S.isLead ? ['team', '팀 현황'] : null, ['fix', '정정 요청' + (S.isLead && pendingN ? ' ' + pendingN : '')]], sub, 'work'));
       if (sub === 'team' && S.isLead) team(view);
       else if (sub === 'fix') fixes(view);

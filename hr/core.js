@@ -170,7 +170,10 @@
       });
       var out = {};
       Object.keys(by).forEach(function (date) {
-        var d = by[date]; if (!d.ins.length) return;
+        var d = by[date], mm = opt.member;
+        // 기본 출근 시각이 있는 구성원이 출근은 안 누르고 퇴근만 누른 날: 기본 출근 시각부터 계산
+        if (!d.ins.length && mm && mm.autoIn && d.outs.length) d.ins.push(new Date(date + 'T' + mm.autoIn + ':00+09:00'));
+        if (!d.ins.length) return;
         var first = new Date(Math.min.apply(null, d.ins));
         var last = d.outs.length ? new Date(Math.max.apply(null, d.outs)) : null;
         if (last && last < first) last = null;
@@ -189,7 +192,7 @@
         var r = out[k];
         if (r.open && r.src === 'punch' && r.inMs + ao * 60000 <= nowMs) { r.open = false; r.autoOut = true; r.span = ao; r.outHM = L.kstHM(new Date(r.inMs + ao * 60000)); }
       });
-      // 자동 근무 일정 (예: 대표 10:00–19:00) — 근무일마다 출퇴근 버튼 없이 기록
+      // 기본 근무 시각 (예: 대표 10:00–19:00) — 버튼을 누르지 않은 근무일에만 적용. 직접 누른 기록이 있으면 그 시각이 우선
       var m = opt.member;
       if (m && m.autoIn && m.autoOut && opt.from && opt.to) {
         var t = fmt.today(), nowMin = L.kstMin(new Date()), i = L.hmToMin(m.autoIn), o = L.hmToMin(m.autoOut);
@@ -310,7 +313,7 @@
   }
   function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
   // redirect로 돌아왔을 때 실패 사유를 로그인 화면에 보여 준다 (성공은 onAuthStateChanged가 처리)
-  auth.getRedirectResult().catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; if ($('loginMsg')) ui.err($('loginMsg'), t); });
+  auth.getRedirectResult().then(function (r) { HR.redirectResult = r || null; if (HR.onRedirectResult) HR.onRedirectResult(HR.redirectResult); }).catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   $('googleBtn').addEventListener('click', function () {
     if (inAppBrowser()) {
       var url = location.href, ua = navigator.userAgent;

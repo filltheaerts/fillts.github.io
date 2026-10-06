@@ -9,7 +9,6 @@
     var c = S.cfg, f = {
       companyName: ui.input({ value: c.companyName, maxlength: '60' }), ceoName: ui.input({ value: c.ceoName, maxlength: '30' }),
       bizNo: ui.input({ value: c.bizNo || '', maxlength: '20', placeholder: '000-00-00000' }), companyAddress: ui.input({ value: c.companyAddress || '', maxlength: '120' }),
-      minWage: ui.input({ type: 'number', min: '0', step: '10', value: c.minWage }), monthHours: ui.input({ type: 'number', min: '1', value: c.monthHours }),
       workStart: ui.input({ type: 'time', value: c.workStart }), workEnd: ui.input({ type: 'time', value: c.workEnd }),
       autoOutHours: ui.input({ type: 'number', min: '0', max: '16', step: '0.5', value: c.autoOutHours == null ? 7 : c.autoOutHours }),
       annualBasis: ui.select([['fiscal', '회계연도 (1월 1일) 기준'], ['hire', '입사일 기준']], c.annualBasis),
@@ -20,14 +19,14 @@
       ui.label('Company'),
       h('div', { class: 'form-grid' }, ui.field('회사명', f.companyName), ui.field('대표자', f.ceoName), ui.field('사업자등록번호', f.bizNo), ui.field('주소 (증명서용)', f.companyAddress)),
       h('div', { class: 'row' }, h('label', { class: 'check' }, five, ' 상시근로자 5인 이상 사업장'), h('label', { class: 'check' }, pension, ' 퇴직연금(DB·DC) 도입')),
-      h('div', { class: 'form-grid' }, ui.field('최저시급 (원)', f.minWage), ui.field('월 소정근로 환산시간', f.monthHours), ui.field('연차 산정 기준', f.annualBasis),
+      h('div', { class: 'form-grid' }, ui.field('연차 산정 기준', f.annualBasis),
         ui.field('출근 기준', f.workStart), ui.field('퇴근 기준', f.workEnd), ui.field('출근 후 자동 퇴근 (시간, 0=끔)', f.autoOutHours), ui.field('구글 캘린더 ID', f.gcalId)),
       m, h('button', { class: 'btn btn-sm', type: 'submit', text: '저장' }),
-      h('p', { class: 'note', text: '5인 미만 사업장은 연장·야간·휴일 가산수당(제56조), 연차휴가(제60조), 공휴일 유급휴일이 법적 의무가 아닙니다. 체크를 해제하면 계산이 그 기준으로 바뀝니다. 최저시급은 매년 8월 고시값으로 갱신하세요. 회계연도 기준은 운영이 편하지만 퇴사 시 입사일 기준보다 불리하면 차액을 정산해야 합니다.' }));
+      h('p', { class: 'note', text: '5인 미만 사업장은 연장·야간·휴일 가산수당(제56조), 연차휴가(제60조), 공휴일 유급휴일이 법적 의무가 아닙니다. 체크를 해제하면 계산이 그 기준으로 바뀝니다. 회계연도 기준은 운영이 편하지만 퇴사 시 입사일 기준보다 불리하면 차액을 정산해야 합니다.' }));
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var d = { fivePlus: five.checked, pension: pension.checked };
-      Object.keys(f).forEach(function (k) { d[k] = k === 'autoOutHours' ? Math.max(0, +f[k].value || 0) : /minWage|monthHours/.test(k) ? +f[k].value || L.DEFAULT_CONFIG[k] : f[k].value.trim(); });
+      Object.keys(f).forEach(function (k) { d[k] = k === 'autoOutHours' ? Math.max(0, +f[k].value || 0) : f[k].value.trim(); });
       cfgRef().set(d, { merge: true }).then(function () { ui.ok(m, '저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
     });
     ui.put(view, form);

@@ -314,3 +314,32 @@ button.link { background: none; border: none; border-bottom: 1px solid var(--red
 .live-label.meet, .live-label.field { color: var(--warn); }
 .dot.meet { background: var(--warn); }
 .dot.field { background: var(--warn); box-shadow: 0 0 0 2px rgba(178, 106, 0, 0.18); }
+
+
+/* 구성원 › 채용예정 */
+.plan-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.plan-flow { font-size: 15px; font-weight: 500; margin-top: 6px; }
+.plan-summary { margin: 4px 0 8px; }
+.plan-grid { display: grid; grid-template-columns: repeat(5, minmax(210px, 1fr)); gap: 12px; min-width: 1080px; }
+.plan-unit { background: var(--paper); border: 1px solid var(--gray-200); border-top: 3px solid var(--black); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.plan-unit.u-studio { border-top-color: var(--red); }
+.plan-unit.u-direct, .plan-unit.u-commerce, .plan-unit.u-global { border-top-color: var(--gray-400); }
+.plan-unit-name { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; }
+.plan-group { display: flex; flex-direction: column; gap: 8px; }
+.plan-slots { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.plan-slots li { padding: 9px 10px; border: 1px solid var(--gray-200); display: flex; flex-direction: column; gap: 5px; }
+.plan-slots li.is-in { background: var(--gray-100); }
+.plan-slots li.is-plus { border-style: dashed; }
+.plan-role { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-direct { font-size: 9px; letter-spacing: 0.08em; padding: 1px 5px; border: 1px solid var(--red); color: var(--red); font-weight: 500; }
+.plan-sub { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.plan-timeline { list-style: none; display: flex; flex-direction: column; }
+.plan-year { font-size: 11px; letter-spacing: 0.1em; color: var(--gray-600); padding: 14px 0 6px; border-bottom: 1px solid var(--gray-200); }
+.plan-step { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px; flex-wrap: wrap; }
+.plan-step.next { box-shadow: inset 2px 0 0 var(--red); padding-left: 10px; }
+.plan-step.past { color: var(--gray-400); }
+.plan-seq { font-variant-numeric: tabular-nums; color: var(--gray-400); width: 20px; }
+.plan-when { font-variant-numeric: tabular-nums; width: 52px; font-weight: 500; }
+.plan-what { flex: 1; min-width: 160px; }
+.plan-rev { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.plan-rev b { font-size: 16px; font-weight: 500; }

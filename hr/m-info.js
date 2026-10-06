@@ -41,8 +41,8 @@
       { k: 'leaveDate', l: '퇴사일', type: 'date', show: function (m) { return m.leaveDate ? fmt.dateLong(m.leaveDate) : ''; } }
     ] },
     { id: 'sched', title: '근무 일정', store: 'm', fields: [
-      { k: 'autoIn', l: '자동 출근', type: 'time', show: function (m) { return m.autoIn ? m.autoIn + ' (근무일 자동 기록)' : '사용 안 함 · 출근 버튼으로 기록'; } },
-      { k: 'autoOut', l: '자동 퇴근', type: 'time', show: function (m) { return m.autoOut || ''; } }
+      { k: 'autoIn', l: '기본 출근 시각', type: 'time', show: function (m) { return m.autoIn ? m.autoIn + ' (출근 버튼을 누르지 않은 근무일에 적용 · 먼저 누르면 그 시각 우선)' : '없음 · 출근 버튼으로 기록'; } },
+      { k: 'autoOut', l: '기본 퇴근 시각', type: 'time', show: function (m) { return m.autoOut || ''; } }
     ] },
     { id: 'lead', title: '리더 · 연동', store: 'm', fields: [
       { k: 'leaderId', l: '리더 (승인·원온원)', type: 'select', opts: function () { return [['', '(없음)']].concat(HR.memberList(false).map(function (x) { return [x.id, x.name]; })); }, show: function (m) { return m.leaderId ? HR.name(m.leaderId) : ''; } },
@@ -194,7 +194,7 @@
       var todo = h('ul', { class: 'list' });
       S.leaves.filter(function (l) { return l.status === 'pending' && (S.isAdmin || (S.members[l.memberId] || {}).leaderId === S.mid) && l.memberId !== S.mid; })
         .forEach(function (l) { todo.appendChild(HR.leave.item(l, { approve: true })); });
-      S.fixes.filter(function (f) { return S.isAdmin || f.memberId !== S.mid; }).forEach(function (f) { todo.appendChild(HR.work.fixItem(f, true)); });
+      if (S.isAdmin) S.fixes.forEach(function (f) { todo.appendChild(HR.work.fixItem(f, true)); });   // 근태 정정은 관리자만 승인 (본인 것 포함)
       if (todo.children.length) right.appendChild(ui.panel('To do · 승인 대기 ' + todo.children.length, null, todo));
     }
     // 중요 공지
