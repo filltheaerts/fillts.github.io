@@ -668,3 +668,4 @@ body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }
 .ms-sub { font-size: 11px; color: var(--gray-600); }
 /* PC 메뉴 간격 32px → 24px (약 75%) */
 @media (min-width: 901px) { .nav-links { gap: 24px; } }
+.plan-goal { white-space: pre-line; }
