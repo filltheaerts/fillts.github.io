@@ -47,9 +47,9 @@
     ui.put(view,
       ui.panel('My goal · 나의 목표', null, area(d.goal, '예: 2027년까지 공식몰 월 매출 1억을 만드는 퍼포먼스 마케터가 된다', 1000, 3, function (v) { d.goal = v; touch(); })),
       ui.panel('Top 5 · 목표를 이루기 위해 가장 중요한 일 5가지', null, top5),
-      h('div', { class: 'two-col' },
-        ui.panel('Strengths · 나의 강점 (1~10개)', null, grid(d.strengths, '강점')),
-        ui.panel('Wing strengths · 나의 날개강점 (1~10개)', null, h('p', { class: 'muted small', text: '강점을 더 멀리 날게 해 주는 보조 강점입니다.' }), grid(d.wings, '날개강점'))),
+      h('div', { class: 'two-col work-two' },
+        ui.panel('Strengths · 나의 강점', h('span', { class: 'meta small', text: '1~10개 · 내가 가장 잘하는 것' }), grid(d.strengths, '강점')),
+        ui.panel('Wing strengths · 나의 날개강점', h('span', { class: 'meta small', text: '1~10개 · 강점을 더 멀리 날게 하는 보조 강점' }), grid(d.wings, '날개강점'))),
       h('div', { class: 'row work-save' }, save, d.dirty ? h('span', { class: 'meta', text: '저장하지 않은 변경이 있습니다' }) : (data.updatedAt ? h('span', { class: 'meta', text: '마지막 저장 ' + fmt.ts(data.updatedAt) }) : null), msg),
       h('p', { class: 'note', text: '나와 관리자만 볼 수 있습니다. 빈칸은 저장할 때 빠집니다.' }));
   }
