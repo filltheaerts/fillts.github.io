@@ -44,20 +44,39 @@
           h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: Math.round(p * 100) + '%' }))),
         kids.length ? h('ul', { class: 'goal-children' }, kids.map(function (k) { return card(k, depth + 1); })) : null);
     }
-    var roots = (byParent[''] || []).sort(function (a, b) { return order[a.level] - order[b.level] || (a.title || '').localeCompare(b.title || '', 'ko'); });
+    var mine = (S.priv && S.priv.goalOrder) || [], rk = function (g) { var i = mine.indexOf(g.id); return i < 0 ? 999 : i; };   // 내 순서(INFO 첫 화면과 같음)
+    var roots = (byParent[''] || []).sort(function (a, b) { return order[a.level] - order[b.level] || rk(a) - rk(b) || (a.title || '').localeCompare(b.title || '', 'ko'); });
     var tree = h('ul', { class: 'goal-tree' }, roots.map(function (g) { return card(g, 0); }));
     if (!roots.length) tree.appendChild(h('li', { class: 'empty', text: '이 기간의 목표가 없습니다. 전사 목표부터 세우고, 팀·개인 목표를 연결해 보세요.' }));
 
     var sel = all.filter(function (g) { return g.id === selId; })[0] || S.goals.filter(function (g) { return g.id === selId; })[0];
-    var right = G.creating ? goalForm(null) : sel && G.editing === sel.id ? goalForm(sel) : sel ? detail(sel) : ui.panel('How it works', null,
+    var right = G.ordering ? orderPanel() : G.creating ? goalForm(null) : sel && G.editing === sel.id ? goalForm(sel) : sel ? detail(sel) : ui.panel('How it works', null,
       h('ul', { class: 'plain' }, ['전사 목표(관리자) → 팀 목표(리더) → 개인 목표(구성원) 순으로 연결합니다.', '목표마다 측정 가능한 핵심결과(KR)를 1~5개 둡니다. 진척도는 KR 달성률 평균입니다.', '매주 금요일 체크인 리마인드가 Slack으로 갑니다. 진척도와 한 줄 회고를 남기세요.', '모든 목표는 전 구성원에게 공개됩니다.'].map(function (x) { return h('li', { text: x }); })));
 
     ui.put(view,
       h('div', { class: 'toolbar' },
         ui.field('기간', ui.select(periods(), G.period, { id: 'glPeriod', onchange: function () { G.period = this.value; HR.refresh(); } }), 'inline'),
         ui.field('수준', ui.select([['*', '전체'], ['company', '전사'], ['team', '팀'], ['personal', '개인']], G.level, { id: 'glLevel', onchange: function () { G.level = this.value; HR.refresh(); } }), 'inline'),
-        ui.btn('목표 추가', function () { G.creating = true; G.editing = null; G.draft = null; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
+        ui.btn('내 목표 순서', function () { G.ordering = !G.ordering; G.creating = false; HR.refresh(); }, 'btn-line btn-sm'),
+        ui.btn('목표 추가', function () { G.creating = true; G.ordering = false; G.editing = null; G.draft = null; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
       h('div', { class: 'one-grid' }, h('div', null, tree), right));
+  }
+
+  // 내 목표 순서 — INFO 첫 화면 My goals에 보이는 순서 (hr_private.goalOrder)
+  function orderPanel() {
+    var order = (S.priv && S.priv.goalOrder) || [], rank = function (g) { var i = order.indexOf(g.id); return i < 0 ? 1e6 : i; };
+    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return rank(a) - rank(b); });
+    var save = function (ids) { S.priv = Object.assign({}, S.priv, { goalOrder: ids }); db.doc('hr_private/' + S.mid).set({ goalOrder: ids, updatedAt: FV.serverTimestamp() }, { merge: true }).catch(ui.fail); HR.refresh(); };
+    var ul = h('ol', { class: 'list goal-order-list' }, goals.map(function (g, i) {
+      var move = function (k) { return function () { var ids = goals.map(function (x) { return x.id; }), j = i + k; if (j < 0 || j >= ids.length) return; var t = ids[i]; ids[i] = ids[j]; ids[j] = t; save(ids); }; };
+      return h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === goals.length - 1, onclick: move(1) })),
+        h('div', { class: 'grow' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), ' ', g.title));
+    }));
+    if (!goals.length) ul.appendChild(h('li', { class: 'empty', text: '내가 담당한 진행 중 목표가 없습니다.' }));
+    return ui.panel('My order · 내 목표 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); G.ordering = false; HR.refresh(); } }), ul,
+      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. INFO 첫 화면 My goals에도 이 순서로 보입니다.' }));
   }
 
   function detail(g) {
