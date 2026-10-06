@@ -19,7 +19,7 @@
   var BANKS = ['국민', '신한', '우리', '하나', '기업', '농협', '카카오뱅크', '토스뱅크', '케이뱅크', 'SC제일', '씨티', '수협', '대구', '부산', '경남', '광주', '전북', '새마을금고', '신협', '우체국', '기타'];
   // 빠른 작성 — 누르면 유형 · 계정 · 부가세 · 제목 · 내용 틀을 채운다 (note는 서류 칸 아래 안내)
   var PRESETS = [
-    { k: 'influencer', name: '인플루언서 대금지급', type: 'vendor', account: '광고선전비', vat: 'none', title: '인플루언서 협찬 대금 · ',
+    { k: 'influencer', who: 'person', name: '인플루언서 대금지급', type: 'vendor', account: '광고선전비', vat: 'none', title: '인플루언서 협찬 대금 · ',
       purpose: '채널 · 계정: \n게시물 수 · 게시(예정)일: \n계약 금액 · 조건: \n캠페인 / 제품: ',
       note: '개인 인플루언서는 사업소득 3.3% 원천징수 후 지급합니다 — 금액은 원천징수 전 총액을 적고 메모로 남겨 주세요. 사업자(에이전시)면 세금계산서를 받습니다. 신분증 · 주민등록번호는 이곳에 올리지 말고 대표에게 따로 전달하세요.' },
     { k: 'media', name: '매체사 게재 비용', type: 'vendor', account: '광고선전비', vat: 'excl', title: '매체 게재 비용 · ',
@@ -45,6 +45,9 @@
   function toB64(buf) { var b = new Uint8Array(buf), s = '', k = 0x8000; for (var i = 0; i < b.length; i += k) s += String.fromCharCode.apply(null, b.subarray(i, i + k)); return btoa(s); }
   function fromB64(x) { var bin = atob(x), o = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) o[i] = bin.charCodeAt(i); return o; }
   function won(n) { return fmt.won(n); }
+  function wht(total) { var it = Math.floor(total * 0.03 / 10) * 10, lt = Math.floor(it * 0.1 / 10) * 10; return { it: it, lt: lt, sum: it + lt, net: total - it - lt }; }
+  var PERSON_DOCS = ['통장 사본 (본인 명의)', '계약서 · 협찬 확인서 또는 작업 확인 자료', '활동 결과 (게시물 링크 · 납품물)'];
+  var PERSON_TYPES = ['vendor', 'advance', 'etc'];   // 개인/사업자 구분이 필요한 유형
   function list() {
     if (S.isAdmin) return HR.load('hr_payreq@all', function () { return db.collection('hr_payreq').get().then(HR.rows); }) || [];
     return HR.load('hr_payreq:' + S.mid, function () { return db.collection('hr_payreq').where('memberId', '==', S.mid).get().then(HR.rows); }) || [];
@@ -145,19 +148,20 @@
     var d = draft || (draft = { type: 'vendor', title: '', payee: '', amount: '', vat: 'incl', account: ACCOUNTS[0], due: L.addDays(fmt.today(), 3), bank: '국민', acct: '', holder: '', purpose: '', checks: {}, att: [] });
     var bind = function (k) { return function () { d[k] = this.value; }; };
     var type = ui.select(Object.keys(TYPES).map(function (k) { return [k, TYPES[k].name]; }), d.type, { onchange: function () { d.type = this.value; d.checks = {}; d.first = null; HR.refresh(); } });
-    var amount = h('input', { type: 'text', inputmode: 'numeric', value: d.amount ? (+d.amount).toLocaleString('ko-KR') : '', placeholder: '0', oninput: function () { var v = this.value.replace(/[^\d]/g, ''); d.amount = v; this.value = v ? (+v).toLocaleString('ko-KR') : ''; hint.textContent = v ? won(+v) + (d.vat === 'excl' ? ' + 부가세 ' + won(Math.round(+v * 0.1)) + ' = ' + won(Math.round(+v * 1.1)) : '') : ''; } });
+    var amount = h('input', { type: 'text', inputmode: 'numeric', value: d.amount ? (+d.amount).toLocaleString('ko-KR') : '', placeholder: '0', oninput: function () { var v = this.value.replace(/[^\d]/g, ''); d.amount = v; this.value = v ? (+v).toLocaleString('ko-KR') : ''; hint.textContent = v ? won(+v) + (d.vat === 'excl' ? ' + 부가세 ' + won(Math.round(+v * 0.1)) + ' = ' + won(Math.round(+v * 1.1)) : '') : ''; }, onchange: function () { if (d.who === 'person') HR.refresh(); } });
     var hint = h('span', { class: 'meta', text: d.amount ? won(+d.amount) : '' });
-    var T = TYPES[d.type], docs = T.docs, req = d.first && T.first ? T.first : [], pre = PRESETS.filter(function (x) { return x.k === d.preset; })[0];
+    var T = TYPES[d.type], askWho = PERSON_TYPES.indexOf(d.type) >= 0, person = askWho && d.who === 'person';
+    var docs = person ? PERSON_DOCS : T.docs, req = !person && d.first && T.first ? T.first : [], pre = PRESETS.filter(function (x) { return x.k === d.preset; })[0];
     var quick = h('div', { class: 'pay-quick' }, h('span', { class: 'meta', text: '빠른 작성' }), PRESETS.map(function (x) {
       return h('button', { type: 'button', class: 'chip' + (d.preset === x.k ? ' on' : ''), text: x.name, onclick: function () {
-        d.preset = x.k; d.type = x.type; d.account = x.account; d.vat = x.vat; d.checks = {}; d.first = null;
+        d.preset = x.k; d.type = x.type; d.account = x.account; d.vat = x.vat; d.checks = {}; d.first = null; d.who = x.who || null;
         if (!d.title.trim() || PRESETS.some(function (p) { return d.title === p.title; })) d.title = x.title;
         if (!d.purpose.trim() || PRESETS.some(function (p) { return d.purpose === p.purpose; })) d.purpose = x.purpose;
         HR.refresh();
       } });
     }));
     var checks = h('ul', { class: 'pay-docs' },
-      T.first ? h('li', { class: 'pay-first' }, h('span', { class: 'meta', text: '거래 구분 *' }), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '거래 구분' },
+      !person && T.first ? h('li', { class: 'pay-first' }, h('span', { class: 'meta', text: '거래 구분 *' }), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '거래 구분' },
         [[true, '이 거래처와 첫 거래'], [false, '기존 거래처']].map(function (o) {
           return h('button', { type: 'button', role: 'radio', 'aria-checked': String(d.first === o[0]), class: d.first === o[0] ? 'on' : '', text: o[1], onclick: function () { d.first = o[0]; HR.refresh(); } });
         }))) : null,
@@ -167,14 +171,24 @@
       }));
     var m = ui.msg();
     var go = h('button', { class: 'btn', type: 'submit', text: '입금요청 올리기' });
-    var f = h('form', { class: 'panel pay-form' }, h('div', { class: 'panel-head' }, ui.label('New request · 입금요청 기안'), h('a', { href: '#payreq/guide', class: 'link', text: '처리 가이드 보기 →' })), quick,
+    var whoSeg = askWho ? h('div', { class: 'pay-who' }, h('span', { class: 'meta', text: '받는 분 구분 *' }), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '받는 분 구분' },
+      [['person', '개인 (인플루언서 · 프리랜서 · 모델)'], ['biz', '사업자 (법인 · 개인사업자 · 에이전시)']].map(function (o) {
+        return h('button', { type: 'button', role: 'radio', 'aria-checked': String(d.who === o[0]), class: d.who === o[0] ? 'on' : '', text: o[1], onclick: function () {
+          d.who = o[0]; d.checks = {}; d.first = null; d.vat = o[0] === 'person' ? 'none' : (d.vat === 'none' ? 'excl' : d.vat); HR.refresh();
+        } });
+      }))) : null;
+    var whtBox = person && +d.amount ? (function () { var w = wht(+d.amount); return h('div', { class: 'pay-wht' },
+      h('div', null, h('span', { class: 'meta', text: '지급 총액' }), h('b', { text: won(+d.amount) })),
+      h('div', null, h('span', { class: 'meta', text: '원천징수 3.3% (소득세 ' + won(w.it) + ' + 지방소득세 ' + won(w.lt) + ')' }), h('b', { class: 'red-text', text: '− ' + won(w.sum) })),
+      h('div', null, h('span', { class: 'meta', text: '실제 입금액' }), h('b', { text: won(w.net) }))); })() : null;
+    var f = h('form', { class: 'panel pay-form' }, h('div', { class: 'panel-head' }, ui.label('New request · 입금요청 기안'), h('a', { href: '#payreq/guide', class: 'link', text: '처리 가이드 보기 →' })), quick, whoSeg,
       h('div', { class: 'form-grid' },
         ui.field('지급 유형 *', type), ui.field('계정 과목', ui.select(ACCOUNTS.map(function (a) { return [a, a]; }), d.account, { onchange: bind('account') })),
         ui.field('제목 *', h('input', { type: 'text', value: d.title, maxlength: '60', placeholder: '예: 10월 단상자 인쇄 잔금', oninput: bind('title') })),
         ui.field('거래처 · 받는 분 *', h('input', { type: 'text', value: d.payee, maxlength: '60', placeholder: '예: (주)○○인쇄', oninput: bind('payee') })),
         ui.field('입금할 금액 (원) *', h('div', { class: 'stack' }, amount, hint)),
         ui.field('부가세', ui.select(VAT, d.vat, { onchange: function () { d.vat = this.value; amount.dispatchEvent(new Event('input')); } })),
-        ui.field('입금 희망일 *', h('input', { type: 'date', value: d.due, onchange: bind('due') }))),
+        ui.field('입금 희망일 *', h('input', { type: 'date', value: d.due, onchange: bind('due') }))), whtBox,
       h('div', { class: 'form-grid' },
         ui.field('은행 *', ui.select(BANKS.map(function (b) { return [b, b]; }), d.bank, { onchange: bind('bank') })),
         ui.field('계좌번호 *', h('input', { type: 'text', inputmode: 'numeric', value: d.acct, maxlength: '30', placeholder: '숫자와 - 만', oninput: bind('acct') })),
@@ -192,16 +206,19 @@
       if (!/^[\d-]{6,30}$/.test(d.acct.trim()) || !d.holder.trim()) return ui.err(m, '계좌번호(숫자 · -)와 예금주를 확인하세요.');
       if (!d.purpose.trim()) return ui.err(m, '지출 목적 · 내용을 입력하세요.');
       if (!d.att.length) return ui.err(m, '증빙 서류를 1개 이상 첨부하세요 (파일 또는 Google Drive 링크).');
-      if (TYPES[d.type].first && d.first !== true && d.first !== false) return ui.err(m, '「첫 거래」인지 「기존 거래처」인지 골라 주세요.');
-      var miss = (d.first && TYPES[d.type].first ? TYPES[d.type].first : []).filter(function (i) { return !d.checks[i]; });
+      var isP = PERSON_TYPES.indexOf(d.type) >= 0 && d.who === 'person';
+      if (PERSON_TYPES.indexOf(d.type) >= 0 && d.who !== 'person' && d.who !== 'biz') return ui.err(m, '받는 분이 「개인」인지 「사업자」인지 골라 주세요.');
+      if (!isP && TYPES[d.type].first && d.first !== true && d.first !== false) return ui.err(m, '「첫 거래」인지 「기존 거래처」인지 골라 주세요.');
+      var miss = (!isP && d.first && TYPES[d.type].first ? TYPES[d.type].first : []).filter(function (i) { return !d.checks[i]; });
       if (miss.length) return ui.err(m, '첫 거래는 ' + miss.map(function (i) { return TYPES[d.type].docs[i].replace(/ \(.*\)$/, ''); }).join(' · ') + '을(를) 첨부하고 체크해야 합니다.');
       go.disabled = true; m.textContent = '올리는 중…';
       var ref = db.collection('hr_payreq').doc(), total = d.vat === 'excl' ? Math.round(amt * 1.1) : amt;
       writeFiles(ref.id, S.mid, d.att, 'e', 'evidence').then(function (fileMeta) {
         var b = db.batch();
         b.set(ref, { memberId: S.mid, type: d.type, title: d.title.trim(), payee: d.payee.trim(), amount: amt, vat: d.vat, total: total, account: d.account, due: d.due,
-          bank: d.bank, acct: d.acct.trim(), holder: d.holder.trim(), purpose: d.purpose.trim(), docs: TYPES[d.type].docs.filter(function (_, i) { return d.checks[i]; }),
-          first: !!(d.first === true && TYPES[d.type].first), files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
+          bank: d.bank, acct: d.acct.trim(), holder: d.holder.trim(), purpose: d.purpose.trim(), docs: (isP ? PERSON_DOCS : TYPES[d.type].docs).filter(function (_, i) { return d.checks[i]; }),
+          payeeType: PERSON_TYPES.indexOf(d.type) >= 0 ? d.who : '', wht: isP ? wht(total).sum : 0, net: isP ? wht(total).net : total,
+          first: !!(!isP && d.first === true && TYPES[d.type].first), files: fileMeta, status: 'pending', createdAt: FV.serverTimestamp() });
         return b.commit().then(function () { return ref.id; });
       }).then(function (id) { draft = null; done(); ui.toast('입금요청을 올렸습니다. 대표 승인을 기다립니다.'); HR.go('payreq/r/' + id); })
         .catch(function (x) { go.disabled = false; x && x.user ? ui.err(m, x.user) : ui.fail(x, m); });
@@ -215,9 +232,11 @@
     if (!r) return ui.put(view, ui.empty('요청을 찾을 수 없습니다.'));
     var st = ST[r.status] || ['', 'mute'], admin = S.isAdmin;
     var rows = [['지급 유형', (TYPES[r.type] || TYPES.etc).name + (TYPES[r.type] && TYPES[r.type].first ? (r.first ? ' · 첫 거래' : ' · 기존 거래처') : '')], ['요청자', HR.name(r.memberId)], ['거래처 · 받는 분', r.payee],
-      ['입금할 금액', won(r.total) + (r.vat === 'excl' ? ' (공급가 ' + won(r.amount) + ' + 부가세)' : r.vat === 'incl' ? ' (부가세 포함)' : '')],
+      ['받는 분 구분', r.payeeType === 'person' ? '개인 (3.3% 원천징수)' : r.payeeType === 'biz' ? '사업자' : '—'],
+      ['지급 총액', won(r.total) + (r.vat === 'excl' ? ' (공급가 ' + won(r.amount) + ' + 부가세)' : r.vat === 'incl' ? ' (부가세 포함)' : '')],
+      r.payeeType === 'person' ? ['원천징수 · 실제 입금액', '− ' + won(r.wht) + ' → ' + won(r.net)] : null,
       ['입금 희망일', fmt.dateLong(r.due)], ['계좌', r.bank + ' ' + r.acct + ' · ' + r.holder], ['계정 과목', r.account], ['요청일', fmt.ts(r.createdAt)]];
-    if (r.decidedAt) rows.push([r.status === 'rejected' ? '반려' : '승인', HR.name(r.decidedBy) + ' · ' + fmt.ts(r.decidedAt) + (r.reason ? ' · ' + r.reason : '')]);
+    if (r.decidedAt) rows = rows.filter(Boolean); rows.push([r.status === 'rejected' ? '반려' : '승인', HR.name(r.decidedBy) + ' · ' + fmt.ts(r.decidedAt) + (r.reason ? ' · ' + r.reason : '')]);
     if (r.status === 'paid') rows.push(['입금 완료', fmt.dateLong(r.paidDate) + ' · ' + won(r.paidAmount) + (r.paidNote ? ' · ' + r.paidNote : '')]);
     var fl = h('ul', { class: 'list' }, (r.files || []).map(function (f) {
       return h('li', null, h('div', { class: 'grow' }, h('div', null, ui.tag(f.kind === 'receipt' ? '이체확인증' : f.kind === 'link' ? 'Google Drive' : '증빙', f.kind === 'receipt' || f.kind === 'link' ? 'ok' : 'mute'), ' ', f.name), h('div', { class: 'meta', text: f.kind === 'link' ? '팝업으로 열기' : size(f.size || 0) })),
@@ -230,7 +249,7 @@
         ui.btn('승인', function () { db.doc('hr_payreq/' + id).update({ status: 'approved', decidedBy: S.mid, decidedAt: FV.serverTimestamp() }).then(function () { done(); ui.toast('승인했습니다. 입금 후 「입금 완료」를 기록하세요.'); }).catch(function (x) { ui.fail(x, am); }); }),
         reason, ui.btn('반려', function () { if (!reason.value.trim()) return ui.err(am, '반려 사유를 입력하세요.'); db.doc('hr_payreq/' + id).update({ status: 'rejected', reason: reason.value.trim(), decidedBy: S.mid, decidedAt: FV.serverTimestamp() }).then(function () { done(); ui.toast('반려했습니다.'); }).catch(function (x) { ui.fail(x, am); }); }, 'btn-line')), am);
     } else if (admin && r.status === 'approved') {
-      var pd = h('input', { type: 'date', value: fmt.today() }), pa = h('input', { type: 'text', inputmode: 'numeric', value: (r.total || 0).toLocaleString('ko-KR') }), pn = ui.input({ maxlength: '120', placeholder: '예: 기업은행 법인계좌에서 이체' });
+      var pd = h('input', { type: 'date', value: fmt.today() }), pa = h('input', { type: 'text', inputmode: 'numeric', value: (r.net || r.total || 0).toLocaleString('ko-KR') }), pn = ui.input({ maxlength: '120', placeholder: '예: 기업은행 법인계좌에서 이체' });
       var rc = h('input', { type: 'file', accept: 'application/pdf,image/png,image/jpeg,image/webp' }), pm = ui.msg();
       acts = ui.panel('Pay · 입금 완료 기록', null, h('div', { class: 'form-grid' }, ui.field('입금일', pd), ui.field('입금액 (원)', pa), ui.field('메모', pn), ui.field('이체확인증 (선택)', rc)), pm,
         ui.btn('입금 완료로 기록', function () {

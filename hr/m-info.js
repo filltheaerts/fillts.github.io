@@ -477,7 +477,7 @@
     if (!m) { ui.put(view, ui.empty('구성원을 찾을 수 없습니다.')); return; }
     var self = mid === S.mid, admin = S.isAdmin;
     var tabs = self
-      ? [['', '요약'], ['work', '비전 · 강점'], ['info', '정보'], ['growth', '성장'], ['edu', '교육'], ['pay', '급여'], ['docs', '문서 · 증명서'], ['notify', '알림 설정']]
+      ? [['', '요약'], ['info', '정보'], ['work', '비전 · 강점'], ['growth', '성장'], ['edu', '교육'], ['pay', '급여'], ['docs', '문서 · 증명서'], ['notify', '알림 설정']]
       : admin ? [['', '정보'], ['work', '비전 · 강점'], ['growth', '성장'], ['edu', '교육'], ['pay', '급여'], ['docs', '문서 · 증명서'], ['notes', '인사노트']]
         : [['', '정보'], ['growth', '성장']];
     if (!tabs.some(function (x) { return x[0] === sub; })) sub = '';
