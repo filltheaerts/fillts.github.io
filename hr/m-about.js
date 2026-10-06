@@ -90,18 +90,47 @@
     return f;
   }
 
-  // 기본 링크 (바로가기): 이름 · 설명 · 주소 — 구성원 열람, 관리자 등록
-  var linkOpen = false;
+  // 기본 링크 (바로가기): 이름 · 설명 · 주소 — 구성원 열람, 관리자 등록 · 「편집」에서 순서·내용 수정
+  var linkOpen = false, linkDraft = null;   // linkDraft: 편집 중 사본 (다시 그려도 유지)
+  function linkEditor(links) {
+    if (!linkDraft) linkDraft = links.map(function (l) { return { id: l.id, title: l.title, desc: l.desc || '', url: l.url, del: false }; });
+    var m = ui.msg(), list = h('ol', { class: 'link-edit' });
+    linkDraft.forEach(function (d, i) {
+      var move = function (k) { return function () { var j = i + k; if (j < 0 || j >= linkDraft.length) return; var t = linkDraft[i]; linkDraft[i] = linkDraft[j]; linkDraft[j] = t; HR.refresh(); }; };
+      var bind = function (k) { return function () { d[k] = this.value; }; };
+      list.appendChild(h('li', { class: d.del ? 'is-del' : '' },
+        h('div', { class: 'link-edit-order' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
+          h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === linkDraft.length - 1, onclick: move(1) })),
+        h('div', { class: 'link-edit-fields' },
+          h('input', { type: 'text', value: d.title, maxlength: '40', 'aria-label': '이름', oninput: bind('title') }),
+          h('input', { type: 'text', value: d.desc, maxlength: '80', placeholder: '설명', 'aria-label': '설명', oninput: bind('desc') }),
+          h('input', { type: 'url', value: d.url, 'aria-label': '주소', oninput: bind('url') })),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs' + (d.del ? '' : ' danger'), text: d.del ? '되살리기' : '삭제', onclick: function () { d.del = !d.del; HR.refresh(); } })));
+    });
+    var save = ui.btn('저장', function () {
+      var keep = linkDraft.filter(function (d) { return !d.del; });
+      for (var k = 0; k < keep.length; k++) {
+        if (!keep[k].title.trim()) return ui.err(m, (k + 1) + '번째 링크의 이름을 입력하세요.');
+        if (!/^https:\/\/[^\s]+$/.test(keep[k].url.trim())) return ui.err(m, (k + 1) + '번째 링크 주소는 https:// 로 시작해야 합니다.');
+      }
+      var b = db.batch();
+      linkDraft.forEach(function (d) { if (d.del) b.delete(db.doc('hr_about_links/' + d.id)); });
+      keep.forEach(function (d, n) { b.update(db.doc('hr_about_links/' + d.id), { title: d.title.trim(), desc: d.desc.trim(), url: d.url.trim(), order: n + 1 }); });
+      b.commit().then(function () { linkDraft = null; HR.invalidate('hr_about_links'); ui.toast('기본 링크를 저장했습니다.'); }).catch(function (x) { ui.fail(x, m); });
+    }, 'btn-sm');
+    return h('div', { class: 'stack' }, h('p', { class: 'muted small', text: '↑ ↓로 순서를 바꾸고 이름·설명·주소를 고친 뒤 저장하세요. 위에 있을수록 먼저 보입니다.' }), list, m,
+      h('div', { class: 'row' }, save, ui.btn('취소', function () { linkDraft = null; HR.refresh(); }, 'btn-line btn-sm')));
+  }
   function linksPanel() {
     var links = (HR.load('hr_about_links', function () { return db.collection('hr_about_links').get().then(HR.rows); }) || [])
       .slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var head = S.isAdmin && links.length && !linkDraft ? ui.btn('기본링크 편집', function () { linkOpen = false; linkDraft = null; linkDraft = links.map(function (l) { return { id: l.id, title: l.title, desc: l.desc || '', url: l.url, del: false }; }); HR.refresh(); }, 'btn-line btn-xs') : null;
+    if (S.isAdmin && linkDraft) return ui.panel('Links · 기본 링크 편집', null, linkEditor(links));
     var grid = h('div', { class: 'link-grid' });
     links.forEach(function (l) {
-      grid.appendChild(h('div', { class: 'link-card' },
-        h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', class: 'link-main' },
-          h('span', { class: 'link-title', text: l.title + ' ↗' }), l.desc ? h('span', { class: 'meta', text: l.desc }) : null,
-          h('span', { class: 'link-host', text: (l.url.match(/^https?:\/\/([^\/]+)/) || [])[1] || '' })),
-        S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_about_links/' + l.id).delete().then(function () { HR.invalidate('hr_about_links'); }).catch(ui.fail); }) : null));
+      grid.appendChild(h('a', { href: l.url, target: '_blank', rel: 'noopener noreferrer', class: 'link-card link-main' },
+        h('span', { class: 'link-title', text: l.title + ' ↗' }), l.desc ? h('span', { class: 'meta', text: l.desc }) : null,
+        h('span', { class: 'link-host', text: (l.url.match(/^https?:\/\/([^\/]+)/) || [])[1] || '' })));
     });
     if (!links.length) grid.appendChild(h('p', { class: 'empty', text: S.isAdmin ? '자주 쓰는 사이트를 등록하세요. 예: 회사 Google Drive · 브랜드 가이드 · 자사몰 관리자 · 모두싸인 · 회사 캘린더' : '등록된 링크가 없습니다.' }));
     var form = null;
@@ -116,12 +145,13 @@
           e.preventDefault();
           if (!title.value.trim()) return ui.err(m, '이름을 입력하세요.');
           if (!/^https:\/\/[^\s]+$/.test(url.value.trim())) return ui.err(m, 'https:// 로 시작하는 주소를 입력하세요.');
-          db.collection('hr_about_links').add({ title: title.value.trim(), desc: desc.value.trim(), url: url.value.trim(), order: Date.now(), by: S.mid, at: FV.serverTimestamp() })
+          var last = links.length ? (links[links.length - 1].order || 0) : 0;
+          db.collection('hr_about_links').add({ title: title.value.trim(), desc: desc.value.trim(), url: url.value.trim(), order: last + 1, by: S.mid, at: FV.serverTimestamp() })
             .then(function () { linkOpen = false; HR.invalidate('hr_about_links'); ui.toast('링크를 추가했습니다.'); }).catch(function (x) { ui.fail(x, m); });
         });
       }
     }
-    return ui.panel('Links · 기본 링크', null, grid, form);
+    return ui.panel('Links · 기본 링크', head, grid, form);
   }
 
   function render(view) {
