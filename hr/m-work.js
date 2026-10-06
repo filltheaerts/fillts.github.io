@@ -95,13 +95,12 @@
     var yms = [fmt.ymNum(fmt.ymShift(ym, -1)), fmt.ymNum(ym), fmt.ymNum(fmt.ymShift(ym, 1))];
     var jobs = [
       db.collection('hr_punch').where('memberId', '==', who).where('ym', 'in', yms).get(),
-      db.collection('hr_fix').where('memberId', '==', who).get(),
-      (S.isAdmin || who === S.mid) ? db.doc('hr_pay/' + who).get() : Promise.resolve(null)
+      db.collection('hr_fix').where('memberId', '==', who).get()
     ];
     T.data = null;
     Promise.all(jobs).then(function (r) {
       if (req !== T.req) return;
-      T.data = { punches: HR.rows(r[0]), fixes: HR.rows(r[1]), pay: r[2] && r[2].exists ? r[2].data() : null, key: who + ym };
+      T.data = { punches: HR.rows(r[0]), fixes: HR.rows(r[1]), key: who + ym };
       HR.refresh();
     }).catch(function (e) { ui.fail(e); });
   }
@@ -129,16 +128,14 @@
     if (self && T.data && T.month !== t.slice(0, 7)) { punches = T.data.punches; fixes = T.data.fixes; }
     var leaves = HR.leavesOf(T.who);
     var M = model(punches, fixes, leaves, T.month, S.members[T.who]);
-    var pay = (T.data && T.data.pay) || (self ? S.pay[S.mid] : null), rate = L.hourlyRate(pay, S.cfg), premium = 0;
-    M.weeks.forEach(function (w) { if (w.count) premium += L.premiumPay(w, rate, S.cfg); });
 
     var whoSel = S.isLead ? ui.select(HR.memberList(true).map(function (m) { return [m.id, m.name]; }), T.who, { id: 'wkWho', onchange: function () { T.who = this.value; HR.refresh(); } }) : null;
     var monthIn = ui.input({ id: 'wkMonth', type: 'month', value: T.month, onchange: function () { if (this.value) { T.month = this.value; HR.refresh(); } } });
     var top = h('div', { class: 'two-col' }, self ? h('div', { class: 'stack' }, punchCard()) : null, self ? h('div', { class: 'stack' }, weekPanel()) : null);
 
-    var summary = h('dl', { class: 'summary' });
+    var summary = h('dl', { class: 'summary five' });
     [['근로', L.minToHM(M.tot.work)], ['연장', L.minToHM(M.tot.ot)], ['야간', L.minToHM(M.tot.night)], ['휴일', L.minToHM(M.tot.hol)],
-      ['52시간 초과', M.tot.bad + '주', M.tot.bad ? 'red' : ''], ['가산수당 추정', rate ? fmt.won(premium) : '급여 미등록']].forEach(function (p) {
+      ['52시간 초과', M.tot.bad + '주', M.tot.bad ? 'red' : '']].forEach(function (p) {
       summary.appendChild(h('div', null, h('dt', { text: p[0] }), h('dd', { class: p[2] || '', text: p[1] })));
     });
 

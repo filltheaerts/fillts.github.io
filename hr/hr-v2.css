@@ -1220,3 +1220,7 @@ a.tl-label:hover { background: var(--gray-100); }
 .onb-team li { display: grid; grid-template-columns: 90px 110px minmax(0, 1fr) 60px; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 13px; }
 .onb-team .onb-bar { width: 100%; }
 @media (max-width: 760px) { .onb-hero, .onb-stage { padding: 20px 16px; } .onb-team li { grid-template-columns: 70px minmax(0, 1fr) 50px; } .onb-team li .meta { display: none; } }
+
+.summary.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 900px) { .summary.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
