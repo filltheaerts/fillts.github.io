@@ -160,7 +160,7 @@
     if (!P) { var c = HR.cache.hr_plan_hww; return ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
     var lines = function (t) { return String(t || '').split('\n').map(function (x, i) { return [i ? h('br') : null, x]; }); };
     ui.put(view,
-      h('div', { class: 'hww-hero' }, h('div', { class: 'label', text: 'How we work · 바인그라피가 일하는 방식' }), h('h2', { class: 'hww-intro' }, P.intro.map(function (x, i) { return [i ? h('br') : null, x]; }))),
+      h('div', { class: 'hww-hero' }, h('div', { class: 'label', text: 'How we work · 필츠가 일하는 방식' }), h('h2', { class: 'hww-intro' }, P.intro.map(function (x, i) { return [i ? h('br') : null, x]; }))),
       h('div', { class: 'hww-principles' }, P.principles.map(function (x) {
         return h('section', { class: 'hww-p' }, h('span', { class: 'hww-no', text: x.no }), h('h3', { text: x.title }), h('blockquote', null, lines(x.quote)), h('p', null, lines(x.body)));
       })),
@@ -181,7 +181,7 @@
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
       if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how' && sub !== 'brand') return detail(view, sub);
-      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['brand', '01 바인그라피'], ['milestone', '마일스톤'], ['how', '일하는 법'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['how', '일하는 법'], ['milestone', '마일스톤'], ['brand', '01 바인그라피'], ['feed', '소식 · 칭찬']], sub, 'notice'));
       if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else if (sub === 'brand') brandPage(view); else listView(view);
     }
   });
