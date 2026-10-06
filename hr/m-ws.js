@@ -16,7 +16,23 @@
     var orgs = Object.keys(S.orgs).sort(function (a, b) { return (S.orgs[a].order || 0) - (S.orgs[b].order || 0) || S.orgs[a].name.localeCompare(S.orgs[b].name, 'ko'); })
       .map(function (k) { return [k, S.orgs[k].name, 'org']; });
     var tf = tfs().filter(function (t) { return t.active !== false; }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); }).map(function (t) { return [t.id, 'TF · ' + t.name, 'tf']; });
-    return [[ALL, S.cfg.companyName + ' 전사', 'all']].concat(orgs, tf);
+    var list = [[ALL, S.cfg.companyName + ' 전사', 'all']].concat(orgs, tf), my = (S.priv && S.priv.wsOrder) || [];
+    var rank = function (t, i) { var k = my.indexOf(t[0]); return k < 0 ? 1000 + i : k; };
+    return list.map(function (t, i) { return [t, rank(t, i)]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; });
+  }
+  var ordering = false;
+  function orderPanel() {
+    var ss = spaces();
+    var save = function (keys) { S.priv = Object.assign({}, S.priv, { wsOrder: keys }); db.doc('hr_private/' + S.mid).set({ wsOrder: keys, updatedAt: FV.serverTimestamp() }, { merge: true }).catch(ui.fail); HR.refresh(); };
+    var ul = h('ol', { class: 'list goal-order-list' }, ss.map(function (t, i) {
+      var move = function (k) { return function () { var keys = ss.map(function (x) { return x[0]; }), j = i + k; if (j < 0 || j >= keys.length) return; var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp; save(keys); }; };
+      return h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
+        h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === ss.length - 1, onclick: move(1) })),
+        h('div', { class: 'grow', text: t[1] }));
+    }));
+    return ui.panel('My order · 내 탭 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); ordering = false; HR.refresh(); } }), ul,
+      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 나에게만 적용되고, 「전체 프로젝트」는 항상 맨 앞에 있습니다.' }));
   }
   function spaceName(key) { var s = spaces().filter(function (x) { return x[0] === key; })[0]; return s ? s[1] : key; }
   function inTeam(key) {
@@ -47,6 +63,10 @@
     var k = linkKind(l.url);
     return h('button', { type: 'button', class: 'ws-link ' + k[1], title: l.url, onclick: function (e) { e.preventDefault(); e.stopPropagation(); openLink(l.url); } },
       h('span', { class: 'lk-kind', text: k[0] }), h('span', { class: 'lk-name', text: l.t || l.url.replace(/^https?:\/\//, '').slice(0, 40) }));
+  }
+  function crew(p) { var a = [p.owner].concat(p.people || []).filter(Boolean); return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  function crewRow(ids, label, lead) {
+    return h('div', { class: 'ws-crew' }, h('span', { class: 'meta', text: label }), ids.length ? ids.map(function (mid, i) { return h('span', { class: 'chip' + (lead && i === 0 ? ' lead' : ''), text: HR.name(mid) + (lead && i === 0 ? ' · 리드' : '') }); }) : h('span', { class: 'meta', text: '아직 없음' }));
   }
   function copy(text, msg) {
     var ok = function () { ui.toast(msg); };
@@ -146,7 +166,7 @@
   function postForm(view, key, kind, p) {
     var dk = p ? p.id : 'new:' + key + kind;
     var d = draftPost && draftPost.key === dk ? draftPost
-      : (draftPost = { key: dk, title: p ? p.title : '', body: p ? p.body : (kind === 'project' ? PROJECT_TEMPLATE : ''), status: p ? p.status : 'idea', owner: p ? p.owner : S.mid, due: p ? p.due || '' : '',
+      : (draftPost = { key: dk, title: p ? p.title : '', body: p ? p.body : (kind === 'project' ? PROJECT_TEMPLATE : ''), status: p ? p.status : 'idea', owner: p ? p.owner : S.mid, people: p ? (p.people || []).slice() : [], due: p ? p.due || '' : '',
         tags: p ? (p.tags || []).join(', ') : '', links: p ? (p.links || []).map(function (l) { return Object.assign({}, l); }) : [{ t: '', url: '' }] });
     var m = ui.msg(), back = kind === 'project' ? 'projects' : 'board';
     var body = h('textarea', { rows: '16', maxlength: '20000', oninput: function () { d.body = this.value; } }); body.value = d.body;
@@ -154,9 +174,12 @@
       ui.field('제목 *', h('input', { type: 'text', value: d.title, maxlength: '100', oninput: function () { d.title = this.value; } })),
       kind === 'project' ? h('div', { class: 'form-grid' },
         ui.field('상태', ui.select(STATUS, d.status, { onchange: function () { d.status = this.value; } })),
-        ui.field('담당', ui.select(HR.memberList(false).map(function (x) { return [x.id, x.name]; }), d.owner, { onchange: function () { d.owner = this.value; } })),
+        ui.field('리드 (진행 책임)', ui.select(HR.memberList(false).map(function (x) { return [x.id, x.name]; }), d.owner, { onchange: function () { d.owner = this.value; } })),
         ui.field('기한', h('input', { type: 'date', value: d.due, onchange: function () { d.due = this.value; } })),
         ui.field('태그 (쉼표로 구분)', h('input', { type: 'text', value: d.tags, maxlength: '100', placeholder: '예: 런칭, 공식몰', oninput: function () { d.tags = this.value; } }))) : null,
+      kind === 'project' ? h('div', { class: 'field' }, h('label', { text: '함께 진행하는 사람' }), h('div', { class: 'ws-people pick' }, HR.memberList(false).map(function (x) {
+        return h('label', { class: 'check chip' }, h('input', { type: 'checkbox', checked: d.people.indexOf(x.id) >= 0, onchange: function () { var i = d.people.indexOf(x.id); if (this.checked && i < 0) d.people.push(x.id); if (!this.checked && i >= 0) d.people.splice(i, 1); } }), ' ' + x.name);
+      }))) : null,
       h('div', { class: 'field' }, h('label', { text: '핵심 링크 — 스프레드시트 · 프레젠테이션 · 문서 · 드라이브 · 노션' }), linksEditor(d.links)),
       ui.field(kind === 'project' ? '현황 · 구조' : '내용', body), h('p', { class: 'meta', text: FORMAT_HELP }), m,
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: '저장' }), ui.btn('취소', function () { draftPost = null; HR.go('ws/' + key + '/' + back + (p ? '/' + p.id : '')); }, 'btn-line')));
@@ -166,7 +189,8 @@
       var bad = d.links.filter(function (l) { return l.url.trim() && !/^https:\/\/\S+$/.test(l.url.trim()); });
       if (bad.length) return ui.err(m, '링크는 https:// 로 시작해야 합니다: ' + bad[0].url);
       var data = { org: key, kind: kind, title: d.title.trim(), body: d.body, status: kind === 'project' ? d.status : 'post', owner: kind === 'project' ? d.owner : S.mid, due: kind === 'project' ? d.due : '',
-        tags: kind === 'project' ? d.tags.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8) : [], links: cleanLinks(d.links), updatedAt: FV.serverTimestamp() };
+        tags: kind === 'project' ? d.tags.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 8) : [], links: cleanLinks(d.links),
+        people: kind === 'project' ? d.people.filter(function (x) { return x !== d.owner; }).slice(0, 20) : [], updatedAt: FV.serverTimestamp() };
       var op = p ? db.doc('hr_ws_posts/' + p.id).update(data).then(function () { return p.id; })
         : db.collection('hr_ws_posts').add(Object.assign(data, { createdBy: S.mid, createdAt: FV.serverTimestamp() })).then(function (r) { return r.id; });
       op.then(function (id) { draftPost = null; done(key); ui.toast('저장했습니다.'); HR.go('ws/' + key + '/' + back + '/' + id); }).catch(function (x) { ui.fail(x, m); });
@@ -201,6 +225,7 @@
     var st = STATUS.filter(function (x) { return x[0] === p.status; })[0], pg = page(key) || {};
     ui.put(view, h('a', { href: '#ws/' + key + '/' + back, class: 'back', text: '← ' + spaceName(key) + ' · ' + (p.kind === 'project' ? '프로젝트' : '게시판') }),
       h('article', { class: 'panel ws-article' },
+        p.kind === 'project' ? crewRow(crew(p), '진행자', true) : null,
         h('h1', { class: 'ws-title', text: p.title }),
         h('div', { class: 'ws-meta' }, st && p.kind === 'project' ? ui.tag(st[1], p.status === 'done' ? 'mute' : p.status === 'doing' ? 'ok' : 'warn') : null,
           h('span', { class: 'meta', text: [p.kind === 'project' ? '담당 ' + HR.name(p.owner) : HR.name(p.createdBy), p.due ? '기한 ' + fmt.dot(p.due) : '', '작성 ' + fmt.ts(p.createdAt) + (p.updatedAt ? ' · 수정 ' + fmt.ts(p.updatedAt) : '')].filter(Boolean).join(' · ') }),
@@ -218,7 +243,7 @@
   /* ---------- 프로젝트 보드 ---------- */
   function card(p, showSpace) {
     return h('a', { class: 'ws-card', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? h('span', { class: 'ws-space', text: spaceName(p.org) }) : null, h('b', { text: p.title }),
-      h('span', { class: 'meta', text: [HR.name(p.owner), p.due ? '~ ' + fmt.date(p.due) : ''].filter(Boolean).join(' · ') }),
+      h('span', { class: 'meta', text: [HR.name(p.owner) + ((p.people || []).length ? ' 외 ' + p.people.length + '명' : ''), p.due ? '~ ' + fmt.date(p.due) : ''].filter(Boolean).join(' · ') }),
       (p.links || []).length ? h('span', { class: 'ws-links small' }, p.links.slice(0, 4).map(linkChip)) : null,
       (p.tags || []).length ? h('span', { class: 'ws-tags' }, p.tags.map(function (t) { return h('span', { text: '#' + t }); })) : null);
   }
@@ -283,10 +308,16 @@
       var tabs = h('nav', { class: 'subtabs ws-teams', 'aria-label': '팀 · TF' },
         h('a', { href: '#ws/' + EVERY, class: 'ws-every' + (key === EVERY ? ' active' : ''), text: '전체 프로젝트' }),
         ss.map(function (t) { return h('a', { href: '#ws/' + t[0], class: (t[0] === key ? 'active ' : '') + (t[2] === 'tf' ? 'ws-tf' : ''), text: t[1] }); }),
-        h('a', { href: '#', class: 'ws-add', text: '+ TF', onclick: function (e) { e.preventDefault(); tfForm = true; HR.refresh(); } }));
+        h('a', { href: '#', class: 'ws-add', text: '+ TF', onclick: function (e) { e.preventDefault(); tfForm = true; ordering = false; HR.refresh(); } }),
+        h('a', { href: '#', class: 'ws-add', text: '⇅ 순서', onclick: function (e) { e.preventDefault(); ordering = !ordering; tfForm = false; HR.refresh(); } }));
       ui.put(view, ui.head('Work', 'WORK · 팀 · TF 공간'), tabs);
       if (tfForm) return newTf(view);
+      if (ordering) return ui.put(view, orderPanel());
       if (key === EVERY) return everyProject(view);
+      var tfDoc = /^tf_/.test(key) ? tfs().filter(function (x) { return x.id === key; })[0] : null;
+      var who = tfDoc ? (tfDoc.members || []).slice() : HR.memberList(false).filter(function (m) { return key === ALL ? false : m.orgId === key; }).map(function (m) { return m.id; });
+      posts(key).forEach(function (p) { if (p.kind === 'project' && p.status !== 'done') crew(p).forEach(function (x) { if (who.indexOf(x) < 0) who.push(x); }); });
+      if (!parts[2] && (key !== ALL || who.length)) ui.put(view, crewRow(who, '진행자', false));   // 프로젝트 상세에서는 그 프로젝트 진행자만
       ui.put(view, h('div', { class: 'ws-sub' }, ui.tabs([['intro', '소개 · 목표'], ['projects', '프로젝트'], ['board', '게시판']], sub, 'ws/' + key)));
       if (sub === 'projects') return projects(view, key, parts.slice(2));
       if (sub === 'board') return board(view, key, parts.slice(2));
