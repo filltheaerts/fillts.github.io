@@ -154,12 +154,14 @@
     return ui.panel('Links · 기본 링크', head, grid, form);
   }
 
-  function render(view) {
+  function render(view, parts) {
+    var sub = (parts || [])[0] === 'qa' ? 'qa' : '';
+    if (sub === 'qa') { ui.put(view, ui.head('About', '기본안내'), ui.tabs([['', '기본안내'], ['qa', '필츠 Q&A']], sub, 'about')); return HR.qa.render(view); }
     var info = HR.load('hr_about', function () { return db.doc('hr_about/main').get().then(function (s) { return s.exists ? s.data() : {}; }); }) || {};
     var docs = HR.load('hr_about_docs', function () { return db.collection('hr_about_docs').get().then(HR.rows); }) || [];
     var c = S.cfg;
     var rows = [['회사명', c.companyName], ['대표자', c.ceoName], ['사업자등록번호', c.bizNo], ['주소', c.companyAddress]].filter(function (x) { return x[1]; }).concat(pairs(info));
-    ui.put(view, ui.head('About', '기본안내', S.isAdmin && !editing ? ui.btn('소개 편집', function () { editing = true; HR.refresh(); }, 'btn-line btn-sm') : null));
+    ui.put(view, ui.head('About', '기본안내', S.isAdmin && !editing ? ui.btn('소개 편집', function () { editing = true; HR.refresh(); }, 'btn-line btn-sm') : null), ui.tabs([['', '기본안내'], ['qa', '필츠 Q&A']], sub, 'about'));
     if (editing && S.isAdmin) ui.put(view, editForm(info));
     var dl = h('ul', { class: 'list' });
     docs.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); }).forEach(function (d) {

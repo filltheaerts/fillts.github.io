@@ -7,6 +7,7 @@
   var LEVEL = { company: ['전사', 'red'], team: ['팀', 'warn'], personal: ['개인', 'mute'] };
   var STAT = { on: ['순항', 'ok'], risk: ['주의', 'warn'], off: ['위험', 'red'], done: ['완료', 'mute'] };
 
+  function periodName(v) { var m = /^(\d{4})-(Q|H)(\d)$/.exec(v || ''); return !m ? (v ? v + '년' : '') : String(m[1]).slice(2) + '년 ' + (m[2] === 'Q' ? m[3] + '분기' : (m[3] === '1' ? '상반기' : '하반기')); }
   function periods() {
     var t = fmt.today(), y = +t.slice(0, 4), q = Math.floor((+t.slice(5, 7) - 1) / 3) + 1, out = [];
     for (var i = -2; i <= 2; i++) { var qq = q + i, yy = y; while (qq < 1) { qq += 4; yy--; } while (qq > 4) { qq -= 4; yy++; } out.push([yy + '-Q' + qq, yy + '년 ' + qq + '분기']); }
@@ -32,7 +33,7 @@
   /* ---------- 목표 목록 + 상세 ---------- */
   function goalsView(view, selId) {
     G.period = G.period || curPeriod();
-    var all = S.goals.filter(function (g) { return g.period === G.period; });
+    var every = G.period === '*', all = S.goals.filter(function (g) { return every || g.period === G.period; });   // '*' = 전체 기간
     var byParent = {};
     all.forEach(function (g) { var k = g.parentId && all.some(function (x) { return x.id === g.parentId; }) ? g.parentId : ''; (byParent[k] = byParent[k] || []).push(g); });
     var order = { company: 0, team: 1, personal: 2 };
@@ -41,7 +42,7 @@
       if (G.level !== '*' && g.level !== G.level && !kids.length) return null;
       return h('li', { class: 'goal-node' },
         h('a', { class: 'goal-card' + (g.id === selId ? ' active' : ''), href: '#goals/g/' + g.id },
-          h('div', { class: 'goal-top' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), h('span', { class: 'meta', text: HR.name(g.ownerMid) + ' · 핵심결과 ' + (g.krs || []).length + '개' }), ui.tag(st[0], st[1])),
+          h('div', { class: 'goal-top' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), h('span', { class: 'meta', text: (every ? periodName(g.period) + ' · ' : '') + HR.name(g.ownerMid) + ' · 핵심결과 ' + (g.krs || []).length + '개' }), ui.tag(st[0], st[1])),
           h('div', { class: 'goal-title', text: g.title }),
           h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: pctText(p) }))),
         kids.length ? h('ul', { class: 'goal-children' }, kids.map(function (k) { return card(k, depth + 1); })) : null);
@@ -57,7 +58,7 @@
 
     ui.put(view,
       h('div', { class: 'toolbar' },
-        ui.field('기간', ui.select(periods(), G.period, { id: 'glPeriod', onchange: function () { G.period = this.value; HR.refresh(); } }), 'inline'),
+        ui.field('기간', ui.select([['*', '전체 기간']].concat(periods()), G.period, { id: 'glPeriod', onchange: function () { G.period = this.value; HR.refresh(); } }), 'inline'),
         ui.field('수준', ui.select([['*', '전체'], ['company', '전사'], ['team', '팀'], ['personal', '개인']], G.level, { id: 'glLevel', onchange: function () { G.level = this.value; HR.refresh(); } }), 'inline'),
         ui.btn('내 목표 순서', function () { G.ordering = !G.ordering; G.creating = false; HR.refresh(); }, 'btn-line btn-sm'),
         ui.btn('목표 추가', function () { G.creating = true; G.ordering = false; G.editing = null; G.draft = null; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
@@ -151,7 +152,7 @@
       G.draft = g ? {
         key: key, level: g.level, title: g.title || '', desc: g.desc || '', period: g.period, parentId: g.parentId || '',
         rows: (g.krs || []).map(function (k) { return { t: k.t, start: k.start || 0, target: k.target, current: k.current == null ? (k.start || 0) : k.current, unit: k.unit || '' }; })
-      } : { key: key, level: S.isAdmin ? 'company' : 'personal', title: '', desc: '', period: G.period || curPeriod(), parentId: '', rows: [{ t: '', start: 0, target: 100, current: 0, unit: '%' }] };
+      } : { key: key, level: S.isAdmin ? 'company' : 'personal', title: '', desc: '', period: G.period && G.period !== '*' ? G.period : curPeriod(), parentId: '', rows: [{ t: '', start: 0, target: 100, current: 0, unit: '%' }] };
     }
     var D = G.draft;
     var levels = [['personal', '개인'], S.isLead ? ['team', '팀'] : null, S.isAdmin ? ['company', '전사'] : null].filter(Boolean);
@@ -198,7 +199,7 @@
       var job = g ? db.doc('hr_goals/' + g.id).update(data)
         : db.collection('hr_goals').add(Object.assign(data, { ownerMid: S.mid, orgId: (S.members[S.mid] || {}).orgId || '', status: 'on', createdAt: FV.serverTimestamp() }));
       job.then(function (ref) {
-        G.draft = null; G.period = D.period;
+        G.draft = null; if (G.period !== '*') G.period = D.period;
         if (g) { G.editing = null; ui.toast('목표를 수정했습니다.'); HR.refresh(); }
         else { G.creating = false; HR.go('goals/g/' + ref.id); }
       }).catch(function (x) { ui.fail(x, m); });
