@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src https://fillts-web.firebaseapp.com; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>fillts HR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="hr.css?v=20261006b">
+  <link rel="stylesheet" href="hr-v2.css?v=20261006b">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◼</text></svg>">
+</head>
+<body>
+
+  <!-- ============ 로그인 ============ -->
+  <section class="auth" id="authView" hidden>
+    <div class="auth-side">
+      <a href="/" class="logo">fillts</a>
+      <div>
+        <div class="label">Fillts HR</div>
+        <h1 class="auth-title">Work, <span class="accent">fill</span>ed<br>with clarity<span class="accent">.</span></h1>
+        <p class="auth-sub">출퇴근부터 휴가, 목표와 원온원까지.<br>근로기준법 기준으로 자동 계산하고, Slack으로 바로 승인합니다.</p>
+      </div>
+      <div class="auth-foot">&copy; 2026 fillts Inc. &nbsp;|&nbsp; 임직원 전용 &nbsp;|&nbsp; 접속 기록이 보관됩니다</div>
+    </div>
+
+    <div class="auth-main">
+      <form class="auth-form" id="loginForm" novalidate>
+        <div class="label" id="authMode">Sign in</div>
+        <div class="field">
+          <label for="loginEmail">회사 이메일</label>
+          <input id="loginEmail" type="email" autocomplete="username" required placeholder="name@fillts.com">
+        </div>
+        <div class="field">
+          <label for="loginPw">비밀번호</label>
+          <input id="loginPw" type="password" autocomplete="current-password" required minlength="10">
+        </div>
+        <label class="check" for="loginKeep"><input id="loginKeep" type="checkbox"> 이 기기에서 로그인 유지 (개인 기기에서만)</label>
+        <p class="form-msg" id="loginMsg" role="alert"></p>
+        <button class="btn" type="submit" id="loginBtn">로그인</button>
+        <div class="auth-links">
+          <a href="#" id="toSignup">초대받은 계정 만들기</a>
+          <a href="#" id="toReset">비밀번호 재설정</a>
+        </div>
+      </form>
+
+      <div class="auth-form" id="verifyBox" hidden>
+        <div class="label">Verify email</div>
+        <h2 class="h2">이메일 인증이 필요합니다</h2>
+        <p class="muted" id="verifyText"></p>
+        <p class="form-msg" id="verifyMsg" role="alert"></p>
+        <button class="btn" id="verifyResend" type="button">인증 메일 다시 보내기</button>
+        <button class="btn btn-line" id="verifyDone" type="button">인증을 마쳤습니다</button>
+        <div class="auth-links"><a href="#" class="js-logout">다른 계정으로 로그인</a></div>
+      </div>
+
+      <div class="auth-form" id="noAccessBox" hidden>
+        <div class="label">Access</div>
+        <h2 class="h2" id="noAccessTitle">아직 초대되지 않은 계정입니다</h2>
+        <p class="muted" id="noAccessText"></p>
+        <div class="stack" id="bootstrapForm" hidden>
+          <div class="field"><label for="bsName">이름</label><input id="bsName" type="text" maxlength="40" value="김재우"></div>
+          <div class="field"><label for="bsTitle">직책</label><input id="bsTitle" type="text" maxlength="40" value="대표"></div>
+          <div class="field"><label for="bsHire">입사일</label><input id="bsHire" type="date" value="2024-12-02"></div>
+          <button class="btn" id="bsSubmit" type="button">관리자로 시작하기</button>
+        </div>
+        <p class="form-msg" id="noAccessMsg" role="alert"></p>
+        <div class="auth-links"><a href="#" id="noAccessRetry">다시 확인</a><a href="#" class="js-logout">로그아웃</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 앱 ============ -->
+  <div class="app" id="appView" hidden>
+    <nav class="nav">
+      <a href="#info" class="logo">fillts <span class="logo-sub">HR</span></a>
+      <div class="nav-right">
+        <div class="bell-wrap">
+          <button class="bell" id="bell" type="button" aria-label="알림">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+            <span class="bell-count" id="bellCount" hidden>0</span>
+          </button>
+          <div class="bell-panel" id="bellPanel" role="dialog" aria-label="알림"></div>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
+      </div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#info" data-menu="info">Info</a></li>
+        <li><a href="#notice" data-menu="notice">공지사항</a></li>
+        <li><a href="#people" data-menu="people">구성원</a></li>
+        <li><a href="#work" data-menu="work">근무</a></li>
+        <li><a href="#leave" data-menu="leave">휴가·근태</a></li>
+        <li><a href="#goals" data-menu="goals">목표관리</a></li>
+        <li class="admin-only"><a href="#admin" data-menu="admin">설정</a></li>
+        <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
+      </ul>
+    </nav>
+    <main class="main" id="view" tabindex="-1"></main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js?v=20261006b"></script>
+  <script src="labor.js?v=20261006b"></script>
+  <script src="core.js?v=20261006b"></script>
+  <script src="m-info.js?v=20261006b"></script>
+  <script src="m-notice.js?v=20261006b"></script>
+  <script src="m-people.js?v=20261006b"></script>
+  <script src="m-work.js?v=20261006b"></script>
+  <script src="m-leave.js?v=20261006b"></script>
+  <script src="m-goals.js?v=20261006b"></script>
+  <script src="m-admin.js?v=20261006b"></script>
+</body>
+</html>

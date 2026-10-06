@@ -1,0 +1,116 @@
+/* fillts HR — 1) 공지사항: 공지(중요·고정·읽음 확인) · 소식과 칭찬 */
+(function () {
+  'use strict';
+  var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
+  var editId = null;
+
+  function readOf(id) {
+    return HR.load('read:' + id, function () { return db.doc('hr_notice/' + id + '/reads/' + S.mid).get().then(function (s) { return s.exists; }); });
+  }
+  function sorted() {
+    return S.notices.slice().sort(function (a, b) {
+      return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt && a.createdAt ? b.createdAt.toMillis() - a.createdAt.toMillis() : 0);
+    });
+  }
+
+  function listView(view) {
+    var ul = h('ul', { class: 'notice-list' });
+    sorted().forEach(function (n) {
+      var read = readOf(n.id);
+      ul.appendChild(h('li', { class: read === false ? 'unread' : '' },
+        h('a', { href: '#notice/' + n.id, class: 'notice-row' },
+          h('div', { class: 'grow' },
+            h('div', { class: 'notice-title' }, n.pinned ? ui.tag('고정', 'mute') : null, n.important ? ui.tag('중요', 'red') : null, ' ', n.title),
+            h('div', { class: 'meta', text: HR.name(n.authorMid) + ' · ' + fmt.ts(n.createdAt) + (read === false ? ' · 읽지 않음' : '') })),
+          h('span', { class: 'arrow', 'aria-hidden': 'true', text: '→' }))));
+    });
+    if (!ul.children.length) ul.appendChild(h('li', { class: 'empty', text: '아직 공지가 없습니다.' }));
+    ui.put(view, S.isAdmin ? h('div', { class: 'toolbar' }, h('a', { class: 'btn btn-sm', href: '#notice/new', text: '공지 작성' })) : null, ul);
+  }
+
+  function detail(view, id) {
+    var n = S.notices.filter(function (x) { return x.id === id; })[0];
+    if (!n) { ui.put(view, ui.empty('공지를 찾을 수 없습니다.')); return; }
+    var read = readOf(id);
+    var ack = read ? ui.tag('확인함', 'ok') : ui.btn('확인했습니다', function () {
+      db.doc('hr_notice/' + id + '/reads/' + S.mid).set({ at: FV.serverTimestamp() }).then(function () { HR.invalidate('read:' + id); HR.invalidate('reads:' + id); ui.toast('확인을 남겼습니다.'); }).catch(ui.fail);
+    }, 'btn-sm');
+    var admin = null;
+    if (S.isAdmin) {
+      var reads = HR.load('reads:' + id, function () { return db.collection('hr_notice/' + id + '/reads').get().then(function (s) { return s.docs.map(function (d) { return d.id; }); }); }) || [];
+      var all = HR.memberList(false), notYet = all.filter(function (m) { return reads.indexOf(m.id) < 0; });
+      admin = ui.panel('읽음 확인 ' + reads.length + ' / ' + all.length, h('div', { class: 'row' },
+        h('a', { class: 'link', href: '#notice/edit/' + id, text: '수정' }),
+        ui.confirmBtn('삭제', function () { db.doc('hr_notice/' + id).delete().then(function () { HR.go('notice'); }).catch(ui.fail); })),
+        notYet.length ? h('p', { class: 'muted small', text: '미확인: ' + notYet.map(function (m) { return m.name; }).join(', ') }) : h('p', { class: 'muted small', text: '모든 구성원이 확인했습니다.' }));
+    }
+    ui.put(view,
+      h('a', { href: '#notice', class: 'back', text: '← 공지사항' }),
+      h('article', { class: 'notice-article' },
+        h('div', { class: 'label' }, n.important ? '중요 공지' : '공지', '  ·  ', fmt.ts(n.createdAt), '  ·  ', HR.name(n.authorMid)),
+        h('h2', { class: 'notice-h', text: n.title }),
+        h('div', { class: 'notice-body', text: n.body || '' }),
+        h('div', { class: 'row' }, ack)),
+      admin);
+  }
+
+  function editor(view, id) {
+    var n = id ? S.notices.filter(function (x) { return x.id === id; })[0] || {} : {};
+    var title = ui.input({ id: 'ntTitle', maxlength: '120', value: n.title || '' });
+    var body = h('textarea', { id: 'ntBody', rows: '12', maxlength: '10000' }); body.value = n.body || '';
+    var pinned = h('input', { type: 'checkbox', checked: !!n.pinned }), important = h('input', { type: 'checkbox', checked: !!n.important }), m = ui.msg();
+    var form = h('form', { class: 'panel' },
+      ui.field('제목', title), ui.field('내용', body),
+      h('div', { class: 'row' }, h('label', { class: 'check' }, pinned, ' 상단 고정'), h('label', { class: 'check' }, important, ' 중요 공지 (메일 발송 + 읽음 확인 요청)')),
+      m, h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: id ? '수정' : '게시' }), h('a', { class: 'btn btn-line', href: id ? '#notice/' + id : '#notice', text: '취소' })),
+      h('p', { class: 'note', text: '게시하면 전 구성원에게 웹 알림과 Slack 채널 공지가 가고, 중요 공지는 회사 메일로도 발송됩니다. 취업규칙 변경 공지는 근로기준법 제14조에 따라 상시 게시해야 합니다.' }));
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!title.value.trim() || !body.value.trim()) return ui.err(m, '제목과 내용을 입력하세요.');
+      var d = { title: title.value.trim(), body: body.value.trim(), pinned: pinned.checked, important: important.checked, updatedAt: FV.serverTimestamp() };
+      var job = id ? db.doc('hr_notice/' + id).update(d) : db.collection('hr_notice').add(Object.assign(d, { authorMid: S.mid, createdAt: FV.serverTimestamp() }));
+      job.then(function (ref) { ui.toast(id ? '수정했습니다.' : '게시했습니다. 구성원에게 알림이 갑니다.'); HR.go('notice/' + (id || ref.id)); }).catch(function (x) { ui.fail(x, m); });
+    });
+    ui.put(view, h('a', { href: '#notice', class: 'back', text: '← 공지사항' }), form);
+  }
+
+  /* ---------- 소식 · 칭찬 ---------- */
+  function feed(view) {
+    var text = h('textarea', { id: 'fdText', rows: '3', maxlength: '1000', placeholder: '팀에 공유할 소식이나 동료에게 고마운 점을 남겨 주세요' });
+    var to = ui.select([['', '소식 (전체)']].concat(HR.memberList(false).filter(function (m) { return m.id !== S.mid; }).map(function (m) { return [m.id, '칭찬 → ' + m.name]; })), '', { id: 'fdTo' });
+    var form = h('form', { class: 'panel' }, ui.field('새 글', text), h('div', { class: 'row between' }, to, h('button', { class: 'btn btn-sm', type: 'submit', text: '올리기' })));
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = text.value.trim(); if (!v) return;
+      var d = { authorMid: S.mid, text: v, kind: to.value ? 'praise' : 'post', likes: {}, createdAt: FV.serverTimestamp() };
+      if (to.value) d.toMid = to.value;
+      db.collection('hr_feed').add(d).then(function () { text.value = ''; ui.toast(to.value ? HR.name(to.value) + '님에게 칭찬을 보냈어요.' : '소식을 올렸습니다.'); }).catch(ui.fail);
+    });
+    var ul = h('ul', { class: 'feed' });
+    S.feed.forEach(function (f) {
+      var likes = f.likes || {}, n = Object.keys(likes).filter(function (k) { return likes[k]; }).length, liked = !!likes[S.mid];
+      ul.appendChild(h('li', { class: f.kind === 'praise' ? 'praise' : '' },
+        h('div', { class: 'grow' },
+          h('div', { class: 'meta' }, f.kind === 'praise' ? ui.tag('Praise', 'ok') : null, ' ', HR.name(f.authorMid) + (f.toMid ? ' → ' + HR.name(f.toMid) : '') + ' · ' + fmt.ts(f.createdAt)),
+          h('div', { class: 'body', text: f.text }),
+          h('div', { class: 'row' },
+            h('button', { type: 'button', class: 'like' + (liked ? ' on' : ''), 'aria-pressed': String(liked), text: '고마워요 ' + (n || ''), onclick: function () {
+              var u = {}; u['likes.' + S.mid] = !liked; db.doc('hr_feed/' + f.id).update(u).catch(ui.fail);
+            } }),
+            f.authorMid === S.mid || S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_feed/' + f.id).delete().catch(ui.fail); }) : null))));
+    });
+    if (!ul.children.length) ul.appendChild(h('li', { class: 'empty', text: '아직 소식이 없습니다. 첫 글을 남겨 보세요.' }));
+    ui.put(view, h('div', { class: 'two-col' }, form, ui.panel('Feed', null, ul)));
+  }
+
+  HR.register('notice', {
+    render: function (view, parts) {
+      var sub = parts[0] || '';
+      if (sub === 'new' && S.isAdmin) return editor(view, null);
+      if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
+      if (sub && sub !== 'feed') return detail(view, sub);
+      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      if (sub === 'feed') feed(view); else listView(view);
+    }
+  });
+})();
