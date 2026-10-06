@@ -112,7 +112,6 @@
     });
     var root = h('div', { class: 'pt-root' }, h('div', { class: 'pt-ceo' }, h('div', { class: 'pt-unit-name', text: 'CEO · 대표이사' }),
       h('div', { class: 'pt-unit-desc', text: top.map(function (s) { return s.role; }).filter(function (r) { return r !== '대표이사'; }).join(' · ') + ' 겸직' })));
-      h('span', { class: 'ps is-plus' }, h('span', { class: 'ps-dot' }), '팀원 충원'), h('span', { class: 'ps is-due' }, h('span', { class: 'ps-dot' }), '이번 달 · 시기 도래'), h('span', { class: 'meta', text: '항목에 마우스를 올리면 설명이 보입니다' }));
 
     // 합류 순서 — 연도별 가로 타임라인
     all.sort(function (a, b) { return a.s.seq - b.s.seq; });
