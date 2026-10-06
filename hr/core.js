@@ -308,6 +308,9 @@
   function inAppBrowser() {
     return /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|Line\/|NAVER\(inapp|DaumApps|everytimeApp|; wv\)/i.test(navigator.userAgent);
   }
+  function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); }
+  // redirect로 돌아왔을 때 실패 사유를 로그인 화면에 보여 준다 (성공은 onAuthStateChanged가 처리)
+  auth.getRedirectResult().catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   $('googleBtn').addEventListener('click', function () {
     if (inAppBrowser()) {
       var url = location.href, ua = navigator.userAgent;
@@ -317,8 +320,11 @@
     }
     var p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ hd: 'fillts.com', prompt: 'select_account' });
-    // 팝업은 탭과 같은 틱에 열어야 모바일 Safari·Chrome이 막지 않는다 — setPersistence를 기다리지 않는다(auth 내부 큐가 순서 보장)
     auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    // 모바일은 팝업(새 탭)이 Google을 거치며 원래 탭과 연결이 끊긴다 → 같은 탭 redirect.
+    // authDomain이 fillts.com(/__/auth 자체 호스팅)이라 redirect가 저장소 분리에 걸리지 않는다.
+    if (isMobile()) { ui.ok($('loginMsg'), 'Google 로그인으로 이동합니다…'); auth.signInWithRedirect(p).catch(function (x) { ui.err($('loginMsg'), authErr(x)); }); return; }
+    // PC 팝업은 탭과 같은 틱에 열어야 막히지 않는다 — setPersistence를 기다리지 않는다(auth 내부 큐가 순서 보장)
     auth.signInWithPopup(p)
       .catch(function (x) {
         if (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request') return;
