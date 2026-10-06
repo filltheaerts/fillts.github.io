@@ -1319,3 +1319,9 @@ a.tl-label:hover { background: var(--gray-100); }
 .onb-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .onb-hero .onb-pdf { background: #fff; color: var(--black); border-color: #fff; }
 .onb-hero .onb-pdf:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+.dy-actions { flex-wrap: wrap; }
+.dy-note { margin: 0; }
+.dy-preview { border: 2px dashed #7c3aed; padding: 14px; background: #faf5ff; display: flex; flex-direction: column; gap: 10px; }
+.dy-preview-head { display: flex; align-items: baseline; gap: 10px; }
+.dy-preview-head b { color: #6d28d9; }

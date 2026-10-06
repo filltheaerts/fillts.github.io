@@ -190,7 +190,7 @@
     ['notice', '공지사항', '구성원이 알아야 할 것 · 다음 2주 계획']
   ];
   var DIARY_ANCHOR = '2026-01-05';   // 월요일 — 여기서부터 2주 단위로 자른다
-  var diaryDraft = null, diaryOpen = {};
+  var diaryDraft = null, diaryOpen = {}, previewing = false;
   function dn(d) { return Math.round(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 864e5); }
   function dd(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
   function blockOf(day, shift) { var a = dn(DIARY_ANCHOR), k = Math.floor((dn(day) - a) / 14) + (shift || 0); return { start: dd(a + k * 14), end: dd(a + k * 14 + 13) }; }
@@ -217,14 +217,14 @@
         if (!d.title.trim() || !(d.body || '').trim()) return ui.err(m, '제목과 본문을 적어 주세요.');
         var idata = { kind: 'insight', start: d.start, end: d.end, title: d.title.trim(), subtitle: (d.subtitle || '').trim(), body: d.body.trim(), sec: {}, published: pub, by: S.mid, updatedAt: FV.serverTimestamp() };
         var iop = cur ? db.doc('hr_diary/' + cur.id).update(idata) : db.collection('hr_diary').add(Object.assign(idata, { at: FV.serverTimestamp() }));
-        return iop.then(function () { diaryDraft = null; HR.invalidate('hr_diary'); ui.toast(pub ? '인사이트를 올렸습니다.' : '임시저장했습니다. 관리자에게만 보입니다.'); }).catch(function (x) { ui.fail(x, m); });
+        return iop.then(function () { diaryDraft = null; HR.invalidate('hr_diary'); ui.toast(pub ? (cur && cur.published ? '수정했습니다. 알림은 가지 않습니다.' : '최종 업로드했습니다. 구성원에게 알림이 갑니다.') : '임시저장했습니다. 대표님에게만 보입니다.'); }).catch(function (x) { ui.fail(x, m); });
       }
       var body = {}, any = false;
       DIARY.forEach(function (x) { body[x[0]] = (d.sec[x[0]] || '').trim(); if (body[x[0]]) any = true; });
       if (!any) return ui.err(m, '한 칸 이상 적어 주세요.');
       var data = { kind: 'diary', start: d.start, end: d.end, title: d.title.trim(), sec: body, published: pub, by: S.mid, updatedAt: FV.serverTimestamp() };
       var op = cur ? db.doc('hr_diary/' + cur.id).update(data) : db.collection('hr_diary').add(Object.assign(data, { at: FV.serverTimestamp() }));
-      op.then(function () { diaryDraft = null; HR.invalidate('hr_diary'); ui.toast(pub ? '올렸습니다. 구성원 모두가 볼 수 있습니다.' : '임시저장했습니다. 관리자에게만 보입니다.'); }).catch(function (x) { ui.fail(x, m); });
+      op.then(function () { diaryDraft = null; HR.invalidate('hr_diary'); ui.toast(pub ? (cur && cur.published ? '수정했습니다. 알림은 가지 않습니다.' : '최종 업로드했습니다. 구성원에게 알림이 갑니다.') : '임시저장했습니다. 대표님에게만 보입니다.'); }).catch(function (x) { ui.fail(x, m); });
     };
     return h('form', { class: 'panel dy-form', onsubmit: function (e) { e.preventDefault(); save(true); } },
       h('div', { class: 'dy-form-head' }, ui.label((cur ? 'Edit' : 'New') + ' · 필츠그라피 (관리자 전용 작성칸)'), per), cur ? null : kindTog,
@@ -236,9 +236,12 @@
         ta.value = d.sec[x[0]] || '';
         return h('div', { class: 'field dy-f' }, h('label', null, h('span', { class: 'dy-no', text: ('0' + (i + 1)).slice(-2) }), ' ' + x[1]), ta);
       }), m,
-      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit', text: cur && cur.published ? '수정 반영' : '올리기' }),
-        ui.btn('임시저장', function () { save(false); }, 'btn-line'),
-        cur || diaryDraft.touched ? ui.btn('닫기', function () { diaryDraft = null; HR.refresh(); }, 'btn-line') : null));
+      h('div', { class: 'row dy-actions' },
+        ui.btn(cur && cur.published ? '나만 보기로 내리기' : '임시저장 (나만 보기)', function () { save(false); }, 'btn-line'),
+        ui.btn(d.preview ? '미리보기 닫기' : '미리보기', function () { d.preview = !d.preview; HR.refresh(); }, 'btn-line'),
+        h('button', { class: 'btn', type: 'submit', text: cur && cur.published ? '수정 반영 (알림 없음)' : '최종 업로드' }),
+        cur || diaryDraft.touched ? ui.btn('닫기', function () { diaryDraft = null; HR.refresh(); }, 'btn-line') : null),
+      h('p', { class: 'meta dy-note', text: cur && cur.published ? '이미 게시된 글입니다. 고쳐도 알림은 다시 가지 않습니다.' : '「최종 업로드」를 누르면 구성원 모두에게 공개되고, 알림은 처음 한 번만 갑니다. 그 전까지는 대표님에게만 보입니다.' }));
   }
   // 인사이트 본문: ## 소제목 · > 강조 · - 목록 · 빈 줄 = 문단 (텍스트 노드만)
   // 「## 위협 …」 바로 뒤 「## 대응 …」은 한 묶음(위협 → 대응)으로, 대응은 초록 톤으로 보인다
@@ -268,8 +271,8 @@
     var open = !!diaryOpen[x.id], card;
     card = h('article', { class: 'dy-card ins-card' + (x.published ? '' : ' draft') + (open ? ' open' : '') },
       h('div', { class: 'dy-card-head' }, h('span', { class: 'ins-badge', text: 'SPECIAL · 인사이트' }), h('span', { class: 'dy-per', text: periodText(x) }), x.published ? null : ui.tag('임시저장 · 관리자만', 'warn'),
-        S.isAdmin ? h('a', { href: '#', class: 'link', text: '수정', onclick: function (e) { e.preventDefault(); diaryDraft = { kind: 'insight', start: x.start, end: x.end, title: x.title || '', subtitle: x.subtitle || '', body: x.body || '', sec: {}, id: x.id, touched: true }; HR.refresh(); window.scrollTo(0, 0); } }) : null,
-        S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_diary/' + x.id).delete().then(function () { HR.invalidate('hr_diary'); }).catch(ui.fail); }) : null),
+        S.isAdmin && !previewing ? h('a', { href: '#', class: 'link', text: '수정', onclick: function (e) { e.preventDefault(); diaryDraft = { kind: 'insight', start: x.start, end: x.end, title: x.title || '', subtitle: x.subtitle || '', body: x.body || '', sec: {}, id: x.id, touched: true }; HR.refresh(); window.scrollTo(0, 0); } }) : null,
+        S.isAdmin && !previewing ? ui.confirmBtn('삭제', function () { db.doc('hr_diary/' + x.id).delete().then(function () { HR.invalidate('hr_diary'); }).catch(ui.fail); }) : null),
       h('h3', { class: 'ins-title', text: x.title }), x.subtitle ? h('p', { class: 'ins-sub', text: x.subtitle }) : null,
       h('span', { class: 'meta', text: HR.name(x.by) + ' · ' + fmt.ts(x.updatedAt || x.at) }),
       essay(x.body),
@@ -282,8 +285,8 @@
     var secs = DIARY.filter(function (k) { return x.sec && x.sec[k[0]]; });
     return h('article', { class: 'dy-card' + (x.published ? '' : ' draft') },
       h('div', { class: 'dy-card-head' }, h('span', { class: 'dy-per', text: periodText(x) }), x.published ? null : ui.tag('임시저장 · 관리자만', 'warn'),
-        S.isAdmin ? h('a', { href: '#', class: 'link', text: '수정', onclick: function (e) { e.preventDefault(); diaryDraft = { start: x.start, end: x.end, title: x.title || '', sec: Object.assign({}, x.sec), id: x.id, touched: true }; HR.refresh(); window.scrollTo(0, 0); } }) : null,
-        S.isAdmin ? ui.confirmBtn('삭제', function () { db.doc('hr_diary/' + x.id).delete().then(function () { HR.invalidate('hr_diary'); }).catch(ui.fail); }) : null),
+        S.isAdmin && !previewing ? h('a', { href: '#', class: 'link', text: '수정', onclick: function (e) { e.preventDefault(); diaryDraft = { start: x.start, end: x.end, title: x.title || '', sec: Object.assign({}, x.sec), id: x.id, touched: true }; HR.refresh(); window.scrollTo(0, 0); } }) : null,
+        S.isAdmin && !previewing ? ui.confirmBtn('삭제', function () { db.doc('hr_diary/' + x.id).delete().then(function () { HR.invalidate('hr_diary'); }).catch(ui.fail); }) : null),
       h('h3', { class: 'dy-title', text: x.title || (periodText(x) + ' 일기') }),
       h('span', { class: 'meta', text: HR.name(x.by) + ' · ' + fmt.ts(x.updatedAt || x.at) }),
       h('div', { class: 'dy-secs' + (open === false ? ' folded' : '') }, secs.map(function (k) {
@@ -300,6 +303,14 @@
       var cur = diaryDraft && diaryDraft.id ? list.filter(function (x) { return x.id === diaryDraft.id; })[0] : null;
       if (!diaryDraft) { var b = blockOf(fmt.today()); diaryDraft = { start: b.start, end: b.end, title: '', sec: {} }; }
       ui.put(view, diaryForm(view, cur));
+      if (diaryDraft.preview) {
+        var d0 = diaryDraft, sec = {};
+        DIARY.forEach(function (k) { sec[k[0]] = (d0.sec[k[0]] || '').trim(); });
+        var pv = { id: '__preview', kind: d0.kind === 'insight' ? 'insight' : 'diary', start: d0.start, end: d0.end, title: (d0.title || '').trim(), subtitle: (d0.subtitle || '').trim(), body: d0.body || '', sec: sec, published: true, by: S.mid };
+        previewing = true; diaryOpen.__preview = true;
+        var card = diaryCard(pv); previewing = false;
+        ui.put(view, h('section', { class: 'dy-preview' }, h('div', { class: 'dy-preview-head' }, h('b', { text: '미리보기' }), h('span', { class: 'meta', text: '구성원에게 이렇게 보입니다 · 아직 저장되지 않았습니다' })), card));
+      }
     }
     var shown = list.filter(function (x) { return S.isAdmin || x.published; });
     ui.put(view, shown.length ? h('div', { class: 'dy-list' }, shown.map(diaryCard)) : ui.empty('아직 올라온 글이 없습니다. 첫 번째 2주 일기를 기다려 주세요.'));
