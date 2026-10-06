@@ -477,7 +477,7 @@
     if (sub === 'docs') return tabDocs(view, mid, m, 'docs');
     if (sub === 'contract') return tabDocs(view, mid, m, 'contract');
     if (sub === 'notes' && admin) return tabNotes(view, mid);
-    if (sub === 'notify' && self) return tabNotify(view);
+    if (sub === 'notify' && self) { tabNotify(view); return ui.put(view, HR.app.panel()); }   // 알림 설정 아래에 홈 화면 앱 아이콘 안내
   }
   HR.info = { render: render };
   HR.register('info', { render: function (view, parts) { render(view, S.mid, parts[0] || '', 'info'); } });

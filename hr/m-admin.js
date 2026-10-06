@@ -171,12 +171,13 @@
   HR.register('admin', {
     render: function (view, parts) {
       var sub = parts[0] || '';
-      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['payslip', '급여명세서'], ['integrations', '알림 연동']], sub, 'admin'));
+      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['payslip', '급여명세서'], ['integrations', '알림 연동'], ['app', '앱 아이콘']], sub, 'admin'));
       if (sub === 'leave') policies(view);
       else if (sub === 'holiday') holidays(view);
       else if (sub === 'org') orgs(view);
       else if (sub === 'roles') roles(view);
       else if (sub === 'payslip') HR.payslip.adminPage(view);
+      else if (sub === 'app') ui.put(view, HR.app.panel());
       else if (sub === 'integrations') integrations(view);
       else company(view);
     }
