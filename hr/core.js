@@ -222,8 +222,18 @@
     'auth/user-not-found': '이메일 또는 비밀번호가 맞지 않습니다.', 'auth/invalid-email': '이메일 형식을 확인하세요.',
     'auth/email-already-in-use': '이미 가입된 이메일입니다. 로그인하거나 비밀번호를 재설정하세요.',
     'auth/weak-password': '비밀번호는 10자 이상으로 정하세요.', 'auth/too-many-requests': '시도가 너무 많습니다. 잠시 후 다시 시도하세요.',
-    'auth/network-request-failed': '네트워크 연결을 확인하세요.'
+    'auth/network-request-failed': '네트워크 연결을 확인하세요.',
+    'auth/unauthorized-domain': '이 주소(fillts.com)가 로그인 허용 도메인에 아직 등록되지 않았습니다. 관리자에게 알려 주세요.',
+    'auth/operation-not-allowed': '이 로그인 방식이 아직 켜져 있지 않습니다. 이메일로 로그인하세요.',
+    'auth/popup-blocked': '브라우저가 로그인 팝업을 막았습니다. 팝업을 허용한 뒤 다시 누르세요.'
   };
+  // 인증 메일: 이동 주소가 허용되지 않은 경우에도 메일은 보낸다
+  function sendVerify(user) {
+    return user.sendEmailVerification({ url: location.origin + '/hr/' }).catch(function (x) {
+      if (/continue-uri|unauthorized-domain/.test(x.code || '')) return user.sendEmailVerification();
+      throw x;
+    });
+  }
   function authErr(x) { return AUTH_ERR[x.code] || '처리하지 못했습니다. (' + x.code + ')'; }
   $('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -241,7 +251,7 @@
     if (authMode === 'signup') {
       auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
         .then(function () { return auth.createUserWithEmailAndPassword(email, pw); })
-        .then(function (c) { return c.user.sendEmailVerification(cont); })
+        .then(function (c) { return sendVerify(c.user); })
         .then(done).catch(err);
       return;
     }
@@ -259,12 +269,12 @@
       .then(function () { return auth.signInWithPopup(p); })
       .catch(function (x) {
         if (x.code === 'auth/popup-closed-by-user' || x.code === 'auth/cancelled-popup-request') return;
-        ui.err($('loginMsg'), x.code === 'auth/operation-not-allowed' ? 'Google 로그인이 아직 켜져 있지 않습니다. 이메일로 로그인하세요.' : authErr(x));
+        ui.err($('loginMsg'), authErr(x));
       });
   });
   $('verifyResend').addEventListener('click', function () {
     if (!auth.currentUser) return;
-    auth.currentUser.sendEmailVerification({ url: location.origin + '/hr/' })
+    sendVerify(auth.currentUser)
       .then(function () { ui.ok($('verifyMsg'), '인증 메일을 보냈습니다. 받은편지함과 스팸함을 확인하세요.'); })
       .catch(function (x) { ui.err($('verifyMsg'), authErr(x)); });
   });
