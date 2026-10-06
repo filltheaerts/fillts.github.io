@@ -467,3 +467,22 @@ a.link-card { color: inherit; text-decoration: none; }
 .work-two { grid-template-columns: 1fr 1fr; }
 @media (max-width: 760px) { .work-two { grid-template-columns: 1fr; } }
 .panel-head .meta.small { font-size: 11px; }
+
+/* 입금요청 */
+.nav-links a.nav-red { color: var(--red); font-weight: 500; }
+.pay-form .form-grid { margin-bottom: 4px; }
+.pay-docs { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; padding: 10px 12px; background: var(--gray-100); }
+.pay-head { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.pay-title { font-size: 22px; font-weight: 400; }
+.pay-purpose { white-space: pre-wrap; font-size: 14px; line-height: 1.7; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+.pay-table tr.clickable { cursor: pointer; }
+.pay-table tr.clickable:hover td { background: var(--gray-100); }
+
+/* 관리자 ↔ 사용자 모드 스위치 */
+.view-switch { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; font-size: 11px; letter-spacing: 0.04em; color: var(--gray-600); padding: 4px; }
+.view-switch .vs-track { width: 34px; height: 18px; border-radius: 9px; background: var(--black); position: relative; transition: background 0.2s; }
+.view-switch .vs-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); transition: left 0.2s; }
+.view-switch[aria-checked="true"] .vs-track { background: var(--red); }
+.view-switch[aria-checked="true"] .vs-knob { left: 18px; }
+.view-switch[aria-checked="false"] .vs-admin, .view-switch[aria-checked="true"] .vs-user { color: var(--black); font-weight: 600; }
+body.view-user .nav { box-shadow: inset 0 -2px 0 var(--red); }

@@ -482,12 +482,33 @@
     unsubs.push(q.onSnapshot(function (s) { fn(s); changed(); }, function (e) { console.warn('subscription', e.code, e.message); }));
   }
 
+  // 관리자 전용: 「사용자 모드」로 일반 구성원 화면을 미리 본다 (화면만 바뀌고 권한·데이터는 그대로)
+  function applyView(asUser) {
+    S.viewAsUser = !!(S.realAdmin && asUser);
+    S.isAdmin = S.realAdmin && !S.viewAsUser; S.isLead = S.realLead && !S.viewAsUser;
+    document.body.classList.toggle('is-admin', S.isAdmin);
+    document.body.classList.toggle('is-lead', S.isLead);
+    document.body.classList.toggle('view-user', S.viewAsUser);
+    var sw = $('viewSwitch');
+    if (!sw && S.realAdmin) {
+      sw = h('button', { type: 'button', id: 'viewSwitch', class: 'view-switch', role: 'switch', onclick: function () {
+        var next = !S.viewAsUser;
+        try { localStorage.setItem('hrViewAsUser', next ? '1' : ''); } catch (e) { /* 무시 */ }
+        applyView(next); HR.cache = {};
+        if (next && current.menu === 'admin') HR.go('info'); else render(true);
+        ui.toast(next ? '사용자 모드 — 일반 구성원에게 보이는 화면입니다.' : '관리자 모드로 돌아왔습니다.');
+      } }, h('span', { class: 'vs-label vs-admin', text: '관리자' }), h('span', { class: 'vs-track' }, h('span', { class: 'vs-knob' })), h('span', { class: 'vs-label vs-user', text: '사용자' }));
+      var right = document.querySelector('.nav-right'); if (right) right.insertBefore(sw, right.firstChild);
+    }
+    if (sw) { sw.hidden = !S.realAdmin; sw.setAttribute('aria-checked', String(S.viewAsUser)); sw.title = S.viewAsUser ? '지금 사용자 화면 — 누르면 관리자 모드' : '누르면 일반 구성원 화면으로 미리보기'; }
+  }
   function start(hu) {
     stopAll();
     S.mid = hu.memberId; S.role = hu.role || 'employee';
     S.isAdmin = S.role === 'admin'; S.isLead = S.isAdmin || S.role === 'manager';
-    document.body.classList.toggle('is-admin', S.isAdmin);
-    document.body.classList.toggle('is-lead', S.isLead);
+    S.realAdmin = S.isAdmin; S.realLead = S.isLead;
+    var asUser = false; try { asUser = S.realAdmin && localStorage.getItem('hrViewAsUser') === '1'; } catch (e) { /* 무시 */ }
+    applyView(asUser);
     $('authView').hidden = true; $('appView').hidden = false;
 
     var t = fmt.today(), cur = fmt.ymNum(t), prev = fmt.ymNum(fmt.ymShift(t.slice(0, 7), -1));
@@ -542,7 +563,7 @@
   /* ============================================
      라우터 · 렌더
      ============================================ */
-  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin'];
+  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq'];
   HR.register = function (id, mod) { HR.modules[id] = mod; };
   HR.go = function (hash) { if (location.hash !== '#' + hash) location.hash = hash; else route(); };
   var current = { menu: 'info', parts: [] };

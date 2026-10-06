@@ -196,6 +196,7 @@
         .forEach(function (l) { todo.appendChild(HR.leave.item(l, { approve: true })); });
       if (S.isAdmin) S.fixes.forEach(function (f) { todo.appendChild(HR.work.fixItem(f, true)); });   // 근태 정정은 관리자만 승인 (본인 것 포함)
       if (S.isAdmin) HR.certs.todo().forEach(function (li) { todo.appendChild(li); });   // 증명서 요청
+      if (S.isAdmin) HR.payreq.todo().forEach(function (r) { todo.appendChild(h('li', null, h('a', { class: 'grow', href: '#payreq/r/' + r.id }, ui.tag(r.status === 'pending' ? '입금 승인' : '입금 대기', r.status === 'pending' ? 'red' : 'warn'), ' ', HR.name(r.memberId) + ' · ' + r.title + ' · ' + fmt.won(r.total)), h('span', { class: 'meta', text: '희망 ' + fmt.date(r.due) }))); });   // 입금요청
       if (S.isAdmin) (S.ots || []).filter(function (o) { return o.status === 'pending'; }).forEach(function (o) { todo.appendChild(HR.work.otItem(o, true)); });   // 연장·야간·휴일근무 신청
       if (todo.children.length) right.appendChild(ui.panel('To do · 승인 대기 ' + todo.children.length, null, todo));
     }
