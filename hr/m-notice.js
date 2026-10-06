@@ -181,7 +181,9 @@
       if (sub === 'new' && S.isAdmin) return editor(view, null);
       if (sub === 'edit' && S.isAdmin) return editor(view, parts[1]);
       if (sub && sub !== 'feed' && sub !== 'milestone' && sub !== 'how' && sub !== 'brand') return detail(view, sub);
-      ui.put(view, ui.head('Notice', '공지사항'), ui.tabs([['', '공지'], ['how', '일하는 법'], ['milestone', '마일스톤'], ['brand', '01 바인그라피'], ['feed', '소식 · 칭찬']], sub, 'notice'));
+      var nt = ui.tabs([['', '공지'], ['feed', '소식 · 칭찬'], ['how', '일하는 법'], ['milestone', '마일스톤'], ['brand', '01 바인그라피']], sub, 'notice');
+      nt.classList.add('nt-split'); nt.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), nt.children[2]);   // 공지 · 소식 | 회사 안내
+      ui.put(view, ui.head('Notice', '공지사항'), nt);
       if (sub === 'feed') feed(view); else if (sub === 'milestone') milestones(view); else if (sub === 'how') howWeWork(view); else if (sub === 'brand') brandPage(view); else listView(view);
     }
   });

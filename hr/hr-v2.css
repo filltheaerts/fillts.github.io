@@ -926,3 +926,5 @@ a.tl-label:hover { background: var(--gray-100); }
 .ws-quick-sep { width: 1px; background: var(--gray-200); margin: 2px 4px; }
 .ws-quick button.plus { border-style: dashed; color: #1d4ed8; }
 .ws-quick button.plus:hover { border-color: #1d4ed8; }
+
+.subtabs.nt-split { align-items: center; }
