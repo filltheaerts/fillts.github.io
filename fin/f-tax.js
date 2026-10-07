@@ -89,8 +89,21 @@
       ui.panel('Mail · 세무사에게 바로 보내기', null, ed ? h('div', { class: 'stack fin-form' },
         h('div', { class: 'row' }, ui.field('받는 사람', to, 'grow'), ui.field('참조', cc, 'grow')), ui.field('제목', subj), ui.field('본문', body), msg,
         h('div', { class: 'row' }, ui.btn('엑셀 첨부해서 보내기', send), h('span', { class: 'meta', text: '회사 메일(' + 'HR 알림 연동 계정' + ')로 발송 · 회신은 내 이메일로 옵니다' }))) : F.readOnlyNote()),
-      ui.panel('Sent · 보낸 기록', null, hist));
+      ui.panel('Sent · 보낸 기록', null, hist),
+      ui.panel('결산 바로가기', null, h('div', { class: 'fin-links' }, LINKS.map(function (g) {
+        return h('div', { class: 'fin-lgrp' }, h('div', { class: 'label', text: g[0] }), g[1].map(function (l) {
+          return h('a', { href: l[1], target: '_blank', rel: 'noopener', class: 'fin-link' }, h('span', { class: 'strong', text: l[0] + ' ↗' }), h('span', { class: 'meta', text: l[2] }));
+        }));
+      }))));
   }
+  // 결산 · 신고 때 여는 사이트
+  var LINKS = [
+    ['세금 · 신고', [['홈택스', 'https://www.hometax.go.kr', '부가세 · 원천세 · 법인세 신고, 표준재무제표증명 발급'], ['위택스', 'https://www.wetax.go.kr', '지방소득세 · 주민세 · 등록면허세']]],
+    ['4대보험', [['4대사회보험 정보연계센터', 'https://www.4insure.or.kr', '취득 · 상실 신고, 보수총액 신고']]],
+    ['통장 · 카드 내역', [['KB국민은행 기업뱅킹', 'https://obiz.kbstar.com', '법인 통장 …5744 거래내역 엑셀'], ['IBK기업은행', 'https://www.ibk.co.kr', '중진공 대출통장 …1021 · 일반통장'],
+      ['KB국민카드', 'https://card.kbcard.com', '법인카드 …9859 승인 · 해외매입 내역'], ['신한카드', 'https://www.shinhancard.com', '법인카드 …4136 청구 내역']]],
+    ['정책자금 · 등기', [['중소벤처기업진흥공단', 'https://www.kosmes.or.kr', '정책자금 대출 · 상환'], ['대법원 인터넷등기소', 'https://www.iros.go.kr', '법인 등기부등본']]]
+  ];
 
   /* ============ 설정 ============ */
   function settings(view, parts) {
