@@ -73,14 +73,14 @@
     var live = all.filter(function (a) { return a.status !== 'done'; });
     var sum = function (k) { return live.filter(function (a) { return a.type === k; }).reduce(function (s, a) { return s + (+a.cost || 0); }, 0); };
     var qq = (V.q || '').trim().toLowerCase();
-    var list = all.filter(function (a) { return (!V.type || a.type === V.type) && !a.placeholder && (!qq || [a.name, a.memo, a.vendor, a.reader].join(' ').toLowerCase().indexOf(qq) >= 0); });
+    var list = all.filter(function (a) { return (!V.type || a.type === V.type) && !a.placeholder && (!qq || [a.name, a.memo, a.vendor, a.author, a.publisher, a.category].join(' ').toLowerCase().indexOf(qq) >= 0); });
     var bk = books();
     var upd = function (a, patch) { db.doc('fin_assets/' + a.id).update(patch).catch(ui.fail); };
-    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['취득일', '구분', '자산', '취득가', '상태', '어디서 · 결제', ''].map(function (x, i) { return h('th', { class: i === 3 ? 'num' : '', text: x }); }))),
+    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['취득일', '구분', '저자', '자산', '취득가', '상태', '어디서 · 결제', ''].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
       h('tbody', null, list.map(function (a) {
         var st = ui.select(AST, a.status || 'own', { 'aria-label': '상태', class: 'fin-cat', disabled: ed ? null : true, onchange: function () { upd(a, { status: this.value }); } });
-        return h('tr', { class: a.status === 'done' ? 'muted' : '' }, h('td', { class: 'meta', text: a.date ? fmt.dot(a.date).slice(2) : '' }), h('td', { class: 'meta', text: aName(a.type) }),
-          h('td', null, h('div', { text: a.name }), a.memo ? h('div', { class: 'meta', text: a.memo }) : null, a.type === 'book' ? reviewCell(a, ed) : null), h('td', { class: 'num', text: F.won(+a.cost || 0) }), h('td', null, st),
+        return h('tr', { class: a.status === 'done' ? 'muted' : '' }, h('td', { class: 'meta', text: a.date ? fmt.dot(a.date).slice(2) : '' }), h('td', null, h('div', { class: 'meta', text: aName(a.type) }), a.category ? h('span', { class: 'tag mute', text: a.category }) : null), h('td', { class: 'meta', text: a.author || '' }),
+          h('td', null, h('div', { text: a.name }), a.publisher || a.memo ? h('div', { class: 'meta', text: [a.publisher, a.memo].filter(Boolean).join(' · ') }) : null, a.type === 'book' ? reviewCell(a, ed) : null), h('td', { class: 'num', text: F.won(+a.cost || 0) }), h('td', null, st),
           h('td', { class: 'meta', text: [a.vendor, a.pay].filter(Boolean).join(' · ') }),
           h('td', null, ed ? ui.confirmBtn('삭제', function () { db.doc('fin_assets/' + a.id).delete().catch(ui.fail); }) : null));
       })));
@@ -89,11 +89,11 @@
     if (ed) {
       var ty = ui.select(ATYPE.map(function (t) { return [t[0], t[1]]; }), 'equip', { 'aria-label': '구분' });
       var nm = ui.input({ placeholder: '자산 이름 (예: 델 모니터 24인치)' }), dt = ui.input({ type: 'date', value: fmt.today() }), cs = ui.input({ inputmode: 'numeric', placeholder: '취득가 (원)' });
-      var vd = ui.input({ placeholder: '어디서 (업체)' }), mm = ui.input({ placeholder: '메모 (출원번호 · 위치 등)' }), msg = ui.msg();
-      form = ui.panel('자산 추가', null, h('div', { class: 'fin-inline-form' }, ui.field('구분', ty), ui.field('자산', nm), ui.field('취득일', dt), ui.field('취득가', cs), ui.field('업체', vd), ui.field('메모', mm),
+      var au = ui.input({ placeholder: '저자 (도서)' }), vd = ui.input({ placeholder: '어디서 (업체)' }), mm = ui.input({ placeholder: '메모 (출원번호 · 위치 등)' }), msg = ui.msg();
+      form = ui.panel('자산 추가', null, h('div', { class: 'fin-inline-form' }, ui.field('구분', ty), ui.field('저자', au), ui.field('자산', nm), ui.field('취득일', dt), ui.field('취득가', cs), ui.field('업체', vd), ui.field('메모', mm),
         ui.btn('추가', function () {
           if (!nm.value.trim()) return ui.fail('자산 이름을 적어 주세요.', msg);
-          db.collection('fin_assets').add({ type: ty.value, name: nm.value.trim(), date: dt.value, cost: F.parseWon(cs.value), vendor: vd.value.trim(), memo: mm.value.trim(), status: ty.value === 'ip' ? 'pending' : 'own', pay: '직접 입력', createdAt: FV.serverTimestamp() })
+          db.collection('fin_assets').add({ type: ty.value, name: nm.value.trim(), date: dt.value, cost: F.parseWon(cs.value), vendor: vd.value.trim(), author: au.value.trim(), memo: mm.value.trim(), status: ty.value === 'ip' ? 'pending' : 'own', pay: '직접 입력', createdAt: FV.serverTimestamp() })
             .then(function () { ui.toast('추가했습니다.'); HR.refresh(); }).catch(function (e) { ui.fail(e, msg); });
         })), msg);
     }
