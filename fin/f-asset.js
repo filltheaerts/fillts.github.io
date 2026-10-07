@@ -12,10 +12,31 @@
     sub(db.collection('fin_invest'), function (s) { F.invest = HR.rows(s); });
   };
 
-  var ATYPE = [['equip', '비품 · 기기', '책상 · 의자 · 모니터 · 측정기처럼 회사가 들고 있는 물건'], ['ip', '특허 · 상표', '출원 · 등록한 지식재산 (무형자산)'], ['deposit', '보증금', '돌려받을 돈 — 임차 보증금 등']];
+  var ATYPE = [['equip', '비품 · 기기', '책상 · 의자 · 모니터 · 측정기처럼 회사가 들고 있는 물건'], ['ip', '특허 · 상표', '출원 · 등록한 지식재산 (무형자산)'], ['deposit', '보증금', '돌려받을 돈 — 임차 보증금 등'], ['book', '도서', '업무 관련 도서 — 권별 · 주문번호']];
   var AST = [['own', '보유'], ['pending', '출원 · 진행 중'], ['done', '처분 · 만료']];
   var aName = function (k) { return (ATYPE.filter(function (t) { return t[0] === k; })[0] || ['', k])[1]; };
   var V = { type: '' };
+
+  // 도서: 카드 결제(예스24 등)와 권별 목록 대조 — 주문(결제일 · 금액) 단위
+  function books() {
+    var pays = F.card.filter(function (x) { return /도서/.test(x.sub || '') || /예스이십사|교보|알라딘|yes24/i.test(x.merchant || ''); });
+    var list = F.assets.filter(function (a) { return a.type === 'book'; });
+    var orders = pays.map(function (x) {
+      var bs = list.filter(function (a) { return a.payRef === x.id || (!a.payRef && a.date === x.date); }), got = bs.filter(function (a) { return !a.placeholder; }).reduce(function (s, a) { return s + (+a.cost || 0); }, 0);
+      return { x: x, books: bs.filter(function (a) { return !a.placeholder; }), got: got, gap: x.amount - got };
+    }).sort(function (a, b) { return a.x.date < b.x.date ? 1 : -1; });
+    var paid = pays.reduce(function (s, x) { return s + x.amount; }, 0);
+    return { orders: orders, paid: paid, missing: orders.reduce(function (s, o) { return s + Math.max(0, o.gap); }, 0) };
+  }
+  function bookCheck(bk) {
+    return ui.panel('도서 구매 대조 — 카드 결제 vs 권별 목록', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-narrow' },
+      h('thead', null, h('tr', null, ['결제일', '서점', '카드 결제', '목록에 있는 책', '목록 합계', '상태'].map(function (x, i) { return h('th', { class: i === 2 || i === 4 ? 'num' : '', text: x }); }))),
+      h('tbody', null, bk.orders.map(function (o) {
+        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(o.x.date).slice(2) }), h('td', { text: o.x.merchant.replace(/\(SEYPAY\)|_문화비/g, '') }), h('td', { class: 'num', text: F.won(o.x.amount) }),
+          h('td', { class: 'meta', text: o.books.length ? o.books.length + '권' : '—' }), h('td', { class: 'num', text: F.won(o.got) }),
+          h('td', { class: o.gap ? 'red' : '', text: o.gap ? F.won(o.gap) + ' 목록 없음 — 주문 내역 필요' : '일치' }));
+      })))), h('p', { class: 'meta', text: '서점 주문 내역(책 제목 · 가격)을 알려주시거나 아래 「자산 추가」에서 구분을 「도서」로 넣으면 대조됩니다. 결제일이 같은 책끼리 한 주문으로 묶습니다.' }));
+  }
 
   /* ---------- 자산 ---------- */
   function assetView(view) {
@@ -23,7 +44,8 @@
     var all = F.assets.slice().sort(function (a, b) { return (a.date || '') < (b.date || '') ? 1 : -1; });
     var live = all.filter(function (a) { return a.status !== 'done'; });
     var sum = function (k) { return live.filter(function (a) { return a.type === k; }).reduce(function (s, a) { return s + (+a.cost || 0); }, 0); };
-    var list = all.filter(function (a) { return !V.type || a.type === V.type; });
+    var list = all.filter(function (a) { return (!V.type || a.type === V.type) && !a.placeholder; });
+    var bk = books();
     var upd = function (a, patch) { db.doc('fin_assets/' + a.id).update(patch).catch(ui.fail); };
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['취득일', '구분', '자산', '취득가', '상태', '어디서 · 결제', ''].map(function (x, i) { return h('th', { class: i === 3 ? 'num' : '', text: x }); }))),
       h('tbody', null, list.map(function (a) {
@@ -47,7 +69,9 @@
         })), msg);
     }
     ui.put(view, ui.head('자산관리', '자산'),
-      F.kpi([['자산 합계 (보유)', F.man(sum('equip') + sum('ip') + sum('deposit')), '', live.length + '건 · 취득가 기준'], ['비품 · 기기', F.man(sum('equip')), '', '유형자산'], ['특허 · 상표', F.man(sum('ip')), '', '무형자산 · 출원 비용'], ['보증금', F.man(sum('deposit')), '', '돌려받을 돈']], 'four'),
+      F.kpi([['자산 합계 (보유)', F.man(sum('equip') + sum('ip') + sum('deposit') + sum('book')), '', live.length + '건 · 취득가 기준'], ['비품 · 기기', F.man(sum('equip')), '', '유형자산'], ['특허 · 상표', F.man(sum('ip')), '', '무형자산 · 출원 비용'], ['보증금', F.man(sum('deposit')), '', '돌려받을 돈'],
+        ['도서 (누적)', F.man(bk.paid), bk.missing ? 'red' : '', live.filter(function (a) { return a.type === 'book' && !a.placeholder; }).length + '권 · 목록 ' + (bk.missing ? F.man(bk.missing) + ' 미입력' : '전부 있음')]], 'five'),
+      V.type === 'book' ? bookCheck(bk) : null,
       h('div', { class: 'toolbar' }, F.seg([['', '전체']].concat(ATYPE.map(function (t) { return [t[0], t[1]]; })), V.type, function (k) { V.type = k; }, '구분')),
       ui.panel('보유 자산 목록', h('span', { class: 'meta', text: list.length + '건' }), list.length ? h('div', { class: 'table-wrap flat' }, tb) : ui.empty('아직 등록한 자산이 없습니다.')),
       form || F.readOnlyNote(),
