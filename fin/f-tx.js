@@ -217,12 +217,52 @@
         h('p', { class: 'meta', text: '거래내역 마지막 잔액과 설정 › 계좌 · 잔액에 직접 넣은 지금 잔액을 비교합니다. 차이는 그 사이 거래내역 파일이 아직 없다는 뜻 — 해당 기간 통장 파일을 가져오면 0이 되어야 합니다. 잔액 사슬은 「앞 잔액 + 입금 − 출금 = 이번 잔액」이 모든 줄에서 맞는지 검사합니다.' })));
   }
 
+
+  /* ---------- 카드_KB: 법인카드 사용내역 — 지출은 통장 「카드대금」으로 이미 잡히므로 여기는 「어디에 썼나」 확인용 ---------- */
+  var CV = { ym: '', only: '' };
+  function cardView(view) {
+    var ed = F.canEdit();
+    var all = F.card.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var months = {}; all.forEach(function (x) { months[F.ym(x.date)] = 1; });
+    var list = all.filter(function (x) { return (!CV.ym || F.ym(x.date) === CV.ym) && (!CV.only || (CV.only === 'check' ? x.check : !x.cat)); });
+    var cats = BP.CATS_OUT.filter(function (c) { return c !== '카드대금' && c !== '미분류'; });
+    var upd = function (x, patch) { db.doc('fin_card/' + x.id).update(patch).catch(ui.fail); };
+    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['승인일', '가맹점', '금액', '사용처', '사용내용', '통장 결제', ''].map(function (x, i) { return h('th', { class: i === 2 ? 'num' : '', text: x }); }))),
+      h('tbody', null, list.map(function (x) {
+        var sel = ui.select([['', '— 사용처 선택']].concat(cats.map(function (c) { return [c, c]; })), x.cat || '', { 'aria-label': '사용처', class: 'fin-cat' + (x.cat ? '' : ' warn'), disabled: ed ? null : true, onchange: function () { upd(x, { cat: this.value }); } });
+        var note = ui.input({ value: x.note || '', placeholder: '무엇을 샀는지', 'aria-label': '사용내용', disabled: ed ? null : true });
+        note.addEventListener('change', function () { upd(x, { note: note.value.trim() }); });
+        note.addEventListener('keydown', function (e) { if (e.key === 'Enter') note.blur(); });
+        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }),
+          h('td', null, h('div', { text: x.merchant }), h('div', { class: 'meta', text: (x.issuer || '법인카드') + (x.cardNo ? ' …' + x.cardNo : '') + (x.foreign ? ' · 해외' : '') }),
+            x.check ? h('div', { class: 'fin-check' }, h('span', { class: 'tag red', text: '확인' }), ' ' + x.check, ed ? ui.btn('확인 완료', function () { upd(x, { check: '' }); }, 'btn-line btn-xs') : null) : null),
+          h('td', { class: 'num', text: F.won(x.amount) }), h('td', null, sel), h('td', null, note),
+          h('td', { class: 'meta', text: x.payDate ? fmt.dot(x.payDate).slice(2) + ' 카드대금' : '아직 결제 전 · 미연결' }), h('td'));
+      })));
+    var sum = list.reduce(function (a, x) { return a + x.amount; }, 0), chk = all.filter(function (x) { return x.check; }).length, none = all.filter(function (x) { return !x.cat; }).length;
+    // 카드대금 중 명세로 설명되지 않는 금액
+    var gaps = F.tx.filter(function (t) { return t.cat === '카드대금' && t.outAmt > 0; }).map(function (t) {
+      var s = F.card.filter(function (x) { return x.payId === t.id; }).reduce(function (a, x) { return a + x.amount; }, 0); return { t: t, gap: t.outAmt - s };
+    }).filter(function (g) { return g.gap >= 1000; }).sort(function (a, b) { return a.t.date < b.t.date ? 1 : -1; });
+    ui.put(view, F.kpi([['카드 사용 (명세)', all.length + '건', '', F.man(all.reduce(function (a, x) { return a + x.amount; }, 0))], ['확인 필요', chk + '건', chk ? 'red' : '', '용도를 알려주시면 분류'],
+        ['사용처 미지정', none + '건', none ? 'red' : '', ''], ['명세 없는 카드대금', gaps.length + '건', gaps.length ? 'red' : '', F.man(gaps.reduce(function (a, g) { return a + g.gap; }, 0)) + ' · 해외결제 등']], 'four'),
+      h('div', { class: 'toolbar' }, ui.select([['', '전체 기간']].concat(Object.keys(months).sort().reverse().map(function (m) { return [m, m.replace('-', '.')]; })), CV.ym, { 'aria-label': '월', onchange: function () { CV.ym = this.value; HR.refresh(); } }),
+        ui.select([['', '전체'], ['check', '확인 필요만'], ['none', '사용처 미지정만']], CV.only, { 'aria-label': '보기', onchange: function () { CV.only = this.value; HR.refresh(); } })),
+      ui.panel('법인카드 · 국민카드 사용내역', null, h('p', { class: 'meta', text: '지출은 통장 「카드대금」 출금으로 이미 잡혀 있습니다. 여기는 그 카드값이 어디에 쓰였는지 확인 · 기록하는 곳이고, 사용처를 고르면 「월별 사용처」에서 카드대금 대신 그 사용처로 보입니다. ' + list.length + '건 · ' + F.won(sum) + '원' }),
+        h('div', { class: 'table-wrap flat' }, tb)),
+      gaps.length ? ui.panel('명세 없는 카드대금 — 해외결제 · 명세 미수령', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-narrow' },
+        h('thead', null, h('tr', null, ['통장 출금일', '카드대금', '명세로 설명된 금액', '설명 안 된 금액'].map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))),
+        h('tbody', null, gaps.map(function (g) { return h('tr', null, h('td', { text: fmt.dot(g.t.date).slice(2) }), h('td', { class: 'num', text: F.won(g.t.outAmt) }), h('td', { class: 'num', text: F.won(g.t.outAmt - g.gap) }), h('td', { class: 'num red', text: F.won(g.gap) })); })))),
+        h('p', { class: 'meta', text: '해외 결제(구글 워크스페이스 등)는 「부가세 신고용 상세매입내역」에 없습니다. 카드사 「해외매입내역」 파일을 올려 주시면 채워집니다.' })) : null);
+  }
+
   function render(view, parts) {
     var sub = parts[0] || 'list';
     ui.put(view, ui.head('Transactions', '거래내역', h('span', { class: 'meta', text: F.tx.length + '건' })),
-      ui.tabs([['list', '전체'], ['list/check', '확인 필요 ' + F.tx.filter(function (t) { return t.check; }).length], ['list/uncat', '미분류'], ['list/noevid', '증빙 확인'], ['recon', '계좌 대조'], ['import', '가져오기']], sub === 'list' && parts[1] ? 'list/' + parts[1] : sub, 'tx'));
+      ui.tabs([['list', '전체'], ['list/check', '확인 필요 ' + F.tx.filter(function (t) { return t.check; }).length], ['list/uncat', '미분류'], ['list/noevid', '증빙 확인'], ['card', '카드_KB ' + F.card.length], ['recon', '계좌 대조'], ['import', '가져오기']], sub === 'list' && parts[1] ? 'list/' + parts[1] : sub, 'tx'));
     if (sub === 'import') importView(view);
     else if (sub === 'recon') reconView(view);
+    else if (sub === 'card') cardView(view);
     else listView(view, parts[1] || '');
   }
   HR.register('tx', { render: render });

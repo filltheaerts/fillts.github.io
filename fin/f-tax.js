@@ -35,6 +35,10 @@
     add('입금요청 지급내역', [['지급일', '지급 유형', '계정 과목', '거래처', '개인/사업자', '요청 총액', '원천징수', '입금액', '제목', '메모']].concat(P.pr.map(function (r) {
       return [r.paidDate, TYPE_NAME[r.type] || '', r.account || '', r.payee || '', r.payeeType === 'person' ? '개인' : r.payeeType === 'biz' ? '사업자' : '', r.total || 0, r.wht || 0, r.paidAmount || 0, r.title || '', r.paidNote || ''];
     })), [10, 14, 14, 18, 10, 12, 12, 12, 28, 20]);
+    var cards = F.card.filter(function (x) { return F.ym(x.date) === P.ym; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    add('법인카드 사용내역', [['승인일', '매입일', '카드', '가맹점', '사업자번호', '금액', '해외', '사용처', '사용내용', '통장 결제일']].concat(cards.map(function (x) {
+      return [x.date, x.buyDate || '', (x.issuer || '') + (x.cardNo ? ' …' + x.cardNo : ''), x.merchant, x.biz || '', x.amount, x.foreign ? '해외' : '', x.cat || '', x.note || '', x.payDate || ''];
+    })).concat([[], ['※ 지출은 통장 카드대금 출금으로 이미 반영 — 이 시트는 카드 사용처 증빙용입니다.']]), [10, 10, 14, 22, 12, 12, 6, 16, 30, 10]);
     add('증빙 확인', [['날짜', '계좌', '출금', '내용', '분류', '메모']].concat(P.noEv.map(function (t) { return [t.date, F.acctName(t), t.outAmt, [t.desc, t.memo].filter(Boolean).join(' · '), t.cat || '', t.note || '']; })), [10, 16, 12, 34, 16, 24]);
     return wb;
   }
