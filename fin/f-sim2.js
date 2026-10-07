@@ -21,7 +21,31 @@
   };
   F.SIM2 = SIM2;
   function cfg() { var o = JSON.parse(JSON.stringify(SIM2)), s = F.cfg.sim2 || {}; Object.keys(s).forEach(function (k) { o[k] = s[k]; }); o.end = END; return o; }
-  function save(patch) { return F.cfgSet({ sim2: Object.assign(cfg(), patch) }).catch(ui.fail); }
+  // 저장 즉시 화면 반영: 서버 응답을 기다리지 않고 바로 다시 계산해 그린다 (입력 중에도 커서 · 스크롤 유지)
+  var redrawTimer = null;
+  function redraw() {
+    clearTimeout(redrawTimer);
+    redrawTimer = setTimeout(function () {   // Tab으로 다음 칸에 커서가 옮겨 간 뒤 그린다
+      var v = document.getElementById('view'); if (!v || !v.querySelector('.sx-grid')) return;
+      var a = document.activeElement, lab = a && a.getAttribute ? a.getAttribute('aria-label') : null;
+      var wrap = v.querySelector('.sx-wrap'), st = wrap ? [wrap.scrollTop, wrap.scrollLeft] : null, y = window.scrollY;
+      ui.clear(v); render(v);
+      window.scrollTo(0, y);
+      var w2 = v.querySelector('.sx-wrap'); if (w2 && st) { w2.scrollTop = st[0]; w2.scrollLeft = st[1]; }
+      if (lab) { var el = Array.prototype.filter.call(v.querySelectorAll('[aria-label]'), function (x) { return x.getAttribute('aria-label') === lab; })[0]; if (el) { el.focus(); try { el.select(); } catch (e) { /* select 불가 요소 */ } } }
+    }, 0);
+  }
+  function save(patch) {
+    var next = Object.assign(cfg(), patch);
+    F.cfg = Object.assign({}, F.cfg, { sim2: next });   // 화면은 바로 새 값으로
+    redraw();
+    return F.cfgSet({ sim2: next }).catch(ui.fail);
+  }
+  // Enter = 입력 확정 (엑셀처럼). 확정되면 바로 다시 계산
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target || !e.target.closest || !(e.target.closest('.sx-grid') || (/^#sim/.test(location.hash) && e.target.closest('.fin-form')))) return;
+    if (e.target.tagName === 'INPUT') { e.preventDefault(); e.target.blur(); }
+  });
 
   // 고정비: 지출 흐름의 매월 반복 항목을 인건비 · 임대 · 운영으로 묶는다
   F.fixedAt = function (ym) {

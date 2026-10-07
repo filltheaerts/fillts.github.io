@@ -28,7 +28,8 @@
     if (lab) lab.insertBefore(h('span', { class: 'fin-mode ' + (sim ? 'sim' : 'real'), text: sim ? '시뮬 · 가정' : '실제 · 장부' }), lab.firstChild);
     return el;
   };
-  F.cfgSet = function (patch) { return db.doc('fin_config/main').set(patch, { merge: true }); };
+  // 설정 저장: 넘긴 항목(예: sim2)은 통째로 바꾼다. merge:true는 안쪽 맵을 합쳐 버려서 지운 칸(키 삭제)이 서버에 남는다 → mergeFields
+  F.cfgSet = function (patch) { return db.doc('fin_config/main').set(patch, { mergeFields: Object.keys(patch) }); };
 
   /* ---------- 포맷 ---------- */
   F.won = function (n) { return fmt.won(n); };
