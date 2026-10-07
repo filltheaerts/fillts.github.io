@@ -71,7 +71,18 @@
   };
   I.extLink = function (href, text, cls) { return h('a', { href: href, target: '_blank', rel: 'noopener noreferrer', class: cls || '', text: text }); };
   // 유튜브 채널로 가기 버튼 — 표 행 클릭(펼치기)과 겹치지 않게 전파를 막는다
-  I.ytBtn = function (ch) { return h('a', { href: I.chUrl(ch), target: '_blank', rel: 'noopener noreferrer', class: 'in-yt', text: '▶ 유튜브', title: ch.title + ' 채널 열기', onclick: function (e) { e.stopPropagation(); } }); };
+  I.ytLink = function (ch) { return h('a', { href: I.chUrl(ch), target: '_blank', rel: 'noopener noreferrer', class: 'in-yt', text: '▶ 유튜브', title: ch.title + ' 채널 열기', onclick: function (e) { e.stopPropagation(); } }); };
+  // 채널 주소 복사 (붙여 넣어 다른 곳으로 옮길 때)
+  I.copyText = function (t, label) {
+    var ok = function () { ui.toast((label || '주소') + ' 복사됨 — ' + t); };
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(ok, function () { fallback(); });
+    fallback();
+    function fallback() { var ta = h('textarea', { value: t }); document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { ui.toast('복사하지 못했습니다 — ' + t); } ta.remove(); }
+  };
+  I.copyBtn = function (ch) {
+    return h('button', { type: 'button', class: 'in-copy', title: '채널 주소 복사 — ' + I.chUrl(ch), text: '⧉ 복사', onclick: function (e) { e.stopPropagation(); e.preventDefault(); I.copyText(I.chUrl(ch), '채널 주소'); } });
+  };
+  I.ytBtn = function (ch) { return h('span', { class: 'in-ytgrp' }, I.ytLink(ch), I.copyBtn(ch)); };
 
   /* ---------- 댓글 톤 → 한 줄 요약 ---------- */
   I.toneTags = function (t) {

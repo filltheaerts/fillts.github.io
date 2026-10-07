@@ -409,3 +409,9 @@ td.in-ell { display: table-cell; }
 .tag.in-inactive { color: var(--white); background: #6b7280; border-color: #6b7280; }
 .in-xwarn { margin: 0 0 10px; padding: 10px 14px; background: #fef2f2; border-left: 3px solid var(--red); color: #b91c1c; font-size: 13px; font-weight: 600; }
 .in-xwarn.soft { background: #f3f4f6; border-left-color: #6b7280; color: #374151; }
+
+/* 유튜브 + 주소 복사 */
+.in-ytgrp { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.in-copy { border: 1px solid var(--gray-400); background: var(--paper); color: var(--gray-800); font: inherit; font-size: 10px; font-weight: 500; padding: 1px 6px; cursor: pointer; white-space: nowrap; line-height: 1.6; }
+.in-copy:hover { border-color: var(--black); color: var(--black); }
+.in-r-nm .in-ytgrp .in-yt { margin-left: 0; }
