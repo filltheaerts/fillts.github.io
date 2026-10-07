@@ -238,3 +238,4 @@ button.mx-chip { cursor: pointer; }
 .mx-pjb-quick { background: var(--red); color: #fff; border: 1px solid var(--red); padding: 6px 14px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .mx-pjb-quick:hover { background: var(--black); border-color: var(--black); }
 .mx-pjb-act .mx-pjb-nosub { border-style: solid; border-color: var(--gray-200); padding: 6px 12px; }
+.nav-links a.nav-strong { font-weight: 700; }
