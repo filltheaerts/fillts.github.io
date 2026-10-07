@@ -5,7 +5,11 @@
 (function () {
   'use strict';
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var V = I.V.tree = { edit: '', topic: '', ch: '', msg: '', err: false };
+  var V = I.V.tree = { edit: '', topic: '', ch: '', msg: '', err: false, open: '', exOpen: false };
+  // 한눈에 보는 대상자 (타일에 한 줄) — 줄기에 target이 없으면 who를 쓴다
+  var TARGET = { cleanse: '세안 습관을 바꾸려는 30~50대', procedure: '시술 후 피부를 관리하는 30~40대', mom: '자기 시간을 아끼는 30~40대 엄마',
+    empathy: '공감 댓글 많은 일상 채널의 30~50대', ingredient: '성분표를 읽고 따지는 소비자', premium: '좋은 걸 골라 사는 30~55세', sensitive: '민감 · 건조 · 홍조 고민이 있는 사람' };
+  function targetOf(br) { return br.target || TARGET[br.id] || br.who || ''; }
 
   var BRANCHES = [
     { id: 'cleanse', name: '클렌징 · 세안', tag: '본품', msg: '「포드득 — 떼어내되, 남긴다」 · 60초 세안법 · 스킨케어 0단계',
@@ -110,15 +114,31 @@
       h('ul', { class: 'in-rules' }, RULES.map(function (r) { return h('li', { text: r }); })));
   }
 
+  // 첫 화면: 소구점 → 대상자 타일만. 누르면 아래에 그 줄기의 세부 전략이 열린다
+  function tile(br) {
+    var on = V.open === br.id;
+    return h('button', { type: 'button', class: 'in-tile' + (on ? ' on' : ''), onclick: function () { V.open = on ? '' : br.id; V.edit = ''; HR.refresh(); } },
+      h('div', { class: 'in-tile-top' }, h('b', { text: br.name }), br.tag ? h('span', { class: 'in-tile-tag', text: br.tag }) : null),
+      h('div', { class: 'in-tile-who', text: targetOf(br) }),
+      h('div', { class: 'in-tile-more', text: on ? '닫기 ▲' : '전략 보기 ▼' }));
+  }
+  function excludeSummary() {
+    var tp = topics().length, bl = blocked().length;
+    return h('button', { type: 'button', class: 'in-exbar' + (V.exOpen ? ' on' : ''), onclick: function () { V.exOpen = !V.exOpen; HR.refresh(); } },
+      h('b', { text: '제외' }), h('span', { class: 'meta', text: '주제 ' + tp + '개 · 유튜버 ' + bl + '명 · 컨택 전 확인 기준 ' + RULES.length + '가지 — 모든 탐색에 자동 적용' }),
+      h('span', { class: 'in-tile-more', text: V.exOpen ? '닫기 ▲' : '펼치기 ▼' }));
+  }
   function render(view) {
-    var list = I.branchList();
+    var list = I.branchList(), sel = list.filter(function (b) { return b.id === V.open; })[0];
     ui.put(view,
-      ui.head('Structure', '구조화', h('span', { class: 'meta', text: '소구점 줄기 → 키워드 → 탐색 · 그리고 제외' })),
-      h('p', { class: 'note in-st-intro', text: '바인그라피의 소구점마다 어떤 키워드를 타고 들어가 유튜버를 찾을지 줄기로 정리했습니다. 「이 줄기로 찾기」를 누르면 조건 탐색으로 바로 넘어가고, 아래 제외 목록은 모든 탐색에 자동으로 적용됩니다.' }),
-      h('div', { class: 'in-br-grid' }, list.map(function (br) { return branchCard(br, list); }),
-        V.edit === 'new' ? branchForm({ chain: [] }, list) : h('button', { type: 'button', class: 'in-br in-br-add', text: '+ 줄기 추가', onclick: function () { V.edit = 'new'; HR.refresh(); } })),
-      !(I.cfg.branches && I.cfg.branches.length) ? h('p', { class: 'meta', text: '지금은 브랜드 정보 기준 기본 줄기 7개입니다. 하나라도 고쳐 저장하면 그때부터 팀 공용 목록이 됩니다.' }) : null,
-      excludePanel());
+      ui.head('Structure', '구조화', h('span', { class: 'meta', text: '소구점 → 대상자 → 전략 · 키워드' })),
+      h('p', { class: 'note in-st-intro', text: '바인그라피를 누구에게 어떤 이야기로 소개할지 7갈래로 나눴습니다. 카드를 누르면 메시지 · 키워드 줄기 · 주의점이 열리고, 거기서 바로 탐색할 수 있습니다.' }),
+      h('div', { class: 'in-tiles' }, list.map(tile),
+        h('button', { type: 'button', class: 'in-tile in-tile-add', onclick: function () { V.open = 'new'; V.edit = 'new'; HR.refresh(); } }, h('b', { text: '+ 줄기 추가' }))),
+      V.open === 'new' ? h('div', { class: 'in-br-one' }, branchForm({ chain: [] }, list)) : sel ? h('div', { class: 'in-br-one' }, branchCard(sel, list)) : null,
+      !(I.cfg.branches && I.cfg.branches.length) ? h('p', { class: 'meta', text: '브랜드 정보 기준 기본 줄기입니다. 하나라도 고쳐 저장하면 그때부터 팀 공용 목록이 됩니다.' }) : null,
+      excludeSummary(),
+      V.exOpen ? excludePanel() : null);
   }
   HR.register('tree', { render: function (view) { render(view); } });
 })();

@@ -372,3 +372,23 @@ td.in-ell { display: table-cell; }
 @media (max-width: 960px) { .in-idea-cols { grid-template-columns: minmax(0, 1fr); } }
 .in-st-top .grow, .in-br-head .grow, .in-idea-foot .grow { flex: 1; min-width: 0; }
 .in-whobar { align-items: center; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
+
+/* 구조화 — 첫 화면은 소구점 · 대상자 타일만 */
+.in-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.in-tile { text-align: left; font: inherit; color: inherit; cursor: pointer; background: var(--paper); border: 1px solid var(--gray-200); border-top: 3px solid #1d4ed8;
+  padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 6px; min-height: 112px; transition: border-color 0.15s, box-shadow 0.15s; }
+.in-tile:hover { border-color: #1d4ed8; }
+.in-tile.on { border-color: #1d4ed8; box-shadow: 0 0 0 1px #1d4ed8; background: #f5f8ff; }
+.in-tile-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.in-tile-top b { font-size: 15px; letter-spacing: -0.01em; }
+.in-tile-tag { font-size: 10px; color: #1d4ed8; border: 1px solid #1d4ed8; padding: 0 6px; line-height: 1.6; }
+.in-tile-who { font-size: 13px; line-height: 1.5; color: var(--gray-800); flex: 1; }
+.in-tile-more { font-size: 10px; color: var(--gray-400); letter-spacing: 0.04em; }
+.in-tile-add { border-style: dashed; border-top-width: 1px; align-items: center; justify-content: center; color: var(--gray-600); }
+.in-br-one { margin-bottom: 18px; }
+.in-br-one .in-br { border-top-width: 3px; }
+.in-exbar { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--paper); border: 1px solid var(--gray-200); border-left: 3px solid var(--red); margin-bottom: 12px; }
+.in-exbar .meta { flex: 1; }
+@media (max-width: 960px) { .in-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .in-tiles { grid-template-columns: minmax(0, 1fr); } }
