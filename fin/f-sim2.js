@@ -142,14 +142,15 @@
     var fixRow = function (label, key, guide) {
       var fo = c.fixOver || {}, cur = fo[key] || {};
       var put = function (o) { var all = Object.assign({}, c.fixOver || {}); all[key] = o; save({ fixOver: all }); };
-      body.appendChild(h('tr', { class: 'sx-input sx-fix' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide }),
-        ed ? h('div', { class: 'sx-tools' }, ui.btn('→ 첫 달 값으로 채우기', function () { var o = {}; var v = cur[cols[0]] != null ? +cur[cols[0]] : R[0][key]; cols.forEach(function (ym) { o[ym] = v; }); put(o); }, 'btn-line btn-xs'),
-          Object.keys(cur).length ? ui.btn('기본값', function () { put({}); }, 'btn-line btn-xs') : null) : null),
+      body.appendChild(h('tr', { class: 'sx-input sx-fix' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide + ' · 비우면 0원' }),
+        ed ? h('div', { class: 'sx-tools' }, ui.btn('→ 첫 달 값으로 채우기', function () { var o = {}; var v = cur[cols[0]] != null ? +cur[cols[0]] : R[0][key]; cols.forEach(function (ym) { o[ym] = v; }); put(o); }, 'btn-line btn-xs'), ui.btn('전부 0', function () { var o = {}; cols.forEach(function (ym) { o[ym] = 0; }); put(o); }, 'btn-line btn-xs'),
+          Object.keys(cur).length ? ui.btn('기본값으로 되돌리기', function () { put({}); }, 'btn-line btn-xs') : null) : null),
         R.map(function (r) {
           var own = cur[r.ym] != null, v = own ? +cur[r.ym] : r.def[key];
-          var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell' + (own ? ' sx-own' : ''), value: v ? Math.round(v).toLocaleString('ko-KR') : '', 'aria-label': r.ym + ' ' + label, disabled: ed ? null : true, title: own ? '직접 입력 (기본 ' + F.won(r.def[key]) + ')' : '기본값 — 지출 흐름 · 채용 계획에서' });
+          var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell' + (own ? ' sx-own' : ''), value: v ? Math.round(v).toLocaleString('ko-KR') : '', placeholder: own ? '0' : '', 'aria-label': r.ym + ' ' + label, disabled: ed ? null : true, title: own ? '직접 입력 · 기본값 ' + F.won(r.def[key]) + ' (줄 왼쪽 「기본값」으로 되돌림)' : '기본값 — 지출 흐름 · 채용 계획에서 가져옴' });
           i.addEventListener('focus', function () { i.select(); });
-          i.addEventListener('change', function () { var o = Object.assign({}, cur), n = F.parseWon(i.value); if (i.value.trim() === '' || n === Math.round(r.def[key])) delete o[r.ym]; else o[r.ym] = n; put(o); });
+          // 비우면 0원 (기본값으로 되살아나지 않음). 기본값과 같은 숫자를 넣으면 덮어쓰기 해제
+          i.addEventListener('change', function () { var o = Object.assign({}, cur), n = F.parseWon(i.value); if (n === Math.round(r.def[key])) delete o[r.ym]; else o[r.ym] = n; put(o); });
           return h('td', { class: 'num' }, i);
         })));
     };
