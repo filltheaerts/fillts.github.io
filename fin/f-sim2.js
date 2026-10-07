@@ -7,7 +7,7 @@
   var HR = window.HR, F = HR.F, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt;
   var END = '2027-03', CHECK = END;
   var SIM2 = {
-    start: '2026-10', end: END, minCash: 10000000, lead: 2, upfront: 50, cash0: null, committed: true,
+    start: '2026-10', end: END, minCash: 10000000, lead: 1, upfront: 50, cash0: null, committed: true,
     units: { '2026-11': 300, '2026-12': 400, '2027-01': 500, '2027-02': 600, '2027-03': 700 },
     orders: {},
     owner: {}, fund: {},
@@ -111,8 +111,8 @@
     row('실제 판매 가능', function (r) { return { t: n(r.sold) + (r.lost ? ' (−' + n(r.lost) + ')' : ''), c: r.lost ? 'red' : '' }; });
     row('순매출', function (r) { return m(r.rev); });
     row('변동비 (물류 · 수수료 · 광고)', function (r) { return m(-r.vari); }, 'meta');
-    sec('② 재고 · 발주', '리드타임 ' + c.lead + '개월 · 선금 ' + c.upfront + '% / 입고 때 잔금');
-    inputRow('발주 수량 (개)', 'orders', '개', '발주하는 달에 입력 → ' + c.lead + '개월 뒤 입고');
+    sec('② 재고 · 발주', (+c.lead === 1 ? '다음 달 입고' : c.lead + '개월 뒤 입고') + ' · 선금 ' + c.upfront + '% (발주 달) / 잔금 (입고 달)');
+    inputRow('발주 수량 (개)', 'orders', '개', +c.lead === 1 ? '발주한 달에 입력 → 다음 달 1일부터 판매' : '발주한 달에 입력 → ' + c.lead + '개월 뒤 1일부터 판매');
     row('입고', function (r) { return n(r.arrive); }, 'meta');
     row('월말 재고', function (r) { return { t: n(r.stock) || '0', c: r.stock < (at(fmt.ymShift(r.ym, 1)).plan || 0) ? 'red' : '' }; });
     row('재고 매입 대금', function (r) { return m(-r.inv); });
