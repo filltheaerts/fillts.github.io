@@ -632,7 +632,7 @@
   /* ============================================
      라우터 · 렌더
      ============================================ */
-  var MENUS = APP.menus || ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance', 'ws', 'ai'];
+  var MENUS = APP.menus || ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'ws', 'ai'];
   var HOME = APP.home || 'info';
   HR.register = function (id, mod) { HR.modules[id] = mod; };
   HR.go = function (hash) { if (location.hash !== '#' + hash) location.hash = hash; else route(); };

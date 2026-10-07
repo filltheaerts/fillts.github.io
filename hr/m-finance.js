@@ -1,4 +1,4 @@
-/* fillts HR — 재무관리 (관리자 전용): 입금 완료된 입금요청을 기간 · 항목별로 분석한다.
+/* fillts Finance — 입금분석 (261007 HR 「재무관리」에서 이전, 관리자 + Finance 권한): 입금 완료된 입금요청을 기간 · 항목별로 분석한다.
    항목: 계정 과목 · 지급 유형 · 거래처 · 요청자 · 받는 분(개인/사업자). 월별 추이 · 상세 내역 CSV. */
 (function () {
   'use strict';
@@ -84,12 +84,12 @@
     // 상세 내역
     var dt = h('table', { class: 'table pay-table' }, h('thead', null, h('tr', null, ['입금일', '제목 · 거래처', '계정 과목', '요청자', '입금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
       h('tbody', null, paid.length ? paid.map(function (r) {
-        return h('tr', { class: 'clickable', onclick: function () { HR.go('payreq/r/' + r.id); } }, h('td', { text: fmt.dot(r.paidDate) }),
+        return h('tr', { class: 'clickable', onclick: function () { window.open('/hr/#payreq/r/' + r.id, '_blank', 'noopener'); } }, h('td', { text: fmt.dot(r.paidDate) }),
           h('td', null, h('div', { text: r.title }), h('div', { class: 'meta', text: r.payee + (r.payeeType === 'person' ? ' · 개인' : '') })), h('td', { text: r.account }),
           h('td', { text: HR.name(r.memberId) }), h('td', { class: 'num', text: won(r.paidAmount) }));
       }) : h('tr', null, h('td', { colspan: '5', class: 'empty', text: '내역이 없습니다.' }))));
 
-    ui.put(view, ui.head('Finance', '재무관리', ui.btn('CSV 내보내기', function () { csv(paid); }, 'btn-line btn-sm')),
+    ui.put(view, ui.head('Payments', '입금분석', ui.btn('CSV 내보내기', function () { csv(paid); }, 'btn-line btn-sm')),
       h('div', { class: 'toolbar' }, seg, h('span', { class: 'meta', text: rg[0] === '0000-00' ? '전체 기간' : rg[0] + ' ~ ' + rg[1] })), custom, kpi,
       ui.panel('Trend · 월별 입금', null, trend),
       ui.panel('Breakdown · 항목별 분석', gseg, h('div', { class: 'table-wrap flat' }, gt)),
@@ -97,5 +97,5 @@
       h('p', { class: 'note', text: '입금요청에서 「입금 완료」로 기록된 건만 집계합니다 (입금일 기준). 금액은 실제 입금액이고, 개인 지급분의 원천징수는 따로 합산합니다. 줄을 누르면 입금요청 상세로 갑니다.' }));
   }
 
-  HR.register('finance', { render: function (view) { if (!S.isAdmin) { HR.go('info'); return; } render(view); } });
+  HR.register('finance', { render: function (view) { if (!S.isAdmin && !HR.canApp('fin')) { HR.go(HR.APP.home || 'info'); return; } render(view); } });
 })();
