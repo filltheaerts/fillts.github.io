@@ -232,3 +232,9 @@ a.map-card:hover { border-color: var(--black); }
 
 .sx-grid .sx-pct { font-size: 10px; color: var(--gray-600); margin-top: 3px; white-space: nowrap; }
 .sx-grid .sx-pct.red { color: var(--red); font-weight: 600; }
+
+/* ⓪ 세부 줄 */
+.sx-grid tr.sx-u-d td { font-size: 12px; color: var(--gray-600); padding-top: 3px; padding-bottom: 3px; background: var(--paper); }
+.sx-grid tr.sx-u-d td.sx-k { padding-left: 34px; }
+.sx-grid tr.sx-u-d td.num { color: var(--gray-600); }
+.sx-grid tr.sx-u td { border-top: 1px solid var(--gray-200); }

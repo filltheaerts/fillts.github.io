@@ -145,13 +145,26 @@
     // ⓪ 1개 팔면: 순매출 − 변동비 − 원가 = 순익 (1개당 손익 구조를 한눈에)
     var uo = c.unitOver || {}, uv = X.uv, pnet = uv.net || 1;
     var unitProfit = uv.net - uv.vari - uv.cogs;
-    sec('⓪ 1개 팔면 — 순매출 − 변동비 − 원가 = 순익', '개당 손익에서 가져온 값 · 고치면 이 시트에만 적용 (굵게)');
+    sec('⓪ 1개 팔면 — 순매출 − 변동비 − 원가 = 순익', '% = 순매출(1개 ' + F.won(Math.round(pnet)) + ') 대비 · 소계 칸은 고치면 이 시트에만 적용 · 세부 단가는 「개당 손익 › 입력 세트」에서');
     var vb = u.e ? [['물류', u.logi], ['결제 · 반품 · 리뷰', u.pg + u.ret + u.review], ['광고 ' + u.e.adRate + '%', u.ad]] : [];
     var UROWS = [
       ['net', '순매출', '', '정가 ' + F.won(u.price) + ' − 할인 ' + u.e.discount + '% − 부가세 → 회사에 실제 들어오는 돈'],
       ['vari', '변동비 (광고 제외)', '−', '1개 팔 때마다 나가는 돈: ' + vb.filter(function (x) { return !/^광고/.test(x[0]); }).map(function (x) { return x[0] + ' ' + F.won(Math.round(x[1])); }).join(' · ') + ' — 광고비는 ①에서 월별로'],
       ['cogs', '제품 원가', '−', '본품 · 튜브 · 단상자 · 원료 · 샘플 등 (공급가) — 현금은 발주 때(②) 나감']
     ];
+    // 항목별 내역 (세부 줄) — 금액 · 순매출 대비 % · 계산 근거. 값은 「개당 손익 › 입력 세트」와 재고 품목에서 온다
+    var e1 = u.e, upo = Math.max(1, +e1.upo || 1);
+    var DETAIL = {
+      net: [['정가 (부가세 포함)', u.price, '고객이 보는 가격'], ['− 평균 할인 ' + e1.discount + '%', -u.disc, '쿠폰 · 적립금 · 첫구매'], ['= 실결제', u.paid, '고객이 실제 낸 돈'], ['− 부가세 (실결제의 1/11)', -u.vat, '나라에 낼 돈']],
+      vari: [['택배비', u.ship, F.won(e1.ship) + '/주문 ÷ 주문당 ' + upo + '개'], ['출고 작업 (피킹 · 포장)', u.pick, F.won(e1.pick) + '/주문 ÷ ' + upo + '개'],
+        ['박스 · 완충재 (포장)', u.box, F.won(e1.box) + '/주문 ÷ ' + upo + '개'], ['보관비', u.storage, '3PL 개당'],
+        ['결제수수료 (PG)', u.pg, '실결제 ' + F.won(Math.round(u.paid)) + ' × ' + e1.pgRate + '%'], ['반품 · 환불', u.ret, '순매출 × ' + e1.returnRate + '%'], ['리뷰 적립 · CS 사은', u.review, '개당 평균']],
+      cogs: (u.parts || []).map(function (p) { return [p.it.name + (p.per !== 1 ? ' × ' + p.per + (p.it.unit || '') : ''), p.cost, '매입 단가 (공급가)']; })
+    };
+    var dRow = function (label, amt, note) {
+      body.appendChild(h('tr', { class: 'sx-u-d' }, h('td', { class: 'sx-k', text: label }), h('td', { class: 'num', text: (amt < 0 ? '−' : '') + F.won(Math.abs(Math.round(amt))) }),
+        h('td', { class: 'num sx-ratio', text: (Math.abs(amt) / pnet * 100).toFixed(1) + '%' }), h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote', text: note })));
+    };
     UROWS.forEach(function (k) {
       var own = uo[k[0]] != null, v = own ? +uo[k[0]] : X.base[k[0]];
       var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell sx-unit' + (own ? ' sx-own' : ''), value: Math.round(v).toLocaleString('ko-KR'), 'aria-label': '1개당 ' + k[1], disabled: ed ? null : true });
@@ -162,6 +175,8 @@
         h('td', { class: 'num' }, i), h('td', { class: 'num sx-ratio', text: ratio }),
         h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote' }, own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) + ' ' : k[3] + ' ',
           own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null)));
+      (DETAIL[k[0]] || []).forEach(function (d) { dRow(d[0], d[1], d[2]); });
+      if (own) body.appendChild(h('tr', { class: 'sx-u-d' }, h('td', { class: 'sx-k meta', text: '↳ 위 세부는 가져온 값 기준 · 소계는 직접 입력값 사용' }), h('td', { colspan: String(cols.length) })));
     });
     body.appendChild(h('tr', { class: 'sx-u sx-u-profit' }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: '=' }), h('span', { class: 'strong', text: '1개당 순익 (광고 전)' })),
       h('td', { class: 'num strong' + (unitProfit < 0 ? ' red' : '') }, F.won(Math.round(unitProfit))), h('td', { class: 'num sx-ratio strong', text: (unitProfit / pnet * 100).toFixed(1) + '%' }),
