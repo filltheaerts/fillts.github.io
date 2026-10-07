@@ -68,8 +68,9 @@
 
   // 법인카드 — 카드사 이름 · 끝번호 (fin_card.issuer · cardNo, 없으면 통장 메모)
   function cardName() {
-    var x = F.card.filter(function (c) { return c.issuer; })[0];
-    return x ? x.issuer + (x.cardNo ? ' (…' + x.cardNo + ')' : '') : '법인카드';
+    var seen = {}, out = [];
+    F.card.forEach(function (c) { var k = (c.issuer || '법인카드') + (c.cardNo ? ' (…' + c.cardNo + ')' : ''); if (!seen[k]) { seen[k] = 1; out.push(k); } });
+    return out.length ? out.join(' · ') : '법인카드';
   }
   function cardLabel(x) {
     var m = x.merchant || '';
