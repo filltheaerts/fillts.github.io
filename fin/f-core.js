@@ -104,6 +104,14 @@
     });
     return M;
   };
+  // 실제 월평균 지출 — 최근 완료된 n개월 통장 출금 중 원료 · 포장 발주(일회성 재고 매입) · 보증금 · 내부 이체 제외
+  F.BURN_EXCL = ['원료 · 생산(OEM)', '포장 · 부자재', '보증금 · 예치금', BP.TRANSFER];
+  F.actualBurn = function (n) {
+    var cur = F.thisYm(), M = {};
+    F.tx.forEach(function (t) { var k = F.ym(t.date); if (!k || k >= cur) return; M[k] = M[k] || 0; if (t.outAmt > 0 && F.BURN_EXCL.indexOf(t.cat) < 0) M[k] += t.outAmt; });
+    var ks = Object.keys(M).sort().slice(-(n || 3));
+    return { months: ks, avg: ks.length ? ks.reduce(function (a, k) { return a + M[k]; }, 0) / ks.length : 0, by: M };
+  };
   // 최근 완료된 n개월 평균 (이번 달 제외, 거래가 있는 달만)
   F.recent = function (n) {
     var M = F.monthly(), cur = F.thisYm();

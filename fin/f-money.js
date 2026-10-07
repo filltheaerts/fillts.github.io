@@ -19,13 +19,18 @@
     var up = F.schedIn(t, HR.L.addDays(t, 45)), upSum = up.reduce(function (a, o) { return a + o.amount; }, 0);
     var confirmed = F.plan.filter(function (p) { return p.status === 'approved' && p.date && p.date >= t; });
     var confSum = confirmed.reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+    var burn = F.actualBurn(3);
+    // 정책자금 전용통장(설정 › 계좌에서 이름에 중진공 · 정책) — 운영비로 못 쓰는 돈이라 따로 본다
+    var pk = {}; (F.cfg.cashAccts || []).forEach(function (a) { if (a.key && /중진공|정책/.test(a.name || '')) pk[a.key] = 1; });
+    var policyCash = bal.accts.filter(function (a) { return pk[a.key]; }).reduce(function (a, x) { return a + (x.bal || 0); }, 0);
+    var opsMonths = burn.avg > 0 ? (bal.amount - policyCash) / burn.avg : null;
     var st = F.invStock ? F.invStock() : {}, invVal = Object.keys(st).reduce(function (a, k) { return a + (st[k].value || 0) + (st[k].valueIn || 0); }, 0);
     // 매출 없이 확정된 돈만으로 6개월: 잔액 − 고정비 − 일회성 예정 + 확정 조달
     var rows = [], cash = bal.amount, zero = null;
     for (var i = 0; i < 6; i++) {
       var ym = fmt.ymShift(ym0, i), last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), from = i === 0 ? t : ym + '-01', to = ym + '-' + ('0' + last).slice(-2);
       var part = i === 0 ? Math.max(0, (last - (+t.slice(8, 10)) + 1) / last) : 1;
-      var fixed = (F.fixedAt ? F.fixedAt(ym).total : F.fixedMonthly(ym)) * part;
+      var fixed = burn.avg * part;   // 실제 통장 월평균 지출 (최근 3개월 · 발주 · 보증금 제외)
       var once = F.schedIn(from, to).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0);
       var fund = F.plan.filter(function (p) { return p.status === 'approved' && p.date && p.date >= from && p.date <= to; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
       cash = cash - fixed - once + fund; rows.push({ ym: ym, cash: cash, fixed: fixed, once: once, fund: fund });
@@ -40,7 +45,6 @@
     var al = function (text, href, cls) { alerts.appendChild(h('li', null, h('a', { class: 'grow', href: href, text: text }), ui.tag(cls === 'red' ? '확인' : '안내', cls === 'red' ? 'red' : 'mute'))); };
     if (zero != null) al('매출 없이 확정된 돈만 보면 ' + F.ymLabel(rows[zero].ym) + '에 잔액이 바닥납니다 — 자금조달 확인', '#plan', 'red');
     if (overdue.length) al('지난 지출예정 ' + overdue.length + '건 지급 표시 없음', '#cost/once', 'red');
-    if (assumed) al('지출 흐름 고정비 중 가정값 ' + assumed + '개 — 실제 금액으로 수정', '#cost', 'red');
     if (!F.tx.length) al('통장 거래내역을 아직 가져오지 않았습니다 — 엑셀을 올리거나 구글 드라이브 폴더를 연결하세요.', '#tx/import');
     if (uncat) al('분류가 비어 있는 거래 ' + uncat + '건', '#tx/list/uncat', 'red');
     if (noEvid) al('증빙 표시가 없는 출금 ' + noEvid + '건 — 세무사 전달 전에 확인', '#tx/list/noevid');
@@ -60,19 +64,19 @@
       return h('li', null, h('span', { class: 'meta fin-date', text: p.date ? fmt.dot(p.date) : '미정' }), h('span', { class: 'grow', text: p.name }), ui.tag(F.statusName(p.status), p.status === 'approved' ? 'ok' : 'mute'), h('span', { class: 'num', text: F.man(p.amount) }));
     }));
     if (!funds.length) fundList.appendChild(h('li', { class: 'empty', text: '예정된 자금조달이 없습니다.' }));
-    var bars = rows.map(function (r) { return { label: F.ymLabel(r.ym), v: r.cash, title: r.ym + ' 월말 ' + F.won(r.cash) + ' (고정비 ' + F.won(r.fixed) + ' · 일회성 ' + F.won(r.once) + ' · 확정 조달 ' + F.won(r.fund) + ')' }; });
+    var bars = rows.map(function (r) { return { label: F.ymLabel(r.ym), v: r.cash, title: r.ym + ' 월말 ' + F.won(r.cash) + ' (월평균 지출 ' + F.won(r.fixed) + ' · 일회성 ' + F.won(r.once) + ' · 확정 조달 ' + F.won(r.fund) + ')' }; });
 
     ui.put(view, ui.head('Finance', 'Overview', h('span', { class: 'meta', text: '실제 값만 · ' + (bal.asOf ? '잔액 ' + fmt.dot(bal.asOf) + ' 기준' : '') })),
       F.kpi([['법인 통장 잔액', F.man(bal.amount), '', bal.accts.length + '개 계좌'],
-        ['이번 달 고정비', F.man(fx.total), '', fx.pay ? '인건비 ' + F.man(fx.pay) + ' · 임대 ' + F.man(fx.rent) : '지출 흐름 › 고정비'],
+        ['월 평균 지출 (실제)', F.man(burn.avg), '', burn.months.length ? burn.months.map(F.ymLabel).join(' · ') + ' 통장 기준 · 원료 · 포장 발주 · 보증금 제외' : '거래내역 없음'],
         ['45일 지출 예정', F.man(upSum), '', up.length + '건 · 지출 흐름 기준'],
         ['확정 조달 예정', F.man(confSum), '', confirmed.length + '건 (승인 · 확정)'],
         ['재고 자산', F.man(invVal), '', '입고 + 입고 예정 · 공급가'],
-        ['매출 없이 버티는 기간', zero != null ? (zero === 0 ? '이번 달' : zero + '개월') : '6개월+', zero != null ? 'red' : '', '잔액 − 고정비 − 예정 지출 + 확정 조달']]),
+        ['매출 없이 버티는 기간', zero != null ? (zero === 0 ? '이번 달' : zero + '개월') : '6개월+', zero != null ? 'red' : '', '정책자금 제외하면 ' + (opsMonths == null ? '—' : opsMonths.toFixed(1) + '개월') + ' · 잔액 − 월평균 지출 − 예정 지출 + 확정 조달']]),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Check · 확인할 것', null, alerts),
-        ui.panel('Cash · 매출 없이 확정된 돈만 (6개월)', h('a', { href: '#cost', class: 'meta', text: '지출 흐름 →' }), F.bars(bars),
-          h('p', { class: 'meta', text: '판매 · 광고 계획은 넣지 않은 보수적인 실제 기준. 계획은 [시뮬] 시뮬레이션에서 봅니다.' }))),
+        ui.panel('Cash · 매출 없이 확정된 돈만 (6개월)', h('a', { href: '#spend', class: 'meta', text: '사용분석 →' }), F.bars(bars),
+          h('p', { class: 'meta', text: '매달 최근 3개월 실제 통장 지출 평균만큼 나간다고 본 보수적인 기준입니다 (원료 · 포장 발주와 보증금은 제외, 정책자금 통장 포함). 판매 · 광고 계획은 [시뮬] 시뮬레이션에서 봅니다.' }))),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Accounts · 통장별 잔액', h('a', { href: '#set/accounts', class: 'meta', text: '수정 →' }), acctList),
         ui.panel('Upcoming · 다가오는 지출 (45일)', h('a', { href: '#cost/once', class: 'meta', text: '전체 →' }), upList)),

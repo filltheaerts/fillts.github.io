@@ -2,19 +2,26 @@
 (function () {
   'use strict';
   var HR = window.HR, F = HR.F, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, BP = window.BankParse;
-  var V = { ym: '' };
+  var V = { ym: '' };   // 기간 키: 'YYYY-H1' · 'YYYY-H2'(부가세 1기 · 2기) 또는 'YYYY-MM'(월)
+  var isHalf = function (p) { return /-H[12]$/.test(p); };
+  var inPer = function (d, p) { if (!d) return false; if (!isHalf(p)) return d.slice(0, 7) === p; var m = +d.slice(5, 7); return d.slice(0, 4) === p.slice(0, 4) && (p.slice(-1) === '1' ? m <= 6 : m >= 7); };
+  var perLabel = function (p) { return isHalf(p) ? p.slice(0, 4) + '년 ' + p.slice(-1) + '기 (' + (p.slice(-1) === '1' ? '1~6월' : '7~12월') + ')' : p.replace('-', '년 ') + '월'; };
+  var perFirst = function (p) { return isHalf(p) ? p.slice(0, 4) + (p.slice(-1) === '1' ? '-01' : '-07') : p; };
+  var curHalf = function () { var ym = F.thisYm(); return ym.slice(0, 4) + (+ym.slice(5, 7) <= 6 ? '-H1' : '-H2'); };
   var EVN = { tax: '세금계산서', card: '카드 매출전표', cash: '현금영수증', receipt: '영수증 · 계약서', payroll: '급여 · 원천 (세무사)', na: '증빙 불필요' };
   var TYPE_NAME = { vendor: '거래처 대금', expense: '경비 정산', advance: '선급금 · 계약금', tax: '세금 · 공과금 · 보험료', etc: '기타' };
 
   function payreqPaid(ym) {
     var all = HR.load('fin@payreqAll', function () { return db.collection('hr_payreq').where('status', '==', 'paid').get().then(HR.rows); }) || [];
-    return all.filter(function (r) { return (r.paidDate || '').slice(0, 7) === ym; }).sort(function (a, b) { return a.paidDate < b.paidDate ? -1 : 1; });
+    return all.filter(function (r) { return inPer(r.paidDate || '', ym); }).sort(function (a, b) { return a.paidDate < b.paidDate ? -1 : 1; });
   }
   function pack(ym) {
-    var tx = F.tx.filter(function (t) { return F.ym(t.date) === ym; }).sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? -1 : 1; });
+    var tx = F.tx.filter(function (t) { return inPer(t.date, ym); }).sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? -1 : 1; });
     var pr = payreqPaid(ym), person = pr.filter(function (r) { return r.payeeType === 'person'; });
     var noEv = tx.filter(function (t) { return t.outAmt > 0 && !F.isTransfer(t) && !t.evid; });
-    var M = F.monthly(tx)[ym] || { inn: {}, out: {}, inSum: 0, outSum: 0 };
+    var MM = F.monthly(tx), M = { inn: {}, out: {}, inSum: 0, outSum: 0 };   // 기간(월 · 반기) 합산
+    Object.keys(MM).forEach(function (k) { var m = MM[k]; M.inSum += m.inSum; M.outSum += m.outSum;
+      Object.keys(m.inn).forEach(function (c) { M.inn[c] = (M.inn[c] || 0) + m.inn[c]; }); Object.keys(m.out).forEach(function (c) { M.out[c] = (M.out[c] || 0) + m.out[c]; }); });
     return { ym: ym, tx: tx, pr: pr, person: person, noEv: noEv, M: M,
       inN: tx.filter(function (t) { return t.inAmt > 0; }).length, outN: tx.filter(function (t) { return t.outAmt > 0; }).length };
   }
@@ -22,7 +29,7 @@
     var wb = XLSX.utils.book_new();
     var add = function (name, rows, cols) { var ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = cols.map(function (w) { return { wch: w }; }); XLSX.utils.book_append_sheet(wb, ws, name); };
     var co = S.cfg.companyName || '(주)필츠';
-    add('요약', [[co + ' ' + P.ym.replace('-', '년 ') + '월 세무 자료'], [], ['구분', '건수', '금액'],
+    add('요약', [[co + ' ' + perLabel(P.ym) + ' 세무 자료'], [], ['구분', '건수', '금액'],
       ['통장 입금', P.inN, P.M.inSum], ['통장 출금', P.outN, P.M.outSum], ['개인 지급 (3.3% 원천징수)', P.person.length, P.person.reduce(function (a, r) { return a + (r.total || 0); }, 0)],
       ['원천징수 세액', '', P.person.reduce(function (a, r) { return a + (r.wht || 0); }, 0)], ['증빙 확인 필요 출금', P.noEv.length, P.noEv.reduce(function (a, t) { return a + t.outAmt; }, 0)], [],
       ['분류', '입금', '출금']].concat(Object.keys(Object.assign({}, P.M.inn, P.M.out)).map(function (c) { return [c, P.M.inn[c] || '', P.M.out[c] || '']; })), [28, 12, 16]);
@@ -35,19 +42,19 @@
     add('입금요청 지급내역', [['지급일', '지급 유형', '계정 과목', '거래처', '개인/사업자', '요청 총액', '원천징수', '입금액', '제목', '메모']].concat(P.pr.map(function (r) {
       return [r.paidDate, TYPE_NAME[r.type] || '', r.account || '', r.payee || '', r.payeeType === 'person' ? '개인' : r.payeeType === 'biz' ? '사업자' : '', r.total || 0, r.wht || 0, r.paidAmount || 0, r.title || '', r.paidNote || ''];
     })), [10, 14, 14, 18, 10, 12, 12, 12, 28, 20]);
-    var cards = F.card.filter(function (x) { return F.ym(x.date) === P.ym; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var cards = F.card.filter(function (x) { return inPer(x.date, P.ym); }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     add('법인카드 사용내역', [['승인일', '매입일', '카드', '가맹점', '사업자번호', '금액', '해외', '사용처', '사용내용', '통장 결제일']].concat(cards.map(function (x) {
       return [x.date, x.buyDate || '', (x.issuer || '') + (x.cardNo ? ' …' + x.cardNo : ''), x.merchant, x.biz || '', x.amount, x.foreign ? '해외' : '', x.cat || '', x.note || '', x.payDate || ''];
     })).concat([[], ['※ 지출은 통장 카드대금 출금으로 이미 반영 — 이 시트는 카드 사용처 증빙용입니다.']]), [10, 10, 14, 22, 12, 12, 6, 16, 30, 10]);
     add('증빙 확인', [['날짜', '계좌', '출금', '내용', '분류', '메모']].concat(P.noEv.map(function (t) { return [t.date, F.acctName(t), t.outAmt, [t.desc, t.memo].filter(Boolean).join(' · '), t.cat || '', t.note || '']; })), [10, 16, 12, 34, 16, 24]);
     return wb;
   }
-  function fileName(P) { return 'fillts_' + P.ym + '_세무자료.xlsx'; }
+  function fileName(P) { return 'fillts_' + (isHalf(P.ym) ? P.ym.slice(0, 4) + '_' + P.ym.slice(-1) + '기' : P.ym) + '_세무자료.xlsx'; }
   function defaultBody(P, acc) {
-    var me = S.members[S.mid] || {}, y = +P.ym.slice(0, 4), m = +P.ym.slice(5, 7);
+    var me = S.members[S.mid] || {};
     var whtSum = P.person.reduce(function (a, r) { return a + (r.wht || 0); }, 0), paySum = P.person.reduce(function (a, r) { return a + (r.total || 0); }, 0);
     return [(acc.name ? acc.name + ' 세무사님' : '세무사님') + ', 안녕하세요. ' + (S.cfg.companyName || '(주)필츠') + ' ' + (me.name || '') + '입니다.', '',
-      y + '년 ' + m + '월 거래 자료를 보내드립니다.', '',
+      perLabel(P.ym) + ' 거래 자료를 보내드립니다.', '',
       '· 통장 거래: 입금 ' + P.inN + '건 ' + F.won(P.M.inSum) + ' / 출금 ' + P.outN + '건 ' + F.won(P.M.outSum),
       '· 개인 지급(3.3% 원천징수): ' + P.person.length + '건 · 지급 ' + F.won(paySum) + ' · 원천세 ' + F.won(whtSum),
       '· 증빙 확인이 필요한 출금: ' + P.noEv.length + '건 (첨부 「증빙 확인」 시트)', '',
@@ -57,20 +64,22 @@
 
   function tax(view) {
     var ed = F.canEdit(), acc = F.cfg.accountant || {};
-    if (!V.ym) V.ym = fmt.ymShift(F.thisYm(), -1);
-    var months = {}; F.tx.forEach(function (t) { months[F.ym(t.date)] = 1; }); months[V.ym] = 1; months[fmt.ymShift(F.thisYm(), -1)] = 1;
-    var P = pack(V.ym), sent = F.mail.filter(function (m) { return m.ym === V.ym; });
-    var pick = ui.select(Object.keys(months).sort().reverse().map(function (m) { return [m, m.replace('-', '년 ') + '월']; }), V.ym, { 'aria-label': '대상 월', onchange: function () { V.ym = this.value; HR.refresh(); } });
+    if (!V.ym) V.ym = curHalf();   // 기본: 이번 부가세 기(반기) — 마감 때 한 번에 보낸다
+    var halves = {}, months = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); months[k] = 1; halves[k.slice(0, 4) + (+k.slice(5, 7) <= 6 ? '-H1' : '-H2')] = 1; }); halves[curHalf()] = 1;
+    var P = pack(V.ym), sent = F.mail.filter(function (m) { return m.ym === perFirst(V.ym) && (m.per || m.ym) === (isHalf(V.ym) ? V.ym : m.ym); });
+    var pick = h('select', { 'aria-label': '대상 기간', onchange: function () { V.ym = this.value; HR.refresh(); } },
+      h('optgroup', { label: '부가세 기 (반기)' }, Object.keys(halves).sort().reverse().map(function (k) { return h('option', { value: k, text: perLabel(k), selected: k === V.ym ? 'selected' : null }); })),
+      h('optgroup', { label: '월' }, Object.keys(months).sort().reverse().map(function (k) { return h('option', { value: k, text: perLabel(k), selected: k === V.ym ? 'selected' : null }); })));
     var to = ui.input({ type: 'email', value: acc.email || '', placeholder: '세무사 이메일' });
     var cc = ui.input({ value: acc.cc || '', placeholder: '참조 (쉼표로 여러 명)' });
-    var subj = ui.input({ maxlength: 120, value: '[' + (S.cfg.companyName || '(주)필츠') + '] ' + P.ym.replace('-', '년 ') + '월 세무 자료' });
+    var subj = ui.input({ maxlength: 120, value: '[' + (S.cfg.companyName || '(주)필츠') + '] ' + perLabel(P.ym) + ' 세무 자료' });
     var body = h('textarea', { rows: '13', maxlength: '4000', value: defaultBody(P, acc) });
     var msg = ui.msg();
     var send = function () {
       if (!to.value.trim()) return ui.err(msg, '세무사 이메일을 입력하세요 (설정 › 세무사에 저장하면 자동으로 채워집니다).');
-      if (!P.tx.length && !P.pr.length) return ui.err(msg, '이 달의 거래가 없습니다.');
+      if (!P.tx.length && !P.pr.length) return ui.err(msg, '이 기간의 거래가 없습니다.');
       this.disabled = true; var btn = this; ui.ok(msg, '보내는 중…');
-      F.call('finMail', { ym: P.ym, to: to.value.trim(), cc: cc.value.trim(), subject: subj.value.trim(), text: body.value, filename: fileName(P), b64: b64(workbook(P)),
+      F.call('finMail', { ym: perFirst(P.ym), per: P.ym, to: to.value.trim(), cc: cc.value.trim(), subject: subj.value.trim(), text: body.value, filename: fileName(P), b64: b64(workbook(P)),
         counts: { tx: P.tx.length, person: P.person.length, noEv: P.noEv.length } })
         .then(function () { ui.ok(msg, '보냈습니다. 보낸 메일은 내 계정에도 숨은참조로 들어갑니다.'); ui.toast('세무사에게 보냈습니다.'); })
         .catch(function (e) { ui.err(msg, '보내지 못했습니다 — ' + e.message); }).then(function () { btn.disabled = false; });
@@ -79,12 +88,12 @@
       return h('li', null, h('span', { class: 'meta fin-date', text: fmt.ts(m.at) }), h('span', { class: 'grow', text: m.ym.replace('-', '.') + ' · ' + m.to + (m.cc ? ' (참조 ' + m.cc + ')' : '') }), h('span', { class: 'meta', text: HR.name(m.by) + ' · ' + (m.counts ? m.counts.tx + '건' : '') }));
     }));
     if (!F.mail.length) hist.appendChild(h('li', { class: 'empty', text: '아직 보낸 기록이 없습니다.' }));
-    ui.put(view, ui.head('Tax accountant', '세무사 전달', pick),
+    ui.put(view, ui.head('실제 · 장부', '세무사 전달', pick),
       h('div', { class: 'fin-quicklinks' }, h('span', { class: 'meta', text: '바로가기' }), LINKS.map(function (l) { return h('a', { href: l[1], target: '_blank', rel: 'noopener', class: 'fin-qlink', text: l[0] + ' ↗' }); })),
       F.kpi([['통장 입금', F.man(P.M.inSum), '', P.inN + '건'], ['통장 출금', F.man(P.M.outSum), '', P.outN + '건'], ['개인 지급 (3.3%)', P.person.length + '건', '', '원천세 ' + F.man(P.person.reduce(function (a, r) { return a + (r.wht || 0); }, 0))],
         ['입금요청 지급', P.pr.length + '건'], ['증빙 확인 필요', P.noEv.length + '건', P.noEv.length ? 'red' : ''], ['발송', sent.length ? fmt.ts(sent[0].at) : '안 보냄', sent.length ? '' : 'red']]),
       P.noEv.length ? h('p', { class: 'note' }, '증빙 표시가 없는 출금이 ' + P.noEv.length + '건 있습니다. ', h('a', { href: '#tx/list/noevid', text: '거래내역 › 증빙 확인' }), '에서 먼저 표시하면 세무사 문의가 줄어듭니다. 그대로 보내도 「증빙 확인」 시트로 함께 전달됩니다.') : null,
-      ui.panel('Package · 첨부 엑셀 (시트 5개)', ui.btn('엑셀 받기', function () { XLSX.writeFile(workbook(P), fileName(P)); }, 'btn-line btn-sm'),
+      ui.panel('첨부 엑셀 (시트 6개) — ' + perLabel(P.ym), ui.btn('엑셀 받기', function () { XLSX.writeFile(workbook(P), fileName(P)); }, 'btn-line btn-sm'),
         h('ul', { class: 'list' }, [['요약', '입출금 합계 · 분류별 금액 · 원천징수 합계'], ['통장 거래내역', P.tx.length + '건 — 분류 · 증빙 · 메모 포함'], ['원천징수 대상(개인)', P.person.length + '건 — HR 입금요청 중 개인 지급'],
           ['입금요청 지급내역', P.pr.length + '건 — 계정 과목 · 거래처 · 원천징수'], ['증빙 확인', P.noEv.length + '건 — 증빙 표시가 없는 출금']].map(function (x) { return h('li', null, h('span', { class: 'strong grow', text: x[0] }), h('span', { class: 'meta', text: x[1] })); }))),
       ui.panel('Mail · 세무사에게 바로 보내기', null, ed ? h('div', { class: 'stack fin-form' },
