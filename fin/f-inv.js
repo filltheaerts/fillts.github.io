@@ -79,17 +79,33 @@
     var outDate = months != null ? HR.L.addDays(fmt.today(), Math.round(months * 30.4)) : '';
     var reorder = outDate ? HR.L.addDays(outDate, -lead) : '';
 
-    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['구분', '품목', '보관 · 거래처', '재고', '입고 예정', '평균 단가', '재고 금액', '제품 1개당', '몇 개분'].map(function (x, i) { return h('th', { class: i >= 3 ? 'num' : '', text: x }); }))),
-      h('tbody', null, items.length ? items.map(function (it) {
-        var x = st[it.id], r = vatRate(x), mult = V.vat ? 1 + r : 1;
-        return h('tr', { class: F.canEdit() ? 'clickable' : '', onclick: F.canEdit() ? function () { HR.go('inv/items/' + it.id); } : null },
-          h('td', null, ui.tag(nm(TYPE, it.type), it.type === 'product' ? 'red' : 'mute')), h('td', null, h('div', { class: 'strong', text: it.name }), it.memo ? h('div', { class: 'meta', text: it.memo }) : null),
-          h('td', { class: 'meta', text: [it.location, it.vendor].filter(Boolean).join(' · ') }),
-          h('td', { class: 'num strong', text: x.onHand.toLocaleString('ko-KR') + (it.unit || '') }), h('td', { class: 'num', text: x.ordered ? x.ordered.toLocaleString('ko-KR') + (it.unit || '') : '' }),
-          h('td', { class: 'num', text: x.unit ? Math.round(x.unit * mult).toLocaleString('ko-KR') + '원' : '' }), h('td', { class: 'num', text: F.won(x.value * mult) }),
-          h('td', { class: 'num meta', text: +it.perProduct ? (+it.perProduct) + (it.unit || '') : '—' }),
-          h('td', { class: 'num' + (cap && x === cap ? ' red' : ''), text: x.covers != null ? x.covers.toLocaleString('ko-KR') + '개' : '' }));
-      }) : h('tr', null, h('td', { colspan: '9', class: 'empty', text: '품목이 없습니다. 「품목」 탭에서 추가하세요.' }))));
+    // 결제 기준으로 나눈다: 매입이 전부 「지급 완료」인 품목 = 보유 재고(보관 장소 관리) / 하나라도 남은 품목 = 대기열
+    var movesOf = function (it) { return F.inv.moves.filter(function (m) { return m.kind === 'in' && m.itemId === it.id; }); };
+    var isPaid = function (it) { var ms = movesOf(it); return ms.length && ms.every(function (m) { return m.pay === 'paid'; }); };
+    var owned = items.filter(isPaid), queue = items.filter(function (it) { return !isPaid(it); });
+    var row = function (it, q) {
+      var x = st[it.id], r = vatRate(x), mult = V.vat ? 1 + r : 1, ms = movesOf(it);
+      var left = ms.filter(function (m) { return m.pay !== 'paid'; }), leftSum = left.reduce(function (a, m) { return a + (+m.amount || 0) + (+m.vat || 0); }, 0);
+      var payTxt = left.map(function (m) { return nm(PAY, m.pay || 'unknown') + (m.dueDate ? ' · ' + fmt.dot(m.dueDate).slice(2) : ''); }).filter(function (v, i, arr) { return arr.indexOf(v) === i; }).join(' / ');
+      return h('tr', { class: F.canEdit() ? 'clickable' : '', onclick: F.canEdit() ? function () { HR.go('inv/items/' + it.id); } : null },
+        h('td', null, ui.tag(nm(TYPE, it.type), it.type === 'product' ? 'red' : 'mute')), h('td', null, h('div', { class: 'strong', text: it.name }), it.memo ? h('div', { class: 'meta', text: it.memo }) : null),
+        q ? h('td', { class: 'meta', text: it.vendor || '' }) : h('td', null, h('div', { text: it.location || '— 보관 장소 미지정' }), it.vendor ? h('div', { class: 'meta', text: it.vendor }) : null),
+        h('td', { class: 'num strong', text: (x.onHand + x.ordered).toLocaleString('ko-KR') + (it.unit || '') }),
+        h('td', { class: 'meta', text: x.onHand ? '입고 ' + x.onHand.toLocaleString('ko-KR') + (x.ordered ? ' · 입고 예정 ' + x.ordered.toLocaleString('ko-KR') : '') : x.ordered ? '입고 예정' : '' }),
+        q ? h('td', { class: 'meta', text: payTxt || '매입 기록 없음' }) : h('td', { class: 'num', text: x.unit ? Math.round(x.unit * mult).toLocaleString('ko-KR') + '원' : '' }),
+        h('td', { class: 'num', text: q ? (leftSum ? F.won(leftSum) : '') : F.won((x.value + x.valueIn) * mult) }),
+        q ? null : h('td', { class: 'num' + (cap && x === cap ? ' red' : ''), text: x.covers != null ? x.covers.toLocaleString('ko-KR') + '개분' : '' }));
+    };
+    var table = function (list, q) {
+      var hd = q ? ['구분', '품목', '거래처', '수량', '입고', '결제 상태', '남은 금액'] : ['구분', '품목', '보관 장소', '수량', '입고', '평균 단가', '재고 금액', '몇 개분'];
+      return h('table', { class: 'table fin-table fin-inv-tb' }, h('thead', null, h('tr', null, hd.map(function (x, i) { return h('th', { class: x === '수량' || x === '평균 단가' || x === '재고 금액' || x === '남은 금액' || x === '몇 개분' ? 'num' : '', text: x }); }))),
+        h('tbody', null, list.length ? list.map(function (it) { return row(it, q); }) : h('tr', null, h('td', { colspan: String(hd.length), class: 'empty', text: q ? '대기 중인 품목이 없습니다.' : '결제가 끝난 품목이 없습니다.' }))));
+    };
+    var tb = h('div', null,
+      ui.panel('보유 재고 — 결제 완료 · 보관 장소', h('span', { class: 'meta', text: owned.length + '개 품목' }), h('div', { class: 'table-wrap flat' }, table(owned, false)),
+        h('p', { class: 'meta', text: '수량 = 입고 완료 + 입고 예정. 「몇 개분」 = 수량 ÷ 제품 1개당 사용량, 빨간 숫자가 다음 생산의 병목. 줄을 누르면 품목 · 보관 장소를 고칩니다.' })),
+      ui.panel('대기열 — 결제가 남은 품목', h('span', { class: 'meta', text: queue.length + '개 품목' }), h('div', { class: 'table-wrap flat' }, table(queue, true)),
+        h('p', { class: 'meta', text: '선금 · 잔금이 남았거나 결제 확인이 필요한 품목입니다. 매입 탭에서 「지급 완료」로 바꾸면 위 보유 재고로 올라갑니다.' })));
 
     var muIn = ui.input({ type: 'number', min: '0', value: mu ? String(mu) : '', placeholder: '예: 800', disabled: F.canEdit() ? null : true });
     muIn.addEventListener('change', function () { saveInv({ monthlyUnits: +muIn.value || null }).then(function () { ui.toast('저장했습니다.'); }).catch(ui.fail); });
@@ -99,8 +115,7 @@
     ui.put(view, F.kpi([['재고 자산', F.man(val), '', '입고 완료분 · ' + (V.vat ? '부가세 포함' : '공급가')], ['입고 예정 (발주)', F.man(valIn), '', '아직 입고 확인 전'],
       ['지급 완료 아닌 매입', F.man(pendSum), '', pend.length + '건 · 결제 일정은 지출예정' + (setupSum ? ' · 초도비 ' + F.man(setupSum) : '')], ['완제품', finished.toLocaleString('ko-KR') + '개', '', px ? '재고 ' + px.onHand + ' · 예정 ' + px.ordered : '품목 없음'],
       ['제품 1개 원가', F.won(Math.round(uc.total)), '', '원료 · 부자재 포함'], ['생산 한도', cap ? cap.covers.toLocaleString('ko-KR') + '개' : '-', '', cap ? '가장 먼저 떨어지는 것: ' + cap.it.name : '']]),
-      ui.panel('Stock · 품목별 재고', null, h('div', { class: 'table-wrap flat' }, tb),
-        h('p', { class: 'meta', text: '「몇 개분」 = (재고 + 입고 예정) ÷ 제품 1개당 사용량. 빨간 숫자가 다음 생산의 병목입니다. 줄을 누르면 품목을 고칩니다.' })),
+      tb,
       null);
   }
 
