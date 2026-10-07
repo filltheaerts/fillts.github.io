@@ -101,9 +101,9 @@
     if ((m = desc.match(WEAK))) return { p: 50, why: '설명란 「' + m[1] + '」 — 담당자를 따로 두는 표현' };
     return { p: 0, none: !emails.length, why: emails.length ? '개인 메일: ' + emails[0] : '설명란에 연락처 · 회사 정보 없음 (유튜브 정보 탭의 비공개 메일은 직접 확인)' };
   };
-  I.agencyTag = function (c) {
+  I.agencyTag = function (c, short) {
     var a = I.agency(c);
-    return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none ? '개인 · 정보 없음' : '개인' });
+    return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none && !short ? '개인 · 정보 없음' : '개인' });
   };
   I.chips = function (list, cls) { return h('div', { class: 'in-chips' }, (list || []).map(function (x) { return h('span', { class: 'in-chip ' + (cls || ''), text: x }); })); };
   I.scoreBar = function (s) {

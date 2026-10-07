@@ -85,7 +85,7 @@
         h('td', { class: 'num', text: I.cnt(ch.subs) }),
         h('td', { class: 'num' + (ch.growth >= 1.2 ? ' red' : ''), text: ch.growth ? ch.growth + '배' : '—' }),
         h('td', { class: 'num', text: ch.cmtMed != null ? ch.cmtMed + '개' : '—' }),
-        h('td', null, I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }))),
+        h('td', null, I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }), true)),
         h('td', { class: 'in-ell', title: c.email || ch.email || '', text: c.email || ch.email ? '있음' : '—' }),
         h('td', null, I.stTag(c.stage)),
         h('td', { class: 'in-ell meta', title: c.seedTitle || '', text: c.seedTitle || '—' }),
