@@ -144,6 +144,7 @@
         h('td', { class: 'in-cb' }, cb),
         h('td', null, h('div', { class: 'in-ch' }, I.thumb(c), h('div', { class: 'in-ch-t' }, h('div', { class: 'strong', text: c.title }),
           h('div', { class: 'meta', text: [c.handle, c.country, c.last ? '최근 ' + fmt.dot(c.last).slice(2) : ''].filter(Boolean).join(' · ') })))),
+        h('td', { class: 'in-reason-cell' }, (c.reason || []).slice(0, 3).map(function (r) { return h('div', { text: r }); })),
         h('td', { class: 'num', text: I.cnt(c.subs) }),
         rising ? h('td', { class: 'num' + (c.growth >= 1.2 ? ' red' : ''), text: c.growth ? c.growth + '배' : '—', title: '최근 5편 ' + I.cnt(c.recentMed) + ' / 이전 ' + I.cnt(c.prevMed) }) : h('td', { class: 'num', text: I.cnt(c.median) }),
         rising ? h('td', { class: 'num', text: (c.cmtMed || 0) + '개 · ' + (c.cpk || 0), title: '영상당 중앙 댓글 · 조회 1천 회당 댓글' }) : h('td', { class: 'num', text: I.pct(c.engage) }),
@@ -151,13 +152,12 @@
         h('td', null, I.chips((c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 4), 'light')),
         h('td', { class: 'in-mail-cell', text: c.email ? '있음' : '—' }),
         h('td', null, I.scoreBar(c.score)),
-        h('td', { class: 'in-reason-cell' }, (c.reason || []).slice(0, 3).map(function (r) { return h('div', { text: r }); })),
         h('td', null, inP ? I.stTag(inP.stage) : null)));
       if (open) rows.push(h('tr', { class: 'in-detail' }, h('td', { colspan: '11' }, candDetail(c, s, inP))));
     });
     var table = h('div', { class: 'table-wrap' }, h('table', { class: 'table in-table' },
-      h('thead', null, h('tr', null, ['', '채널', '구독자', rising ? '조회 상승' : '중앙 조회수', rising ? '댓글 (영상당 · 1천회당)' : '참여율', '댓글 톤', '일치 키워드', '메일', '점수', '찾은 이유', '상태'].map(function (x, i) {
-        return h('th', { class: i >= 2 && i <= 4 ? 'num' : '', text: x });
+      h('thead', null, h('tr', null, ['', '채널', '찾은 이유', '구독자', rising ? '조회 상승' : '중앙 조회수', rising ? '댓글 (영상당 · 1천회당)' : '참여율', '댓글 톤', '일치 키워드', '메일', '점수', '상태'].map(function (x, i) {
+        return h('th', { class: i >= 3 && i <= 5 ? 'num' : '', text: x });
       }))),
       h('tbody', null, rows.length ? rows : h('tr', null, h('td', { colspan: '11', class: 'empty', text: '조건에 맞는 후보가 없습니다.' })))));
 
