@@ -11,9 +11,9 @@
     sub(db.collection('fin_inv_items'), function (s) { F.inv.items = HR.rows(s); });
     sub(db.collection('fin_inv_moves'), function (s) { F.inv.moves = HR.rows(s); });
   };
-  var TYPE = [['product', '완제품'], ['raw', '원료'], ['pack', '부자재 · 포장'], ['promo', '샘플 · 판촉물']];
+  var TYPE = [['product', '완제품'], ['raw', '원료'], ['pack', '부자재 · 포장'], ['promo', '샘플 · 판촉물'], ['setup', '초도 제작비 (동판 · 목형)']];
   var OUT_REASON = [['sale', '판매 출고'], ['sample', '샘플 · 증정 · 촬영'], ['produce', '생산 투입'], ['loss', '폐기 · 불량'], ['adjust', '실사 조정']];
-  var PAY = [['unknown', '결제 확인 필요'], ['unpaid', '미지급'], ['paid', '지급 완료']];
+  var PAY = [['unknown', '결제 확인 필요'], ['sched', '지출예정에서 관리'], ['unpaid', '미지급'], ['paid', '지급 완료']];
   var V = { vat: true, tab: '' };
   var nm = function (list, k) { return (list.filter(function (x) { return x[0] === k; })[0] || [k, k || ''])[1]; };
   var econ = function () { return Object.assign({ price: 35000, ship: 4100, box: 605, pgRate: 3.5, adRate: 30 }, (F.cfg.inv || {}).econ || {}); };
@@ -37,7 +37,8 @@
       x.onHand = x.recv - x.out;
       x.unit = x.buyQty ? x.buyAmt / x.buyQty : 0;                  // 평균 단가 (공급가)
       x.unitVat = x.buyQty ? (x.buyAmt + x.buyVat) / x.buyQty : 0;   // 부가세 포함
-      x.value = x.onHand * x.unit; x.valueIn = x.ordered * x.unit;
+      var setup = x.it.type === 'setup';
+      x.value = setup ? 0 : x.onHand * x.unit; x.valueIn = setup ? 0 : x.ordered * x.unit;
       var per = +x.it.perProduct || 0;
       x.covers = per > 0 ? Math.floor((x.onHand + x.ordered) / per) : null;   // 완제품 몇 개분
     });
@@ -59,7 +60,7 @@
   };
   var money = function (amt, vat) { return F.won(V.vat ? (amt || 0) + (vat || 0) : (amt || 0)); };
   var itemName = function (id) { return (F.inv.items.filter(function (i) { return i.id === id; })[0] || {}).name || '(삭제된 품목)'; };
-  var sortedItems = function () { var o = { product: 0, raw: 1, pack: 2, promo: 3 }; return F.inv.items.slice().sort(function (a, b) { return (o[a.type] - o[b.type]) || ((a.order || 0) - (b.order || 0)) || (a.name < b.name ? -1 : 1); }); };
+  var sortedItems = function () { var o = { product: 0, raw: 1, pack: 2, promo: 3, setup: 4 }; return F.inv.items.slice().sort(function (a, b) { return (o[a.type] - o[b.type]) || ((a.order || 0) - (b.order || 0)) || (a.name < b.name ? -1 : 1); }); };
 
   /* ---------- 현황 ---------- */
   function overview(view) {
@@ -68,6 +69,7 @@
     var vatRate = function (x) { return x.buyAmt ? x.buyVat / x.buyAmt : 0; };
     var val = sum(function (x) { return x.value * (V.vat ? 1 + vatRate(x) : 1); }), valIn = sum(function (x) { return x.valueIn * (V.vat ? 1 + vatRate(x) : 1); });
     var pend = F.inv.moves.filter(function (m) { return m.kind === 'in' && m.pay !== 'paid' && m.reason !== 'adjust'; });
+    var setupSum = F.inv.moves.filter(function (m) { var it = F.inv.items.filter(function (i) { return i.id === m.itemId; })[0]; return m.kind === 'in' && it && it.type === 'setup'; }).reduce(function (a, m) { return a + (+m.amount || 0) + (V.vat ? +m.vat || 0 : 0); }, 0);
     var pendSum = pend.reduce(function (a, m) { return a + (+m.amount || 0) + (V.vat ? +m.vat || 0 : 0); }, 0);
     var prod = items.filter(function (i) { return i.type === 'product'; })[0], px = prod && st[prod.id];
     var cap = Object.keys(st).map(function (k) { return st[k]; }).filter(function (x) { return x.covers != null && x.it.type !== 'product'; }).sort(function (a, b) { return a.covers - b.covers; })[0];
@@ -95,7 +97,7 @@
     ldIn.addEventListener('change', function () { saveInv({ leadDays: +ldIn.value || 60 }).catch(ui.fail); });
 
     ui.put(view, F.kpi([['재고 자산', F.man(val), '', '입고 완료분 · ' + (V.vat ? '부가세 포함' : '공급가')], ['입고 예정 (발주)', F.man(valIn), '', '아직 입고 확인 전'],
-      ['결제 미확인 · 미지급', F.man(pendSum), pend.length ? 'red' : '', pend.length + '건'], ['완제품', finished.toLocaleString('ko-KR') + '개', '', px ? '재고 ' + px.onHand + ' · 예정 ' + px.ordered : '품목 없음'],
+      ['지급 완료 아닌 매입', F.man(pendSum), '', pend.length + '건 · 결제 일정은 지출예정' + (setupSum ? ' · 초도비 ' + F.man(setupSum) : '')], ['완제품', finished.toLocaleString('ko-KR') + '개', '', px ? '재고 ' + px.onHand + ' · 예정 ' + px.ordered : '품목 없음'],
       ['제품 1개 원가', F.won(Math.round(uc.total)), '', '원료 · 부자재 포함'], ['생산 한도', cap ? cap.covers.toLocaleString('ko-KR') + '개' : '-', '', cap ? '가장 먼저 떨어지는 것: ' + cap.it.name : '']]),
       ui.panel('Stock · 품목별 재고', null, h('div', { class: 'table-wrap flat' }, tb),
         h('p', { class: 'meta', text: '「몇 개분」 = (재고 + 입고 예정) ÷ 제품 1개당 사용량. 빨간 숫자가 다음 생산의 병목입니다. 줄을 누르면 품목을 고칩니다.' })),
