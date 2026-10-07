@@ -7,17 +7,11 @@
   var HR = window.HR, F = HR.F, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt;
   var END = '2027-03', CHECK = END;
   var SIM2 = {
-    start: '2026-10', end: END, minCash: 10000000, lead: 1, upfront: 50, cash0: null, committed: true,
+    start: '2026-10', end: END, minCash: 10000000, lead: 1, upfront: 100, cash0: null, committed: true,
     units: { '2026-11': 300, '2026-12': 400, '2027-01': 500, '2027-02': 600, '2027-03': 700 },
     orders: {},
     owner: {}, fund: {},
-    hires: [
-      { role: '브랜드 디자인 리더', monthly: 4000000, from: '2027-02' },
-      { role: 'D2C 국내 리더', monthly: 4000000, from: '2027-04' },
-      { role: '콘텐츠 팀원', monthly: 3200000, from: '2027-05' },
-      { role: 'D2C 해외 리더', monthly: 4500000, from: '2027-08' },
-      { role: '연구개발 전담 매니저', monthly: 4000000, from: '2027-09' }
-    ]
+    hires: []
   };
   F.SIM2 = SIM2;
   function cfg() { var o = JSON.parse(JSON.stringify(SIM2)), s = F.cfg.sim2 || {}; Object.keys(s).forEach(function (k) { o[k] = s[k]; }); o.end = END; return o; }
@@ -80,18 +74,22 @@
       r.plan = +(c.units[ym] || 0); r.sold = Math.min(r.plan, stock); r.lost = r.plan - r.sold; stock -= r.sold; r.stock = stock;
       r.order = +(c.orders[ym] || 0);
       r.rev = r.sold * uv.net; r.vari = r.sold * per;
+      // 변동비 구성 (1개당 변동비를 직접 고쳤으면 같은 비율로 나눔)
+      var vs = (u.varNoAd + u.ad) ? per / (u.varNoAd + u.ad) : 0;
+      r.vLogi = r.sold * u.logi * vs; r.vEtc = r.sold * (u.pg + u.ret + u.review) * vs; r.vAd = r.sold * u.ad * vs;
       var fx = F.fixedAt(ym);
       r.def = { pay: fx.pay, rent: fx.rent, ops: fx.ops, hire: (c.hires || []).reduce(function (a, x) { return a + (x.from && ym >= x.from ? +x.monthly || 0 : 0); }, 0) };
       r.pay = ov('pay', ym, r.def.pay); r.hire = ov('hire', ym, r.def.hire); r.rent = ov('rent', ym, r.def.rent); r.ops = ov('ops', ym, r.def.ops);
       r.extra = (c.extraFixed || []).map(function (x) { return +((x.vals || {})[ym] || 0); });
       r.fixed = r.pay + r.hire + r.rent + r.ops + r.extra.reduce(function (a, v) { return a + v; }, 0);
-      r.inv = r.order * cogs * up + r.arrive * cogs * (1 - up);
+      r.inv = r.order * cogs * up + r.arrive * cogs * (1 - up);   // 기본: 발주한 달에 전액 (현금 기준)
       r.committed = committed.filter(function (s) { return s.date.slice(0, 7) === ym; }).reduce(function (a, s) { return a + (+s.amount || 0); }, 0);
       r.owner = +(c.owner[ym] || 0); r.fund = +(c.fund[ym] || 0);
       r.op = r.rev - r.vari - r.fixed;                     // 영업 현금 (재고 매입 전)
       r.cogsUsed = r.sold * cogs; r.profit = r.op - r.cogsUsed;   // 월 순익 (손익 기준: 판 만큼 원가 반영, 법인세 전)
       cumP += r.profit; r.cumProfit = cumP;
       r.flow = r.op - r.inv - r.committed + r.owner + r.fund;
+      r.outAll = r.vari + r.fixed + r.inv + r.committed; r.inAll = r.rev + r.owner + r.fund;
       cash += r.flow; r.cash = cash;
       r.need = cash < +c.minCash ? Math.ceil((+c.minCash - cash) / 10000000) * 10000000 : 0;   // 최소 보유액까지 채우려면 (천만 원 단위)
       R.push(r);
@@ -167,14 +165,18 @@
     inputRow('예상 판매량 (개)', 'units', '개', '월별로 직접 입력');
     row('실제 판매 가능', function (r) { return { t: n(r.sold) + (r.lost ? ' (−' + n(r.lost) + ')' : ''), c: r.lost ? 'red' : '' }; });
     row('순매출', function (r) { return m(r.rev); });
-    row('변동비 (물류 · 수수료 · 광고)', function (r) { return m(-r.vari); }, 'meta');
-    sec('② 재고 · 발주', (+c.lead === 1 ? '다음 달 입고' : c.lead + '개월 뒤 입고') + ' · 선금 ' + c.upfront + '% (발주 달) / 잔금 (입고 달)');
+    var vsU = (u.varNoAd + u.ad) ? X.uv.vari / (u.varNoAd + u.ad) : 0;
+    row('− 물류 (판매 × ' + F.won(Math.round(u.logi * vsU)) + ')', function (r) { return m(-r.vLogi); }, 'meta');
+    row('− 결제 · 반품 · 리뷰 (판매 × ' + F.won(Math.round((u.pg + u.ret + u.review) * vsU)) + ')', function (r) { return m(-r.vEtc); }, 'meta');
+    row('− 광고 (판매 × ' + F.won(Math.round(u.ad * vsU)) + ')', function (r) { return m(-r.vAd); }, 'meta');
+    row('변동비 합계 (판매 × ' + F.won(Math.round(X.uv.vari)) + ')', function (r) { return m(-r.vari); }, '', 'sx-sum');
+    sec('② 재고 · 발주', '현금 기준 — 발주 대금은 발주한 달에 ' + (+c.upfront >= 100 ? '전액' : c.upfront + '% (나머지는 입고 달)') + ' 나감 · ' + (+c.lead === 1 ? '다음 달 1일 입고' : c.lead + '개월 뒤 입고'));
     inputRow('발주 수량 (개)', 'orders', '개', +c.lead === 1 ? '발주한 달에 입력 → 다음 달 1일부터 판매' : '발주한 달에 입력 → ' + c.lead + '개월 뒤 1일부터 판매');
     row('입고', function (r) { return n(r.arrive); }, 'meta');
     row('월말 재고', function (r) { return { t: n(r.stock) || '0', c: r.stock < (at(fmt.ymShift(r.ym, 1)).plan || 0) ? 'red' : '' }; });
-    row('재고 매입 대금', function (r) { return m(-r.inv); });
+    row('발주 대금 (발주 수량 × 1개당 원가 ' + F.won(Math.round(X.uv.cogs)) + ')', function (r) { return { t: m(-r.inv), c: r.inv ? 'red strong' : '' }; });
     if (R.some(function (r) { return r.committed; })) row('이미 정해진 지급 (에코먼트 잔금 등)', function (r) { return m(-r.committed); });
-    sec('③ 판매와 무관하게 매달 나가는 돈', '지출 흐름 › 고정비 + 아래 채용 계획');
+    sec('③ 판매와 무관하게 매달 나가는 돈', '기본값은 지출 흐름 › 고정비 · 칸을 고치면 이 시트에만 적용 · 사람 · 항목은 「+ 고정비 항목 추가」로');
     // 고정비 입력 행: 칸에는 가져온 기본값이 들어 있고, 고치면 그 달만 덮어씀(굵게). 비우면 기본값으로 돌아감
     var fixRow = function (label, key, guide) {
       var fo = c.fixOver || {}, cur = fo[key] || {};
@@ -192,7 +194,6 @@
         })));
     };
     fixRow('인건비 (현원)', 'pay', '기본: 지출 흐름 › 고정비 인건비');
-    fixRow('인건비 (채용 예정)', 'hire', '기본: 아래 채용 계획');
     fixRow('임대료 · 관리비', 'rent', '기본: 지출 흐름 › 고정비');
     fixRow('운영비 (툴 · 세무 · 물류 기본료 · 이자 · 기타)', 'ops', '기본: 지출 흐름 › 고정비');
     // 직접 추가 항목 (예: 대표 급여, 촬영비 월정액)
@@ -223,6 +224,8 @@
     row('영업 현금 (매출 − 변동비 − 고정비)', function (r) { return { t: F.man(r.op), c: r.op < 0 ? 'red' : '' }; });
     inputRow('대표 차입금 (원)', 'owner', '원', '대표 개인 → 법인 (가수금)');
     inputRow('기타 조달 (원)', 'fund', '원', '정책자금 · 대출 입금');
+    row('이 달 들어오는 돈 (순매출 + 차입 + 조달)', function (r) { return m(r.inAll); });
+    row('이 달 나가는 돈 (변동비 + 고정비 + 발주 대금 + 확정 지급)', function (r) { return m(-r.outAll); }, 'strong');
     row('월 현금흐름', function (r) { return { t: F.man(r.flow), c: r.flow < 0 ? 'red' : '' }; });
     row('월말 현금', function (r) { return { t: F.man(r.cash), c: r.cash < 0 ? 'red sx-neg' : r.cash < +c.minCash ? 'red' : '' }; }, 'strong', 'sx-sum sx-cash');
     row('누적 부족 (이 달까지 필요한 총 차입)', function (r) { return { t: r.need ? F.man(r.need) : '', c: r.need ? 'red strong' : '' }; }, '', 'sx-need');
@@ -258,13 +261,11 @@
       h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
       ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값' }),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
-      h('div', { class: 'two-col fin-two' },
-        ui.panel('Hires · 채용 계획 (③ 인건비 채용 예정에 들어감)', null, hires,
-          h('p', { class: 'meta', text: '현원 인건비 · 임대료 · 운영비는 「지출 흐름 › 고정비」에서 고칩니다. 여기는 아직 입사 전인 사람만.' })),
+      h('div', { class: 'fin-sim-settings' },
         ui.panel('Settings · 기준값', null, h('div', { class: 'stack fin-form' },
           h('div', { class: 'row' }, setting('최소 보유 현금', 'minCash', 'money'), setting('시작 현금 (비우면 실잔액)', 'cash0', 'money')),
-          h('div', { class: 'row' }, setting('발주 → 입고 리드타임 (개월)', 'lead'), setting('발주 선금 (%)', 'upfront'))),
-          h('p', { class: 'meta', text: '재고 매입 대금 = 발주 수량 × 1개당 제품 원가(' + F.won(Math.round(X.uv.cogs)) + '). 선금은 발주한 달, 잔금은 입고한 달에 나갑니다. 부가세 · 정산 시차는 무시한 단순 현금 모형입니다.' }))));
+          h('div', { class: 'row' }, setting('발주 → 입고 리드타임 (개월)', 'lead'), setting('발주 달에 내는 비율 (%) · 100 = 전액', 'upfront'))),
+          h('p', { class: 'meta', text: '발주 대금 = 발주 수량 × 1개당 제품 원가(' + F.won(Math.round(X.uv.cogs)) + '), 기본은 발주한 달에 전액 나가는 현금 기준입니다. 선금 · 잔금으로 나눠 내면 비율을 바꾸세요. 부가세 · 정산 시차는 무시한 단순 현금 모형입니다.' }))));
   }
   HR.register('sim', { render: render });
 })();
