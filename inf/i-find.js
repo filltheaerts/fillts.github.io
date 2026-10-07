@@ -1,0 +1,201 @@
+/* fillts Influencer — 탐색: 씨드 유튜버 1명 → 컨셉 키워드 고르기 → 비슷한 유튜버 리스트 → 체크해서 디벨롭으로 */
+(function () {
+  'use strict';
+  var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
+  var V = I.V.find = { input: '', seed: null, kw: [], custom: '', range: 'wide', n: '30', busy: '', msg: '', err: false,
+    sel: {}, sort: 'score', onlyMail: false, onlyNew: false, q: '', open: {} };
+  var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
+
+  function setMsg(t, err) { V.msg = t; V.err = !!err; HR.refresh(); }
+  function analyze(input) {
+    var seed = String(input || V.input || '').trim();
+    if (!seed) return setMsg('씨드 유튜버의 채널 주소 · @핸들 · 영상 주소 · 채널 이름 중 하나를 넣으세요.', true);
+    V.input = seed; V.busy = 'analyze'; V.seed = null; V.kw = []; setMsg('채널을 읽는 중입니다… (5 ~ 15초)');
+    I.call('infYt', { action: 'analyze', seed: seed }).then(function (r) {
+      V.busy = ''; V.seed = r.seed;
+      // 기본 선택: 채널 키워드 구절 2개, 없으면 상위 단어 3개
+      V.kw = (r.seed.phrases || []).slice(0, 2);
+      if (!V.kw.length) V.kw = (r.seed.keywords || []).slice(0, 3);
+      setMsg('');
+    }).catch(function (e) { V.busy = ''; setMsg(e.message, true); });
+  }
+  function toggleKw(k) {
+    var i = V.kw.indexOf(k);
+    if (i >= 0) V.kw.splice(i, 1); else if (V.kw.length < 5) V.kw.push(k); else ui.toast('키워드는 5개까지 고를 수 있습니다.');
+    HR.refresh();
+  }
+  function scan() {
+    if (!V.seed) return;
+    if (!V.kw.length) return setMsg('컨셉 키워드를 하나 이상 고르세요.', true);
+    V.busy = 'scan'; setMsg('「' + V.kw.join(' · ') + '」로 찾고, 후보 채널의 영상 · 댓글을 읽는 중입니다… (20 ~ 60초)');
+    I.call('infYt', { action: 'scan', seedId: V.seed.id, seed: V.input, keywords: V.kw, range: V.range, n: +V.n }).then(function (r) {
+      V.busy = ''; V.msg = ''; ui.toast('후보 ' + r.count + '명을 찾았습니다.');
+      HR.go('find/' + r.id);
+    }).catch(function (e) { V.busy = ''; setMsg(e.message, true); });
+  }
+
+  /* ============ 탐색 첫 화면 ============ */
+  function home(view) {
+    var inp = ui.input({ value: V.input, placeholder: '예: https://www.youtube.com/@채널 · @핸들 · 영상 주소 · 채널 이름', maxlength: '300', class: 'grow',
+      oninput: function () { V.input = this.value; }, onkeydown: function (e) { if (e.key === 'Enter' && !V.busy) analyze(this.value); } });
+    var step1 = ui.panel('1 · 씨드 유튜버', h('span', { class: 'meta', text: I.quotaText() }),
+      h('p', { class: 'note', text: '컨셉 · 주제가 딱 맞는 유튜버 한 명을 넣으면, 그 채널의 영상 제목 · 태그 · 댓글을 읽어 컨셉 키워드를 뽑습니다.' }),
+      h('div', { class: 'row in-seed-form' }, inp, ui.btn(V.busy === 'analyze' ? '읽는 중…' : '채널 분석', function () { analyze(inp.value); }, V.busy ? 'btn-line' : '')),
+      V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null);
+    var parts = [ui.head('Discover', '비슷한 유튜버 찾기'), step1];
+    if (V.busy && V.busy === 'analyze') step1.querySelector('button').disabled = true;
+
+    if (V.seed) {
+      var sd = V.seed;
+      var picked = h('div', { class: 'in-chips' }, V.kw.length ? V.kw.map(function (k) {
+        return h('button', { type: 'button', class: 'in-chip on', text: k + ' ×', onclick: function () { toggleKw(k); } });
+      }) : h('span', { class: 'meta', text: '아래에서 1 ~ 5개를 고르거나 직접 입력하세요.' }));
+      var opt = function (list, cls) {
+        return h('div', { class: 'in-chips' }, list.filter(function (k) { return V.kw.indexOf(k) < 0; }).map(function (k) {
+          return h('button', { type: 'button', class: 'in-chip ' + (cls || ''), text: '+ ' + k, onclick: function () { toggleKw(k); } });
+        }));
+      };
+      var custom = ui.input({ value: V.custom, maxlength: '30', placeholder: '직접 입력 후 Enter — 예: 민감성 피부, 약산성 클렌저',
+        oninput: function () { V.custom = this.value; },
+        onkeydown: function (e) { if (e.key === 'Enter' && this.value.trim()) { var k = this.value.trim(); V.custom = ''; if (V.kw.indexOf(k) < 0) toggleKw(k); } } });
+      var range = ui.select(RANGES, V.range, { onchange: function () { V.range = this.value; } });
+      var n = ui.select([['20', '20명'], ['30', '30명'], ['40', '40명']], V.n, { onchange: function () { V.n = this.value; } });
+      var go = ui.btn(V.busy === 'scan' ? '찾는 중…' : '비슷한 유튜버 찾기', scan);
+      if (V.busy) go.disabled = true;
+      parts.push(ui.panel('씨드 채널', I.extLink(I.chUrl(sd), '유튜브에서 보기 ↗', 'meta'), seedCard(sd)));
+      parts.push(ui.panel('2 · 컨셉 키워드 고르기', h('span', { class: 'meta', text: V.kw.length + ' / 5' }),
+        h('p', { class: 'note', text: '이 키워드로 유튜브 영상 · 채널을 검색하고, 나온 채널마다 키워드 일치 · 구독자 규모 · 댓글 톤 · 주제 · 참여율을 씨드와 비교해 점수를 매깁니다. 사람 이름 · 일회성 단어는 빼세요.' }),
+        h('div', { class: 'label in-sub', text: '고른 키워드' }), picked,
+        (sd.phrases || []).length ? [h('div', { class: 'label in-sub', text: '채널 키워드 · 태그 구절' }), opt(sd.phrases)] : null,
+        h('div', { class: 'label in-sub', text: '자주 나온 단어' }), opt((sd.keywords || []).slice(0, 24), 'light'),
+        h('div', { class: 'row in-opts' }, ui.field('직접 추가', custom, 'grow'), ui.field('구독자 범위', range), ui.field('깊게 볼 후보 수', n)),
+        h('div', { class: 'row' }, go, h('span', { class: 'meta', text: '1회 ≈ 20 ~ 60초 · ' + I.quotaText() }))));
+    }
+
+    var list = I.scans;
+    parts.push(ui.panel('지난 탐색', h('span', { class: 'meta', text: list.length + '건' }),
+      list.length ? h('ul', { class: 'list in-scan-list' }, list.map(function (s) {
+        var picked = (s.cands || []).filter(function (c) { return I.creator(c.id); }).length;
+        return h('li', { class: 'clickable', tabindex: '0', onclick: function () { HR.go('find/' + s.id); }, onkeydown: function (e) { if (e.key === 'Enter') HR.go('find/' + s.id); } },
+          I.thumb(s.seed), h('div', { class: 'grow' }, h('div', { class: 'strong', text: s.seed.title + ' 와 비슷한 유튜버' }),
+            h('div', { class: 'meta', text: (s.concept || []).join(' · ') + ' — 후보 ' + (s.cands || []).length + '명 · 파이프라인 ' + picked + '명' })),
+          h('span', { class: 'meta', text: HR.name(s.by) + ' · ' + fmt.ts(s.at) }));
+      })) : ui.empty('아직 탐색 기록이 없습니다. 위에서 씨드 유튜버를 넣어 시작하세요.')));
+    ui.put(view, parts);
+  }
+
+  function seedCard(c) {
+    return h('div', { class: 'in-seed' }, I.thumb(c, 'lg'),
+      h('div', { class: 'grow stack sm' },
+        h('div', { class: 'in-seed-title' }, h('b', { text: c.title }), c.handle ? h('span', { class: 'meta', text: ' ' + c.handle }) : null),
+        ui.kv([['구독자', I.cnt(c.subs)], ['최근 중앙 조회수', I.cnt(c.median)], ['참여율', I.pct(c.engage)], ['쇼츠 비중', I.pct(c.shorts)], ['최근 업로드', fmt.dot(c.last)], ['메일', c.email || '설명란에 없음']], 'kv in-kv'),
+        h('div', null, h('span', { class: 'label', text: '댓글 톤 ' }), I.chips(I.toneTags(c.tone), 'light')),
+        (c.sample || []).length ? h('ul', { class: 'in-cmts' }, c.sample.slice(0, 3).map(function (t) { return h('li', { text: t }); })) : null));
+  }
+
+  /* ============ 탐색 결과 ============ */
+  function sorted(s) {
+    var k = V.sort, list = (s.cands || []).slice();
+    var key = { score: function (c) { return c.score; }, subs: function (c) { return c.subs; }, median: function (c) { return c.median; },
+      tone: function (c) { return c.parts ? c.parts.tone : 0; }, engage: function (c) { return c.engage; } }[k] || function (c) { return c.score; };
+    var q = V.q.trim().toLowerCase();
+    return list.filter(function (c) {
+      if (V.onlyMail && !c.email) return false;
+      if (V.onlyNew && I.creator(c.id)) return false;
+      if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return key(b) - key(a); });
+  }
+  function result(view, s) {
+    var sel = V.sel[s.id] || (V.sel[s.id] = {});
+    var list = sorted(s), nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
+    var seg = h('div', { class: 'in-seg' }, [['score', '점수'], ['subs', '구독자'], ['median', '조회수'], ['tone', '댓글 톤'], ['engage', '참여율']].map(function (x) {
+      return h('button', { type: 'button', class: V.sort === x[0] ? 'active' : '', text: x[1], onclick: function () { V.sort = x[0]; HR.refresh(); } });
+    }));
+    var chk = function (label, key) { return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: V[key], onchange: function () { V[key] = this.checked; HR.refresh(); } }), ' ' + label); };
+    var q = ui.input({ value: V.q, placeholder: '채널 · 키워드 검색', onchange: function () { V.q = this.value; HR.refresh(); } });
+
+    var rows = [];
+    list.forEach(function (c) {
+      var inP = I.creator(c.id), open = V.open[c.id];
+      var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP, 'aria-label': c.title + ' 선택',
+        onclick: function (e) { e.stopPropagation(); }, onchange: function () { sel[c.id] = this.checked; HR.refresh(); } });
+      rows.push(h('tr', { class: 'clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); } },
+        h('td', { class: 'in-cb' }, cb),
+        h('td', null, h('div', { class: 'in-ch' }, I.thumb(c), h('div', { class: 'in-ch-t' }, h('div', { class: 'strong', text: c.title }),
+          h('div', { class: 'meta', text: [c.handle, c.country, c.last ? '최근 ' + fmt.dot(c.last).slice(2) : ''].filter(Boolean).join(' · ') })))),
+        h('td', { class: 'num', text: I.cnt(c.subs) }), h('td', { class: 'num', text: I.cnt(c.median) }), h('td', { class: 'num', text: I.pct(c.engage) }),
+        h('td', { class: 'in-tone-cell' }, h('div', { text: I.toneTags(c.tone).slice(0, 2).join(' · ') }), h('div', { class: 'meta', text: '톤 일치 ' + Math.round((c.parts ? c.parts.tone : 0) * 100) + '%' })),
+        h('td', null, I.chips((c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 4), 'light')),
+        h('td', { class: 'in-mail-cell', text: c.email ? '있음' : '—' }),
+        h('td', null, I.scoreBar(c.score)),
+        h('td', null, inP ? I.stTag(inP.stage) : null)));
+      if (open) rows.push(h('tr', { class: 'in-detail' }, h('td', { colspan: '10' }, candDetail(c, s, inP))));
+    });
+    var table = h('div', { class: 'table-wrap' }, h('table', { class: 'table in-table' },
+      h('thead', null, h('tr', null, ['', '채널', '구독자', '중앙 조회수', '참여율', '댓글 톤', '일치 키워드', '메일', '점수', '상태'].map(function (x, i) {
+        return h('th', { class: i >= 2 && i <= 4 ? 'num' : '', text: x });
+      }))),
+      h('tbody', null, rows.length ? rows : h('tr', null, h('td', { colspan: '10', class: 'empty', text: '조건에 맞는 후보가 없습니다.' })))));
+
+    var bar = h('div', { class: 'in-actionbar' + (nSel ? ' show' : '') },
+      h('span', { class: 'strong', text: nSel + '명 선택' }),
+      ui.btn('디벨롭으로 추가', function () {
+        var picks = (s.cands || []).filter(function (c) { return sel[c.id]; });
+        I.addToPipe(picks, s).then(function (r) {
+          V.sel[s.id] = {}; ui.toast(r.n + '명을 디벨롭에 추가했습니다.' + (r.skip ? ' (이미 있는 ' + r.skip + '명 제외)' : ''));
+        }).catch(ui.fail);
+      }, 'btn-sm'),
+      ui.btn('선택 해제', function () { V.sel[s.id] = {}; HR.refresh(); }, 'btn-line btn-sm'));
+
+    ui.put(view,
+      ui.head('Discover · ' + fmt.ts(s.at), s.seed.title + ' 와 비슷한 유튜버', h('div', { class: 'row' }, ui.btn('← 탐색', function () { HR.go('find'); }, 'btn-line btn-sm'))),
+      ui.panel('씨드 · 컨셉', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
+        seedCard(s.seed), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), I.chips(s.concept, 'on')),
+      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
+        h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
+        ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),
+      table,
+      h('p', { class: 'note', text: '점수 = 키워드 일치 32% · 구독자 규모 22% · 댓글 톤 20% · 주제 14% · 참여율(중앙 조회수 ÷ 구독자) 12%. 댓글은 최근 영상 2편의 상위 댓글 기준입니다.' }),
+      (s.by === S.mid || S.isAdmin) ? h('div', { class: 'row' }, ui.confirmBtn('이 탐색 기록 삭제', function () { db.doc('inf_scans/' + s.id).delete().then(function () { HR.go('find'); }).catch(ui.fail); })) : null,
+      bar);
+  }
+
+  function candDetail(c, s, inP) {
+    var p = c.parts || {};
+    var parts = [['키워드', p.kw], ['구독자', p.sub], ['댓글 톤', p.tone], ['주제', p.topic], ['참여율', p.eng]];
+    return h('div', { class: 'in-cand' },
+      h('div', { class: 'in-cand-col' },
+        h('div', { class: 'label', text: '채널 소개' }), h('p', { class: 'in-desc', text: c.desc || '(설명 없음)' }),
+        h('div', { class: 'row in-links' }, I.extLink(I.chUrl(c), '채널 열기 ↗'), c.email ? h('span', { class: 'meta', text: c.email }) : null,
+          c.insta ? I.extLink('https://instagram.com/' + c.insta, '@' + c.insta + ' ↗') : null),
+        h('div', { class: 'label', text: '최근 영상' }),
+        h('ul', { class: 'in-vids' }, (c.recent || []).map(function (v) { return h('li', null, I.extLink(I.vidUrl(v.id), v.title), h('span', { class: 'meta', text: ' ' + I.cnt(v.views) + '회 · ' + fmt.dot(v.at).slice(2) })); })),
+        h('div', { class: 'label', text: '점수 구성' }),
+        h('div', { class: 'in-parts' }, parts.map(function (x) { return h('span', { class: 'in-chip light', text: x[0] + ' ' + Math.round((x[1] || 0) * 100) }); })),
+        c.via && c.via.length ? h('p', { class: 'meta', text: '검색 「' + c.via.join('」 「') + '」에서 발견' }) : null),
+      h('div', { class: 'in-cand-col' },
+        h('div', { class: 'label', text: '댓글 톤 — 씨드와 비교' }), I.toneBars(c.tone, s.seed.tone, s.seed.title),
+        (c.sample || []).length ? h('ul', { class: 'in-cmts' }, c.sample.slice(0, 4).map(function (t) { return h('li', { text: t }); })) : null,
+        h('div', { class: 'row in-cand-act' },
+          inP ? ui.btn('파이프라인에서 열기', function () { HR.go('c/' + c.id); }, 'btn-sm')
+            : ui.btn('디벨롭으로 추가', function () { I.addToPipe([c], s).then(function () { ui.toast(c.title + ' — 디벨롭에 추가'); }).catch(ui.fail); }, 'btn-sm'),
+          ui.btn('이 채널을 씨드로 다시 찾기', function () { V.input = c.id; HR.go('find'); analyze(c.id); }, 'btn-line btn-sm'))));
+  }
+
+  HR.register('find', { render: function (view, parts) {
+    if (parts[0]) {
+      var s = I.scan(parts[0]);
+      if (!s) {
+        if (!I.loaded.scans) return ui.put(view, ui.empty('불러오는 중…'));
+        // 30개 밖의 오래된 탐색은 한 번 읽어 온다
+        var c = HR.load('scan/' + parts[0], function () { return db.doc('inf_scans/' + parts[0]).get().then(function (d) { return d.exists ? Object.assign({ id: d.id }, d.data()) : null; }); });
+        if (!c) return ui.put(view, ui.empty('탐색 기록을 찾지 못했습니다.'), ui.btn('← 탐색', function () { HR.go('find'); }, 'btn-line btn-sm'));
+        s = c;
+      }
+      return result(view, s);
+    }
+    home(view);
+  } });
+  I.analyze = analyze;
+})();

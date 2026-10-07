@@ -1,0 +1,175 @@
+/* fillts Influencer — 데이터 구독 · 단계 정의 · 공통 화면 조각
+   컬렉션: inf_scans(탐색 결과, 서버 작성) · inf_creators(파이프라인, 문서 ID = 유튜브 채널 ID) · inf_config/main(메일 템플릿 · 브랜드)
+           inf_mail(메일 발송 기록, 서버 작성) · inf_status/quota(하루 탐색 사용량, 서버 작성)
+   권한: 구성원 전원 (core.js APPS open) — 서버 보안 규칙이 최종 판정한다. */
+(function () {
+  'use strict';
+  var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
+  var I = HR.I = { scans: [], creators: [], mail: [], cfg: {}, quota: {}, loaded: {}, V: {} };
+  I.FN = 'https://asia-northeast3-fillts-web.cloudfunctions.net/';
+
+  HR.APP.onStart = function (sub) {
+    var on = function (k) { return function (s) { I[k] = HR.rows(s); I.loaded[k] = true; }; };
+    sub(db.collection('inf_scans').orderBy('at', 'desc').limit(30), on('scans'));
+    sub(db.collection('inf_creators'), on('creators'));
+    sub(db.collection('inf_mail').orderBy('at', 'desc').limit(60), on('mail'));
+    sub(db.doc('inf_config/main'), function (s) { I.cfg = s.exists ? s.data() : {}; I.loaded.cfg = true; });
+    sub(db.doc('inf_status/quota'), function (s) { I.quota = s.exists ? s.data() : {}; });
+  };
+
+  /* ---------- 단계: 디벨롭 → 컨택 예정 → 메일 문의 → 협의 → 계약 → 시딩 → 업로드 대기 → 완료 (+ 보류 · 거절) ---------- */
+  I.STAGES = [
+    { id: 'review', name: '디벨롭', desc: '체크한 후보 — 채널 · 댓글 · 단가 감 보기', cls: '' },
+    { id: 'contact', name: '컨택 예정', desc: '연락하기로 결정 — 연락처 확보', cls: '' },
+    { id: 'mailed', name: '메일 문의', desc: '제안 메일 발송 — 회신 대기', cls: 'warn' },
+    { id: 'talk', name: '협의', desc: '회신 받음 — 조건 · 단가 · 일정 협의', cls: 'warn' },
+    { id: 'contract', name: '계약', desc: '계약 성사 — 조건 확정', cls: 'red' },
+    { id: 'seeding', name: '시딩', desc: '제품 발송 — 수령 확인', cls: 'red' },
+    { id: 'waiting', name: '업로드 대기', desc: '콘텐츠 업로드를 기다리는 중', cls: 'red' },
+    { id: 'done', name: '완료', desc: '업로드 확인 · 성과 기록', cls: '' },
+    { id: 'drop', name: '보류 · 거절', desc: '지금은 진행하지 않음', cls: 'mute' }
+  ];
+  I.ST = {}; I.STAGES.forEach(function (s, i) { s.no = i; I.ST[s.id] = s; });
+  I.stName = function (id) { return (I.ST[id] || I.ST.review).name; };
+  I.stTag = function (id) { var s = I.ST[id] || I.ST.review; return ui.tag(s.name, s.cls); };
+  I.DEAL_TYPES = ['제품 협찬', '유료 광고', '제품 + 유료', '수익 배분 (어필리에이트)'];
+  I.CARRIERS = ['CJ대한통운', '우체국택배', '한진택배', '롯데택배', '로젠택배', '퀵 · 직접 전달', '기타'];
+
+  /* ---------- 포맷 ---------- */
+  I.cnt = function (n) {
+    n = +n || 0;
+    if (n >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억';
+    if (n >= 1e4) return (n / 1e4).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + '만';
+    return n.toLocaleString('ko-KR');
+  };
+  I.pct = function (x) { return (Math.round((+x || 0) * 1000) / 10) + '%'; };
+  I.won = function (n) { return n ? Math.round(n).toLocaleString('ko-KR') + '원' : ''; };
+  I.ms = function (ts) { return ts && ts.toMillis ? ts.toMillis() : (typeof ts === 'number' ? ts : 0); };
+  I.daysSince = function (ts) { var m = I.ms(ts); return m ? Math.floor((Date.now() - m) / 86400000) : null; };
+  I.chUrl = function (ch) { return 'https://www.youtube.com/' + (ch.handle && ch.handle[0] === '@' ? ch.handle : 'channel/' + ch.id); };
+  I.vidUrl = function (id) { return 'https://www.youtube.com/watch?v=' + id; };
+  I.thumb = function (ch, cls) {
+    return ch && ch.thumb ? h('img', { class: 'in-thumb ' + (cls || ''), src: ch.thumb, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
+      : h('span', { class: 'in-thumb in-thumb-x ' + (cls || ''), text: ((ch && ch.title) || '?').slice(0, 1) });
+  };
+  I.extLink = function (href, text, cls) { return h('a', { href: href, target: '_blank', rel: 'noopener noreferrer', class: cls || '', text: text }); };
+
+  /* ---------- 댓글 톤 → 한 줄 요약 ---------- */
+  I.toneTags = function (t) {
+    if (!t || !t.n) return ['댓글 정보 없음'];
+    var out = [t.polite >= 0.5 ? '존댓말 위주' : t.casual >= 0.6 ? '반말 · 친구 톤' : '존댓말 · 반말 섞임'];
+    if (t.ask >= 0.15) out.push('제품 · 정보 질문 많음');
+    if (t.praise >= 0.3) out.push('칭찬 · 응원 많음');
+    if (t.laugh >= 0.25) out.push('ㅋㅋ 많음');
+    if (t.emoji >= 0.25) out.push('이모지 많음');
+    if (t.cry >= 0.15) out.push('공감 ㅠㅠ');
+    if (t.neg >= 0.08) out.push('부정 반응 있음');
+    out.push(t.len >= 60 ? '긴 댓글' : t.len <= 20 ? '짧은 댓글' : '보통 길이');
+    return out;
+  };
+  I.TONE_ROWS = [['polite', '존댓말'], ['casual', '반말'], ['praise', '칭찬 · 응원'], ['ask', '제품 · 정보 질문'], ['laugh', 'ㅋㅋ · ㅎㅎ'], ['emoji', '이모지'], ['cry', 'ㅠㅠ'], ['q', '물음표'], ['neg', '부정']];
+  // 막대 비교 (씨드 vs 후보) — 너비는 CSSOM으로 (CSP가 style 속성을 막는다)
+  I.toneBars = function (t, ref, refName) {
+    if (!t || !t.n) return ui.empty('댓글을 읽지 못했습니다 (댓글 사용 중지 또는 영상 없음).');
+    var bar = function (v, cls) { var f = h('span', { class: 'in-bar-fill ' + (cls || '') }); f.style.width = Math.round(Math.min(1, v || 0) * 100) + '%'; return h('span', { class: 'in-bar' }, f); };
+    return h('div', { class: 'in-tone' },
+      h('p', { class: 'meta', text: '댓글 ' + t.n + '개 · 평균 ' + t.len + '자' + (ref ? ' · 회색 막대 = ' + (refName || '씨드') : '') }),
+      I.TONE_ROWS.map(function (r) {
+        return h('div', { class: 'in-tone-row' }, h('span', { class: 'in-tone-k', text: r[1] }),
+          h('span', { class: 'in-tone-bars' }, bar(t[r[0]]), ref && ref.n ? bar(ref[r[0]], 'ref') : null),
+          h('span', { class: 'in-tone-v', text: Math.round((t[r[0]] || 0) * 100) + '%' }));
+      }));
+  };
+  I.chips = function (list, cls) { return h('div', { class: 'in-chips' }, (list || []).map(function (x) { return h('span', { class: 'in-chip ' + (cls || ''), text: x }); })); };
+  I.scoreBar = function (s) {
+    var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.max(0, Math.min(100, s || 0)) + '%';
+    return h('span', { class: 'in-score' }, h('span', { class: 'in-score-track' }, f), h('b', { text: String(s || 0) }));
+  };
+
+  /* ---------- 데이터 ---------- */
+  I.creator = function (id) { return I.creators.filter(function (c) { return c.id === id; })[0] || null; };
+  I.scan = function (id) { return I.scans.filter(function (s) { return s.id === id; })[0] || null; };
+  I.byStage = function (st) { return I.creators.filter(function (c) { return (c.stage || 'review') === st; }); };
+  I.now = function () { return firebase.firestore.Timestamp.now(); };
+  I.logItem = function (k, t) { return { at: I.now(), by: S.mid, k: k, t: String(t).slice(0, 300) }; };
+  // 채널 스냅샷 — 탐색 결과에서 필요한 것만 (문서 1MB 한도 · 화면 속도)
+  I.snap = function (c) {
+    var o = {};
+    ['id', 'title', 'handle', 'thumb', 'country', 'desc', 'email', 'insta', 'subs', 'views', 'videos', 'since', 'topics', 'median', 'avg', 'engage', 'cat', 'shorts', 'last', 'tone', 'sample', 'recent']
+      .forEach(function (k) { if (c[k] != null) o[k] = c[k]; });
+    o.keywords = (c.keywords || []).slice(0, 15);
+    o.at = Date.now();
+    return o;
+  };
+  // 탐색 후보 → 파이프라인 「디벨롭」 (이미 있는 채널은 건너뜀)
+  I.addToPipe = function (cands, scan) {
+    var b = db.batch(), n = 0, skip = 0;
+    cands.forEach(function (c) {
+      if (I.creator(c.id)) { skip++; return; }
+      b.set(db.doc('inf_creators/' + c.id), {
+        ch: I.snap(c), stage: 'review', stageAt: I.now(), owner: S.mid, score: c.score || 0,
+        scanId: scan ? scan.id : '', seedTitle: scan && scan.seed ? scan.seed.title : '',
+        email: c.email || '', insta: c.insta || '', manager: '', phone: '', memo: '', tags: (c.matched || []).slice(0, 5),
+        log: [I.logItem('stage', scan ? '탐색 「' + scan.seed.title + '와 비슷한 유튜버」에서 디벨롭으로 추가' : '디벨롭으로 추가')],
+        mails: 0, by: S.mid, at: FV.serverTimestamp(), updatedAt: FV.serverTimestamp(), updatedBy: S.mid
+      });
+      n++;
+    });
+    if (!n) return Promise.resolve({ n: 0, skip: skip });
+    return b.commit().then(function () { return { n: n, skip: skip }; });
+  };
+  I.save = function (c, patch, logText, kind) {
+    var d = Object.assign({}, patch, { updatedAt: FV.serverTimestamp(), updatedBy: S.mid });
+    if (logText) d.log = FV.arrayUnion(I.logItem(kind || 'note', logText));
+    return db.doc('inf_creators/' + c.id).update(d);
+  };
+  I.setStage = function (c, st, why) {
+    if (!I.ST[st] || c.stage === st) return Promise.resolve();
+    return I.save(c, { stage: st, stageAt: I.now() }, I.stName(c.stage) + ' → ' + I.stName(st) + (why ? ' · ' + why : ''), 'stage')
+      .then(function () { ui.toast(c.ch.title + ' · ' + I.stName(st)); }).catch(ui.fail);
+  };
+  I.call = function (fn, body) {
+    return HR.auth.currentUser.getIdToken().then(function (tok) {
+      return fetch(I.FN + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify(body) });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || '서버 오류 (' + r.status + ')'); return j; });
+    });
+  };
+  I.quotaText = function () {
+    var q = I.quota || {}, used = q.day === fmt.today() ? q.scans || 0 : 0;
+    return '오늘 탐색 ' + used + ' / ' + (q.limit || 12) + '회';
+  };
+
+  /* ---------- 할 일 (Overview · 카드 경고) ---------- */
+  I.todos = function (c) {
+    var t = [], today = fmt.today(), st = c.stage || 'review', d = I.daysSince(c.stageAt);
+    if (c.next && c.next.text && c.next.due && c.next.due <= today) t.push({ red: true, t: '할 일 ' + (c.next.due < today ? '지남' : '오늘') + ' — ' + c.next.text });
+    if (st === 'contact' && !c.email) t.push({ t: '연락처(메일) 확보 필요' });
+    if (st === 'contact' && c.email && d >= 2) t.push({ t: '컨택 예정 ' + d + '일째 — 제안 메일 보내기' });
+    if (st === 'mailed') { var md = I.daysSince(c.lastMailAt || c.stageAt); if (md >= 5) t.push({ red: md >= 10, t: '회신 없음 ' + md + '일 — 리마인드 메일' }); }
+    if (st === 'talk' && d >= 7) t.push({ t: '협의 ' + d + '일째 — 조건 정리 · 결정' });
+    if (st === 'contract' && !(c.seed && c.seed.sent)) t.push({ t: '계약 완료 — 시딩(제품 발송) 필요' });
+    if (st === 'seeding' && c.seed && c.seed.sent && !c.seed.recv && fmt.dk(today) - fmt.dk(c.seed.sent) >= 3) t.push({ t: '발송 후 수령 확인 필요' });
+    if ((st === 'waiting' || st === 'seeding') && c.deal && c.deal.due && c.deal.due < today) t.push({ red: true, t: '업로드 예정일(' + fmt.dot(c.deal.due) + ') 지남' });
+    return t;
+  };
+
+  /* ---------- 메일 템플릿 ---------- */
+  I.DEFAULT_TPL = [
+    { id: 't1', name: '첫 협업 제안', subject: '[{브랜드}] {채널명}님께 협업 제안드립니다',
+      body: '안녕하세요, {채널명}님.\n{브랜드}를 만드는 fillts의 {보낸사람}입니다.\n\n최근 올려 주신 「{최근영상}」을 보고 연락드립니다. {채널명}님 콘텐츠와 구독자 분들의 반응이 저희가 전하고 싶은 이야기와 잘 맞는다고 생각했습니다.\n\n{브랜드소개}\n\n{제품}을(를) 직접 써 보시고, 마음에 드시면 콘텐츠로 소개해 주실 수 있을지 여쭙고 싶습니다.\n- 진행 방식: 제품 협찬 / 유료 광고 — 편하신 방식으로 말씀 주세요\n- 일정: 협의\n- 광고 표기: 「유료 광고 포함」 등 표시광고법에 맞춘 표기를 부탁드립니다\n\n관심 있으시면 이 메일로 회신 부탁드립니다. 단가표나 미디어킷을 함께 보내 주시면 검토가 빠릅니다.\n\n감사합니다.\n{보낸사람} {직함} | fillts\n{연락처}' },
+    { id: 't2', name: '제품 시딩 제안', subject: '[{브랜드}] {채널명}님께 제품을 보내 드리고 싶습니다',
+      body: '안녕하세요, {채널명}님.\nfillts {브랜드}의 {보낸사람}입니다.\n\n{제품}을(를) 부담 없이 먼저 써 보실 수 있도록 보내 드리고 싶어 연락드립니다. 콘텐츠 제작 의무는 없고, 써 보시고 마음에 드시면 자유롭게 소개해 주시면 됩니다.\n\n받으실 주소와 연락처를 회신해 주시면 바로 발송하겠습니다.\n\n감사합니다.\n{보낸사람} {직함} | fillts\n{연락처}' },
+    { id: 't3', name: '회신 리마인드', subject: 'Re: [{브랜드}] {채널명}님께 협업 제안드립니다',
+      body: '안녕하세요, {채널명}님.\n지난번 드린 협업 제안 메일을 확인하셨을까 하여 한 번 더 연락드립니다.\n\n바쁘신 중에 번거롭게 해 드려 죄송합니다. 지금은 어려우시다면 짧게라도 회신 주시면 다음 기회에 다시 인사드리겠습니다.\n\n감사합니다.\n{보낸사람} {직함} | fillts\n{연락처}' }
+  ];
+  I.templates = function () { return I.cfg.templates && I.cfg.templates.length ? I.cfg.templates : I.DEFAULT_TPL; };
+  I.VARS = ['채널명', '구독자', '최근영상', '브랜드', '제품', '브랜드소개', '보낸사람', '직함', '연락처', '담당자'];
+  I.fillTpl = function (text, c) {
+    var me = S.members[S.mid] || {}, sig = ((I.cfg.sigs || {})[S.mid]) || {}, ch = c.ch || {};
+    var v = { '채널명': ch.title || '', '구독자': I.cnt(ch.subs), '최근영상': ch.recent && ch.recent[0] ? ch.recent[0].title : '최근 영상',
+      '브랜드': I.cfg.brand || '바인그라피', '제품': I.cfg.product || '저희 제품', '브랜드소개': I.cfg.intro || '',
+      '보낸사람': me.name || '', '직함': sig.title || me.title || '', '연락처': [sig.phone, (S.user && S.user.email) || ''].filter(Boolean).join(' · '), '담당자': c.manager || ch.title || '' };
+    return String(text || '').replace(/\{([^{}]+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }).replace(/\n{3,}/g, '\n\n');
+  };
+})();
