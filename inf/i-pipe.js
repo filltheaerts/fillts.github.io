@@ -111,16 +111,22 @@
   }
   function table(list) {
     list = list.slice().sort(function (a, b) { return I.ST[a.stage || 'review'].no - I.ST[b.stage || 'review'].no || byRecent(a, b); });
-    return h('div', { class: 'table-wrap' }, h('table', { class: 'table in-table' },
-      h('thead', null, h('tr', null, ['채널', '단계', '구독자', '점수', '담당', '메일', '계약', '다음 할 일', '업데이트'].map(function (x, i) { return h('th', { class: i === 2 || i === 3 ? 'num' : '', text: x }); }))),
+    // 엑셀처럼 촘촘하게 — 계약 전 판단에 필요한 예상 견적 · 실제 견적이 한 화면에 보이게
+    var W = [0, 74, 58, 40, 60, 0, 92, 86, 0, 74];
+    return h('div', { class: 'in-xls-wrap' }, h('table', { class: 'table in-xls in-pipe-xls' },
+      h('colgroup', null, W.map(function (w) { var c = h('col'); if (w) c.style.width = w + 'px'; return c; })),
+      h('thead', null, h('tr', null, ['채널', '단계', '구독자', '점수', '담당', '메일', '예상 견적', '실제 견적', '다음 할 일', '업데이트'].map(function (x, i) {
+        return h('th', { class: i === 2 || i === 3 || i === 6 || i === 7 ? 'num' : '', title: i === 6 ? '전용 영상 1편 어림값 — 중앙 조회수 × 25 ~ 50원' : i === 7 ? '계약 조건에 적은 금액' : null, text: x });
+      }))),
       h('tbody', null, list.map(function (c) {
         var t = I.todos(c);
         return h('tr', { class: 'clickable', onclick: function () { HR.go('c/' + c.id); } },
-          h('td', null, h('div', { class: 'in-ch' }, I.thumb(c.ch, 'sm'), h('div', { class: 'in-ch-t' }, h('div', { class: 'strong', text: c.ch.title }), h('div', { class: 'meta', text: c.ch.handle || '' })))),
+          h('td', null, h('div', { class: 'in-ch in-ch-xs' }, h('div', { class: 'in-ch-t' }, h('div', { class: 'strong in-ell', title: c.ch.title, text: c.ch.title }), h('div', { class: 'meta', text: c.ch.handle || '' })))),
           h('td', null, I.stTag(c.stage)), h('td', { class: 'num', text: I.cnt(c.ch.subs) }), h('td', { class: 'num', text: String(c.score || 0) }),
-          h('td', { text: ownerName(c) }), h('td', { text: c.email || '—' }),
-          h('td', { text: c.deal && c.deal.type ? c.deal.type + (c.deal.fee ? ' · ' + I.won(c.deal.fee) : '') : '' }),
-          h('td', { class: t.some(function (x) { return x.red; }) ? 'red' : '', text: t.length ? t[0].t : (c.next && c.next.text) || '' }),
+          h('td', { class: 'in-ell', text: ownerName(c) }), h('td', { class: 'in-ell', title: c.email || '', text: c.email || '—' }),
+          h('td', { class: 'num in-est', text: I.estText(c.ch) }),
+          h('td', { class: 'num strong', text: c.deal && c.deal.fee ? I.manwon(c.deal.fee) : '' }),
+          h('td', { class: 'in-ell' + (t.some(function (x) { return x.red; }) ? ' red' : ''), title: t.length ? t[0].t : (c.next && c.next.text) || '', text: t.length ? t[0].t : (c.next && c.next.text) || '' }),
           h('td', { class: 'meta', text: fmt.ts(c.updatedAt) }));
       }))));
   }
@@ -214,7 +220,7 @@
     var signed = ui.input({ type: 'date', value: d.signed || '' });
     var note = h('textarea', { rows: '3', maxlength: '2000', value: d.note || '', placeholder: '2차 활용 · 광고 표기 · 수정 횟수 · 정산 조건' });
     var val = function () { return { type: type.value, fee: Math.round(+String(fee.value).replace(/[^\d]/g, '') || 0), deliver: deliver.value.trim(), due: due.value, signed: signed.value, note: note.value.trim() }; };
-    return ui.panel('계약 조건', d.type ? ui.tag(d.type + (d.fee ? ' · ' + I.won(d.fee) : ''), 'red') : null,
+    return ui.panel('계약 조건', h('div', { class: 'row' }, h('span', { class: 'meta', text: '예상 견적 ' + I.estText(c.ch) + ' (전용 영상 1편 어림값)' }), d.type ? ui.tag(d.type + (d.fee ? ' · ' + I.won(d.fee) : ''), 'red') : null),
       form([h('div', { class: 'row' }, ui.field('방식', type), ui.field('금액', fee), ui.field('계약일', signed), ui.field('업로드 예정일', due)),
         ui.field('결과물', deliver), ui.field('조건 메모', note)], function (msg) {
         I.save(c, { deal: val() }, '계약 조건 저장').then(function () { ui.ok(msg, '저장했습니다.'); }).catch(function (e) { ui.fail(e, msg); });

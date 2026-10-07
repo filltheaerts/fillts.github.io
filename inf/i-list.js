@@ -61,7 +61,7 @@
     var head = h('div', { class: 'in-row in-row-head in-dbrow' },
       h('div', { class: 'in-r-cb' }, hcell('at', '#')),
       h('div', { class: 'in-r-ch' }, hcell('title', '채널'), opt.sideHead ? hcell(opt.sideHead[0], opt.sideHead[1]) : null),
-      h('div', { class: 'in-r-stats' }, hcell('subs', '구독'), hcell('median', '조회'), hcell('cmt', '댓글수'), hcell('gap', '주기'), hcell('growth', '상승')),
+      h('div', { class: 'in-r-stats' }, hcell('subs', '구독'), hcell('median', '조회'), hcell('cmt', '댓글수'), hcell('gap', '주기'), hcell('growth', '조회 추세')),
       h('div', { class: 'in-r-side' }, opt.metaHead ? hcell(opt.metaHead[0], opt.metaHead[1]) : null, hcell('upd', '최신화')));
     var rows = I.sortRows(list, st).map(function (c, i) {
       var ch = c.ch || {};
@@ -72,7 +72,7 @@
           h('div', { class: 'in-r-tags' }, opt.tags(c)))),
         h('div', { class: 'in-r-stats' }, stat('구독', I.cnt(ch.subs)), stat('조회', ch.median != null ? I.cnt(ch.median) : '—'),
           stat('댓글수', ch.cmtAvg != null ? I.cnt(ch.cmtAvg) : ch.cmtMed != null ? I.cnt(ch.cmtMed) : '—'), stat('주기', I.gap(ch)),
-          stat('상승', ch.growth ? ch.growth + '배' : '—', ch.growth >= 1.2 ? 'red' : '')),
+          stat('조회 추세', ch.growth ? ch.growth + '배' : '—', ch.growth >= 1.2 ? 'red' : '')),
         h('div', { class: 'in-r-side' }, opt.side(c), h('div', { class: 'in-r-acts' }, opt.acts(c))));
     });
     return h('div', { class: 'in-rows' }, head, rows.length ? rows : h('p', { class: 'empty', text: opt.empty || '비어 있습니다.' }));
@@ -103,7 +103,7 @@
   }
   function csv(list) {
     var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
-    var rows = [['채널', '핸들', '채널 주소', '구독자', '중앙 조회', '평균 댓글', '업로드 주기', '조회 상승(배)', '소속', '메일', '단계', '담당', '출처', '추가일', '최신화']];
+    var rows = [['채널', '핸들', '채널 주소', '구독자', '중앙 조회', '평균 댓글', '업로드 주기', '조회 추세(배)', '소속', '메일', '단계', '담당', '출처', '추가일', '최신화']];
     I.sortRows(list, V).forEach(function (c) {
       var ch = c.ch || {}, ag = I.agency(Object.assign({}, ch, { email: c.email || ch.email }));
       rows.push([ch.title, ch.handle, I.chUrl(ch), ch.subs, ch.median, ch.cmtAvg != null ? ch.cmtAvg : ch.cmtMed, I.gap(ch), ch.growth, ag.p ? '소속 ' + ag.p + '%' : '개인', c.email || ch.email || '',
@@ -145,7 +145,7 @@
       ui.panel(null, null,
         h('div', { class: 'row in-seed-form' }, addIn, addBtn),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
-        h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트의 채널은 다음 탐색부터 자동으로 빠집니다. 머리줄(구독 · 조회 · 댓글수 · 주기 · 상승 …)을 누르면 그 기준으로 정렬되고, 한 번 더 누르면 반대로 정렬됩니다. 줄을 누르면 채널 데이터베이스가 열립니다.' })),
+        h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트의 채널은 다음 탐색부터 자동으로 빠집니다. 머리줄(구독 · 조회 · 댓글수 · 주기 · 조회 추세 …)을 누르면 그 기준으로 정렬되고, 한 번 더 누르면 반대로 정렬됩니다. 줄을 누르면 채널 데이터베이스가 열립니다.' })),
       h('div', { class: 'toolbar in-toolbar' }, q, stSel, agSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명' })),
       table);
   }

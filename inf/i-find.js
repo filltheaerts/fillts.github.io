@@ -8,7 +8,7 @@
     rnd: { cats: ['cleanse', 'skin3040', 'clean', 'premium', 'selfcare'], src: { past: false, list: false }, last: [] } };
   var TABS = [['', '① 비슷한 유튜버 찾기'], ['cond', '② 조건 탐색'], ['random', '③ 랜덤 탐색']];
   var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
-  var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회수 상승 · 댓글 활발']];
+  var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회 추세 · 댓글 활발']];
   var MAXSUBS = [['10000', '1만 미만'], ['30000', '3만 미만'], ['50000', '5만 미만'], ['100000', '10만 미만'], ['300000', '30만 미만']];
   // 카테고리 프리셋 — 바인그라피 기준 (포도 클린뷰티 클렌징 젤 · 오일, 3~5만원 프리미엄, 30~55세 「뷰티를 알고 좋은 걸 사는」 여성, 자기 돌봄)
   // 알고리즘 메뉴에서 팀 공용으로 고치면 그 목록이 우선한다
@@ -156,7 +156,7 @@
         ui.field('최근 영상 기간', sel([['30', '30일'], ['60', '60일'], ['90', '90일'], ['180', '180일'], ['365', '1년']], C.days, function (v) { C.days = v; })),
         ui.field('중앙 조회 (쓸만한 바닥선)', sel([['0', '상관없음'], ['500', '500회 이상'], ['1000', '1천 이상'], ['2000', '2천 이상'], ['5000', '5천 이상'], ['10000', '1만 이상']], C.minMedian, function (v) { C.minMedian = v; }))),
       h('div', { class: 'row in-opts' },
-        ui.field('조회 상승 (최근 5편 ÷ 이전)', sel([['0', '상관없음'], ['1', '1배 이상 (유지 · 상승)'], ['1.2', '1.2배 이상'], ['1.5', '1.5배 이상'], ['2', '2배 이상']], C.minGrowth, function (v) { C.minGrowth = v; })),
+        ui.field('조회 추세 (최근 5편 ÷ 이전)', sel([['0', '상관없음'], ['1', '1배 이상 (유지 · 증가)'], ['1.2', '1.2배 이상'], ['1.5', '1.5배 이상'], ['2', '2배 이상']], C.minGrowth, function (v) { C.minGrowth = v; })),
         ui.field('영상당 댓글 (중앙)', sel([['0', '상관없음'], ['3', '3개 이상'], ['5', '5개 이상'], ['10', '10개 이상'], ['30', '30개 이상'], ['50', '50개 이상']], C.minCmt, function (v) { C.minCmt = v; })),
         ui.field('깊게 볼 후보 수', sel([['30', '30명'], ['40', '40명']], C.n, function (v) { C.n = v; }))),
       h('div', { class: 'row in-opts' },
@@ -187,7 +187,7 @@
   }
   function condW() {
     var w = ((I.cfg.algos || {}).cond || {}).w || { kw: 35, growth: 30, cmt: 25, reach: 10 };
-    var nm = { kw: '키워드', growth: '조회 상승', cmt: '댓글 활발', reach: '구독 대비 조회', tone: '댓글 톤' };
+    var nm = { kw: '키워드', growth: '조회 추세', cmt: '댓글 활발', reach: '구독 대비 조회', tone: '댓글 톤' };
     return Object.keys(w).filter(function (k) { return +w[k]; }).map(function (k) { return nm[k] + ' ' + w[k] + '%'; }).join(' · ');
   }
 
@@ -260,7 +260,7 @@
   }
   function condCard(s) {
     var c = s.cond || {};
-    return h('p', { class: 'meta', text: '구독 ' + I.cnt(c.minSubs || 0) + ' ~ ' + (c.maxSubs ? I.cnt(c.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + (c.days || 90) + '일 영상 · 조회 상승 ' + (c.minGrowth ? c.minGrowth + '배 이상' : '무관')
+    return h('p', { class: 'meta', text: '구독 ' + I.cnt(c.minSubs || 0) + ' ~ ' + (c.maxSubs ? I.cnt(c.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + (c.days || 90) + '일 영상 · 조회 추세 ' + (c.minGrowth ? c.minGrowth + '배 이상' : '무관')
       + ' · 영상당 댓글 ' + (c.minCmt ? c.minCmt + '개 이상' : '무관') + (c.mailOnly ? ' · 메일 공개만' : '') + (s.skipped ? ' · 중복 제외 ' + ((s.skipped.known || 0) + (s.skipped.seen || 0)) + '명' : '') });
   }
   function seedCard(c) {
@@ -288,7 +288,7 @@
     }).sort(function (a, b) { return key(b) - key(a); });
   }
   // 소속 / 개인 필터 (메일 도메인 · 설명란 회사 정보 기준)
-  var WNAME = { kw: '키워드 일치', sub: '구독자 규모', tone: '댓글 톤', topic: '주제', eng: '참여율', growth: '조회수 상승', cmt: '댓글 활발', reach: '구독 대비 조회' };
+  var WNAME = { kw: '키워드 일치', sub: '구독자 규모', tone: '댓글 톤', topic: '주제', eng: '참여율', growth: '조회 추세', cmt: '댓글 활발', reach: '구독 대비 조회' };
   var WDEF = { similar: { kw: 32, sub: 22, tone: 20, topic: 14, eng: 12 }, rising: { kw: 30, growth: 25, cmt: 20, reach: 15, tone: 10 } };
   function wText(s, mode) { var w = s.weights || WDEF[mode]; return Object.keys(w).map(function (k) { return WNAME[k] + ' ' + w[k] + '%'; }).join(' · '); }
   function agBar(s) {
@@ -308,7 +308,7 @@
     if (isRandom) list = list.slice(0, 20);   // 랜덤 탐색은 20명씩
     var nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
     var rising = s.mode === 'rising';
-    var seg = h('div', { class: 'in-seg' }, (rising ? [['score', '점수'], ['growth', '조회 상승'], ['cmt', '댓글 활발'], ['subs', '구독자'], ['tone', '댓글 톤']]
+    var seg = h('div', { class: 'in-seg' }, (rising ? [['score', '점수'], ['growth', '조회 추세'], ['cmt', '댓글 활발'], ['subs', '구독자'], ['tone', '댓글 톤']]
       : [['score', '점수'], ['subs', '구독자'], ['median', '조회수'], ['tone', '댓글 톤'], ['engage', '참여율']]).map(function (x) {
       return h('button', { type: 'button', class: V.sort === x[0] ? 'active' : '', text: x[1], onclick: function () { V.sort = x[0]; HR.refresh(); } });
     }));
@@ -366,7 +366,7 @@
         isRandom ? ui.btn(V.busy ? '찾는 중…' : '다음 20명 (다른 키워드)', function () { if (!V.busy) randomRun(); }, 'btn-sm') : null,
         ui.btn('← 탐색', function () { HR.go(isRandom ? 'find/random' : s.mode === 'cond' ? 'find/cond' : 'find'); }, 'btn-line btn-sm'))),
       ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
-        s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
+        s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회 추세 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
       agBar(s),
       h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
@@ -381,7 +381,7 @@
 
   function candDetail(c, s, inP) {
     var p = c.parts || {};
-    var parts = s.mode === 'rising' ? [['키워드', p.kw], ['조회 상승', p.growth], ['댓글 활발', p.cmt], ['구독 대비 조회', p.reach], ['댓글 톤', p.tone]]
+    var parts = s.mode === 'rising' ? [['키워드', p.kw], ['조회 추세', p.growth], ['댓글 활발', p.cmt], ['구독 대비 조회', p.reach], ['댓글 톤', p.tone]]
       : [['키워드', p.kw], ['구독자', p.sub], ['댓글 톤', p.tone], ['주제', p.topic], ['참여율', p.eng]];
     return h('div', { class: 'in-cand' },
       h('div', { class: 'in-cand-col' },

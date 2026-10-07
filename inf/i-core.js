@@ -48,6 +48,17 @@
     if (!g) return '—';
     return g < 1.5 ? '매일' : (g < 10 ? Math.round(g * 10) / 10 : Math.round(g)) + '일마다';
   };
+  // 예상 견적 (전용 영상 1편, 원) — 중앙 조회수 × 25 ~ 50원, 하한 20 ~ 40만원. 참여율이 높으면(4%↑) 10% 가산
+  // 국내 마이크로 유튜버 브랜디드 단가 관행을 단순화한 어림값 — 실제 견적은 계약 조건(deal.fee)에 적는다
+  I.estimate = function (ch) {
+    var v = (ch && ch.median) || 0;
+    if (!v) return null;
+    var k = ch.engage >= 0.04 ? 1.1 : 1;
+    var r = function (x) { return Math.round(x / 50000) * 50000; };
+    return [Math.max(200000, r(v * 25 * k)), Math.max(400000, r(v * 50 * k))];
+  };
+  I.manwon = function (n) { n = Math.round((+n || 0) / 10000); return n >= 10000 ? (Math.round(n / 1000) / 10) + '억' : n.toLocaleString('ko-KR') + '만'; };
+  I.estText = function (ch) { var e = I.estimate(ch); return e ? I.manwon(e[0]) + '~' + I.manwon(e[1]) : '—'; };
   I.pct = function (x) { return (Math.round((+x || 0) * 1000) / 10) + '%'; };
   I.won = function (n) { return n ? Math.round(n).toLocaleString('ko-KR') + '원' : ''; };
   I.ms = function (ts) { return ts && ts.toMillis ? ts.toMillis() : (typeof ts === 'number' ? ts : 0); };
