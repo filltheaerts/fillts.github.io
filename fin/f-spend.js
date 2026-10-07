@@ -18,6 +18,19 @@
   var ASSET = ['보증금 · 예치금'];
   var CARD_NOTE = '법인카드는 통장에서 「카드대금」 한 줄로 빠져 실제 사용처는 카드 명세서에 있습니다.';
   var man = function (v) { return v ? F.man(v) : ''; };
+  // 세금 · 공과금 세부 — 거래처 이름(desc) 먼저, 없으면 메모로 판정
+  var TAXT = ['법인세', '부가가치세', '원천세 (근로소득세)', '지방소득세 (원천분)', '주민세 (사업소분)', '등록면허세', '등기 수수료', '기타 세금 · 공과금'];
+  function taxType(t) {
+    var d = t.desc || '', n = (t.note || '') + ' ' + (t.memo || '');
+    if (/특징|지방소득/.test(d)) return '지방소득세 (원천분)';
+    if (/주민/.test(d)) return '주민세 (사업소분)';
+    if (/시세입금|등록면허/.test(d) || /등록면허/.test(n)) return '등록면허세';
+    if (/법원/.test(d)) return '등기 수수료';
+    if (/국세|세무서|홈택스/.test(d)) return /법인세/.test(n) ? '법인세' : /부가/.test(n) ? '부가가치세' : '원천세 (근로소득세)';
+    if (/법인세/.test(d + n)) return '법인세';
+    if (/부가/.test(d + n)) return '부가가치세';
+    return '기타 세금 · 공과금';
+  }
 
   // 합계 열 시작(월 열 다음 칸)에 굵은 구분선
   function markTot(table, n) {
@@ -78,6 +91,15 @@
         var s = sumRow(M[c]);
         body.appendChild(h('tr', { class: 'sp-cat' }, h('td', { text: c, title: c === '카드대금' ? CARD_NOTE : '' }), keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
           cell(c, '', s, 'strong'), h('td', { class: 'num meta', text: F.man(s / active) }), h('td', { class: 'num meta', text: share(s) })));
+        if (c === '세금 · 공과금') {
+          var T = {};
+          F.tx.forEach(function (t) { var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return; var ty = taxType(t); (T[ty] = T[ty] || {})[k] = (T[ty][k] || 0) + t.outAmt; });
+          TAXT.forEach(function (ty) {
+            var ts = sumRow(T[ty]); if (!ts) return;
+            body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: ty }), keys.map(function (k) { return cell('tax:' + ty, k, (T[ty] || {})[k] || 0); }),
+              cell('tax:' + ty, '', ts), h('td', { class: 'num meta', text: F.man(ts / active) }), h('td', { class: 'num meta', text: share(ts) })));
+          });
+        }
       });
     });
     body.appendChild(h('tr', { class: 'fin-sum' }, h('td', { text: '지출 합계' }), keys.map(function (k) { return h('td', { class: 'num', text: man(monthTot[k]) }); }),
@@ -143,11 +165,12 @@
   }
 
   function detail(sel, keys) {
-    var isIn = sel.c.indexOf('in:') === 0, cat = isIn ? sel.c.slice(3) : sel.c;
+    var isIn = sel.c.indexOf('in:') === 0, isTax = sel.c.indexOf('tax:') === 0, cat = isIn ? sel.c.slice(3) : isTax ? sel.c.slice(4) : sel.c;
     var inK = {}; keys.forEach(function (k) { inK[k] = 1; });
     var list = F.tx.filter(function (t) {
       var k = F.ym(t.date); if (!inK[k] || (sel.k && k !== sel.k)) return false;
       if (isIn) return t.inAmt > 0 && (t.cat || '기타 입금') === cat;
+      if (isTax) return t.outAmt > 0 && t.cat === '세금 · 공과금' && taxType(t) === cat;
       return t.outAmt > 0 && (t.cat === cat || (cat === '미분류' && !t.cat));
     }).sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? 1 : -1; });
     var sum = list.reduce(function (a, t) { return a + (isIn ? t.inAmt : t.outAmt); }, 0);

@@ -265,3 +265,5 @@ a.map-card:hover { border-color: var(--black); }
 .fin-spend .sp-cell:hover { color: var(--red); border-bottom-color: var(--red); }
 .fin-spend .sp-cell.on { color: var(--red); font-weight: 600; border-bottom: 1px solid var(--red); }
 .fin-spend th.sp-tot, .fin-spend td.sp-tot { border-left: 2px solid var(--black, #111); }
+.fin-spend tr.sp-sub td:first-child { padding-left: 40px; color: var(--gray-400); font-size: 12px; }
+.fin-spend tr.sp-sub td { font-size: 12px; }
