@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   var HR = window.HR, F = HR.F, ui = HR.ui, h = ui.h, fmt = HR.fmt, BP = window.BankParse;
-  var V = { per: '', sel: null };   // per: 'YYYY' | 'r12' | 'all'
+  var V = { per: '', sel: null, open: {} };   // open: 세부 줄 열림 (card · tax)   // per: 'YYYY' | 'r12' | 'all'
   var GROUPS = [
     ['인건비', ['급여', '4대보험', '복리후생 · 식대']],
     ['사무실', ['임대료 · 관리비', '통신 · 인터넷', '비품 · 장비']],
@@ -86,17 +86,19 @@
       all[k] = (all[k] || 0) + t.outAmt;
       var linked = F.card.filter(function (x) { return x.payId === t.id; }), rest = t.outAmt;
       linked.forEach(function (x) { rest -= x.amount; if (x.cat && x.cat !== '카드대금') return; var lb = cardLabel(x); (L[lb] = L[lb] || {})[k] = (L[lb][k] || 0) + x.amount; });
-      if (rest) gap[k] = (gap[k] || 0) + rest;
+      if (rest) { var g = linked.length ? 'fee' : 'none'; (gap[g] = gap[g] || {})[k] = ((gap[g] || {})[k] || 0) + rest; }
     });
     Object.keys(L).sort(function (a, b) { return sumRow(L[b]) - sumRow(L[a]); }).forEach(function (lb) {
       var ts = sumRow(L[lb]);
       body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: lb }), keys.map(function (k) { return cell('cm:' + lb, k, (L[lb] || {})[k] || 0); }), cell('cm:' + lb, '', ts), h('td', { class: 'num meta', text: F.man(ts / active) }), h('td')));
     });
-    var gs = sumRow(gap);
-    if (gs) body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: '명세 없는 금액 — 해외 수수료 · 카드 명세 미수령분', title: '카드사 명세 파일을 올리면 이 금액이 사용처로 나뉩니다' }),
-      keys.map(function (k) { return h('td', { class: 'num', text: man(gap[k]) }); }), h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num meta', text: F.man(gs / active) }), h('td')));
+    [['none', '카드 명세 미수령 — 명세서를 올리면 사용처로 나뉨'], ['fee', '해외 결제 수수료 · 소액 차액']].forEach(function (g) {
+      var gs = sumRow(gap[g[0]]); if (!gs) return;
+      body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: g[1] }), keys.map(function (k) { return h('td', { class: 'num', text: man((gap[g[0]] || {})[k]) }); }),
+        h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num meta', text: F.man(gs / active) }), h('td')));
+    });
     var as = sumRow(all);
-    if (as) body.appendChild(h('tr', { class: 'sp-sub sp-ref' }, h('td', { text: '참고 · ' + cardName() + ' 전체 결제액 (합계 제외)' }),
+    if (as) body.appendChild(h('tr', { class: 'sp-sub sp-ref' }, h('td', { text: '참고 · 카드 전체 결제액 (사용처로 옮긴 것 포함 · 합계 제외)' }),
       keys.map(function (k) { return h('td', { class: 'num', text: man(all[k]) }); }), h('td', { class: 'num', text: F.man(as) }), h('td'), h('td')));
   }
 
@@ -153,10 +155,13 @@
         h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num', text: F.man(gs / active) }), h('td', { class: 'num', text: share(gs) })));
       cats.forEach(function (c) {
         var s = sumRow(M[c]);
-        body.appendChild(h('tr', { class: 'sp-cat' }, h('td', { text: c === '카드대금' ? cardName() + ' — 사용처로 옮기고 남은 것' : c, title: c === '카드대금' ? CARD_NOTE : '' }), keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
+        var tg = c === '카드대금' ? 'card' : c === '세금 · 공과금' ? 'tax' : '';
+        var lab = h('td', { title: c === '카드대금' ? CARD_NOTE : '' }, c === '카드대금' ? cardName() : c,
+          tg ? h('button', { type: 'button', class: 'sp-tog', 'aria-expanded': String(!!V.open[tg]), text: V.open[tg] ? '▾ 접기' : '▸ 세부', onclick: function () { V.open[tg] = !V.open[tg]; HR.refresh(); } }) : null);
+        body.appendChild(h('tr', { class: 'sp-cat' }, lab, keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
           cell(c, '', s, 'strong'), h('td', { class: 'num meta', text: F.man(s / active) }), h('td', { class: 'num meta', text: share(s) })));
-        if (c === '카드대금') cardRows(body, keys, inK, active, sumRow, cell);
-        if (c === '세금 · 공과금') {
+        if (c === '카드대금' && V.open.card) cardRows(body, keys, inK, active, sumRow, cell);
+        if (c === '세금 · 공과금' && V.open.tax) {
           var T = {};
           F.tx.forEach(function (t) { var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return; var ty = taxType(t); (T[ty] = T[ty] || {})[k] = (T[ty][k] || 0) + t.outAmt; });
           TAXT.forEach(function (ty) {
