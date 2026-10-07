@@ -99,7 +99,38 @@
       ui.panel('어디에 썼나 (월별)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, head), body)),
         h('p', { class: 'meta', text: '통장 출금 기준(현금주의) · 금액 칸을 누르면 그 달 그 분류의 거래가 아래에 표시됩니다. ' + CARD_NOTE + ' 분류는 거래내역에서 바꾸면 바로 반영됩니다.' })),
       V.sel ? detail(V.sel, keys) : null,
-      inCats.length ? ui.panel('돈이 들어온 곳 (월별)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, inHead), inBody))) : null);
+      inCats.length ? ui.panel('돈이 들어온 곳 (월별)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, inHead), inBody))) : null,
+      ownerPanel());
+  }
+
+  /* ---------- 대표 가수금 누적 (출자전환 대비) — 기간 선택과 무관하게 전체 기간.
+     25년 마감까지는 결산 장부(재무제표 단기차입금)가 기준: fin_config/main.ownerBook {asOf, amount, src}.
+     통장 누적과 차이는 그 달에 「결산 조정」 한 줄로 맞추고, 그 뒤는 통장 입금 · 반환으로 이어간다. */
+  function ownerPanel() {
+    var ob = F.cfg.ownerBook || null, capital = +(F.cfg.capital || 0);
+    var own = F.tx.filter(function (t) { return t.cat === '대표 가수금'; });
+    if (!own.length && !ob) return null;
+    var M = {};
+    own.forEach(function (t) { var k = F.ym(t.date), m = M[k] || (M[k] = { inn: 0, out: 0, n: 0 }); m.inn += t.inAmt || 0; m.out += t.outAmt || 0; m.n++; });
+    var keys = Object.keys(M).sort(), adjK = ob ? F.ym(ob.asOf) : null;
+    if (adjK && keys.indexOf(adjK) < 0) { keys.push(adjK); keys.sort(); M[adjK] = { inn: 0, out: 0, n: 0 }; }
+    var bank = 0, book = 0, adj = 0, rows = [];
+    keys.forEach(function (k) {
+      var m = M[k]; bank += m.inn - m.out; book += m.inn - m.out;
+      var a = 0;
+      if (k === adjK) { a = (+ob.amount || 0) - book; book += a; adj = a; }
+      rows.push(h('tr', { class: k === adjK ? 'sp-grp' : '' }, h('td', { text: F.ymLabel(k) }), h('td', { class: 'num', text: m.inn ? F.won(m.inn) : '' }), h('td', { class: 'num', text: m.out ? F.won(m.out) : '' }),
+        h('td', { class: 'num meta', text: a ? (a > 0 ? '+' : '') + F.won(a) : '' }), h('td', { class: 'num strong', text: F.won(book) }), h('td', { class: 'meta', text: k === adjK ? '결산 마감 — ' + (ob.src || '재무제표') + ' 금액으로 맞춤' : m.n + '건' })));
+    });
+    rows.reverse();
+    var tb = h('table', { class: 'table fin-table fin-spend fin-narrow' }, h('thead', null, h('tr', null, ['월', '입금 (대표 → 법인)', '반환 (법인 → 대표)', '결산 조정', '누적 가수금', '비고'].map(function (x, i) { return h('th', { class: i >= 1 && i <= 4 ? 'num' : '', text: x }); }))), h('tbody', null, rows));
+    return ui.panel('대표 가수금 누적 · 출자전환 대비', null,
+      F.kpi([['지금 가수금 잔액', F.won(book) + '원', 'strong', '결산 장부 기준 (' + (ob ? fmt.dot(ob.asOf).slice(2) + ' 마감 + 이후 통장' : '통장 누적') + ')'],
+        ['통장으로만 본 누적', F.won(bank) + '원', '', adj ? '장부와 차이 ' + (adj > 0 ? '+' : '') + F.won(adj) + '원 — 장부를 따름' : '장부와 같음'],
+        ['지금 자본금', capital ? F.won(capital) + '원' : '—', '', '설립 납입'],
+        ['전액 출자전환 시 자본', capital ? F.won(capital + book) + '원' : '—', '', '자본금 + 가수금 잔액 (주식 수 · 발행가는 별도 결정)']], 'four'),
+      h('div', { class: 'table-wrap flat' }, tb),
+      h('p', { class: 'meta', text: '거래내역에서 「대표 가수금」으로 분류된 입금 · 출금만 모읍니다. 25년 마감까지는 결산 재무제표(단기차입금)가 정답이라 마감 월에 차이를 한 줄로 맞추고, 이후는 통장 실데이터로 누적합니다. 출자전환을 실행하면 그 금액을 반환(법인 → 대표)과 같은 방식으로 빼야 잔액이 맞습니다.' }));
   }
 
   function detail(sel, keys) {
