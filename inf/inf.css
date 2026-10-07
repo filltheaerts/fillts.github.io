@@ -392,3 +392,13 @@ td.in-ell { display: table-cell; }
 .in-exbar .meta { flex: 1; }
 @media (max-width: 960px) { .in-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .in-tiles { grid-template-columns: minmax(0, 1fr); } }
+
+/* 비고 한 줄 */
+.in-note { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin-top: 3px; cursor: text; font-size: 11px; color: var(--gray-400); }
+.in-note:hover { color: var(--black); }
+.in-note.has { color: #92400e; background: #fff7e6; padding: 2px 8px; border-left: 2px solid #f59e0b; }
+.in-note-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.in-note-by { flex: none; color: var(--gray-400); font-size: 10px; }
+.in-note-edit { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; cursor: default; }
+.in-note-in { width: 100%; font-size: 12px; padding: 4px 8px; }
+.in-note-edit .in-chip { font-size: 10px; padding: 0 6px; }

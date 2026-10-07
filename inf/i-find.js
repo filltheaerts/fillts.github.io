@@ -402,7 +402,8 @@
         h('div', { class: 'in-r-ch' }, I.thumb(c, 'sm'), h('div', { class: 'in-r-t' },
           h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: c.title + (c.handle ? ' ' + c.handle : ''), text: c.title.length > 14 ? c.title.slice(0, 13) + '…' : c.title }), I.ytBtn(c)),
           h('div', { class: 'in-r-tags' }, I.beautyTag(c), I.agencyTag(c), I.mailTag(c.email), inP ? I.stTag(inP.stage) : null,
-            h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })))),
+            h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })),
+          I.noteEl(c))),
         h('div', { class: 'in-r-stats' }, stats),
         h('div', { class: 'in-r-why' }, kws.length ? kws.map(function (k, i) { return h('span', { class: 'in-chip ' + (i < (c.matched || []).length ? 'on' : 'light'), text: k }); }) : h('span', { class: 'meta', text: '키워드 겹침 적음' }))));
       if (open) rows.push(h('div', { class: 'in-row-detail' }, h('div', { class: 'in-r-agwhy meta', text: '소속 근거: ' + ag.why }), candDetail(c, s, inP)));

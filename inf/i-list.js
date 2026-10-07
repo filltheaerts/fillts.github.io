@@ -71,7 +71,7 @@
         h('div', { class: 'in-r-cb meta', text: String(i + 1) }),
         h('div', { class: 'in-r-ch' }, I.thumb(ch, 'sm'), h('div', { class: 'in-r-t' },
           h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: ch.title + ' ' + (ch.handle || ''), text: ch.title }), I.ytBtn(ch)),
-          h('div', { class: 'in-r-tags' }, opt.tags(c)))),
+          h('div', { class: 'in-r-tags' }, opt.tags(c)), I.noteEl(ch.id ? ch : c))),
         h('div', { class: 'in-r-stats' }, stat('구독', I.cnt(ch.subs)), stat('조회', ch.median != null ? I.cnt(ch.median) : '—'),
           stat('댓글수', ch.cmtAvg != null ? I.cnt(ch.cmtAvg) : ch.cmtMed != null ? I.cnt(ch.cmtMed) : '—'), stat('주기', I.gap(ch)),
           stat('조회 추세', ch.growth ? ch.growth + '배' : '—', ch.growth >= 1.2 ? 'red' : '')),

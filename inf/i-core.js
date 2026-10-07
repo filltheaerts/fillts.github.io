@@ -159,6 +159,34 @@
     var bl = I.cfg.blockCh || [], hd = String(c.handle || '').toLowerCase();
     return bl.some(function (x) { return (x.id && x.id === c.id) || (x.handle && hd && x.handle.toLowerCase() === hd); });
   };
+  /* ---------- 비고 한 줄 — 채널마다 팀 공용 (inf_config/main.notes.{채널ID} = { t, by, at }) ----------
+     탐색 결과 · 리스트 어디서든 같은 메모가 보인다. 누르면 그 자리에서 입력 → Enter 저장 · Esc 취소 */
+  I.NOTE_QUICK = ['저격 유튜버로 보임', '광고 너무 많음', '톤 좋음 · 우선 컨택', '육아만 함 (뷰티 약함)', '남성 시청자 위주', '이미 경쟁사 협찬'];
+  I.noteOf = function (id) { return ((I.cfg.notes || {})[id]) || null; };
+  I.saveNote = function (id, t) {
+    var p = {}; p[id] = t ? { t: String(t).slice(0, 120), by: S.mid, at: Date.now() } : FV.delete();
+    return db.doc('inf_config/main').set({ notes: p }, { merge: true }).catch(ui.fail);
+  };
+  I.noteEl = function (c) {
+    var id = c.id, n = I.noteOf(id), ed = I.V.noteEdit === id;
+    var stop = function (e) { e.stopPropagation(); };
+    if (!ed) {
+      return h('div', { class: 'in-note' + (n ? ' has' : ''), title: n ? '비고 — ' + HR.name(n.by) + ' · 누르면 고치기' : '누르면 비고 한 줄 적기',
+        onclick: function (e) { stop(e); I.V.noteEdit = id; HR.refresh(); setTimeout(function () { var x = document.querySelector('.in-note-in'); if (x) x.focus(); }, 50); } },
+        n ? [h('span', { class: 'in-note-ic', text: '✎' }), h('span', { class: 'in-note-t', text: n.t }), h('span', { class: 'in-note-by', text: HR.name(n.by) })] : h('span', { class: 'in-note-ic', text: '✎ 비고' }));
+    }
+    var inp = h('input', { type: 'text', class: 'in-note-in', maxlength: '120', value: n ? n.t : '', placeholder: '비고 한 줄 — Enter 저장 · Esc 취소 · 비우고 Enter면 지움', onclick: stop,
+      onkeydown: function (e) {
+        e.stopPropagation();
+        if (e.key === 'Enter') { var v = this.value.trim(); I.V.noteEdit = ''; I.saveNote(id, v); HR.refresh(); }
+        if (e.key === 'Escape') { I.V.noteEdit = ''; HR.refresh(); }
+      } });
+    return h('div', { class: 'in-note-edit', onclick: stop }, inp,
+      h('div', { class: 'in-chips' }, I.NOTE_QUICK.map(function (q) {
+        return h('button', { type: 'button', class: 'in-chip light', text: q, onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, q); HR.refresh(); } });
+      }), n ? h('button', { type: 'button', class: 'in-chip in-ex-chip', text: '지우기', onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, ''); HR.refresh(); } }) : null,
+        h('button', { type: 'button', class: 'in-chip', text: '닫기', onclick: function (e) { stop(e); I.V.noteEdit = ''; HR.refresh(); } })));
+  };
   I.agencyTag = function (c, short) {
     var a = I.agency(c);
     return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none && !short ? '개인 · 정보 없음' : '개인' });
