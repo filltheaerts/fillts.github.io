@@ -49,6 +49,23 @@
     return F.tx.filter(function (t) { return t.cat === '대표 가수금' && (!from || t.date > from); }).reduce(function (a, t) { return a + (t.inAmt || 0) - (t.outAmt || 0); }, base);
   }
 
+  // 정책자금 전용통장 — 설정 › 계좌에서 이름에 중진공 · 정책이 들어간 계좌
+  function policyKeys() {
+    var ks = {}; (F.cfg.cashAccts || []).forEach(function (a) { if (a.key && /중진공|정책/.test(a.name || '')) ks[a.key] = 1; });
+    return ks;
+  }
+  function monthEndCash(keys) {
+    var pk = policyKeys(), last = {}, out = {};
+    var sorted = F.tx.filter(function (t) { return t.bal != null; }).sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? -1 : 1; });
+    var i = 0;
+    keys.forEach(function (k) {
+      while (i < sorted.length && F.ym(sorted[i].date) <= k) { last[F.acctKey(sorted[i])] = sorted[i].bal; i++; }
+      var all = 0, free = 0; Object.keys(last).forEach(function (a) { all += last[a]; if (!pk[a]) free += last[a]; });
+      out[k] = { all: all, free: free };
+    });
+    return out;
+  }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -117,6 +134,12 @@
     });
     body.appendChild(h('tr', { class: 'fin-sum' }, h('td', { text: '지출 합계' }), keys.map(function (k) { return h('td', { class: 'num', text: man(monthTot[k]) }); }),
       h('td', { class: 'num', text: F.man(total) }), h('td', { class: 'num', text: F.man(total / active) }), h('td', { class: 'num', text: total ? '100%' : '' })));
+    // 월말 잔여현금 — 계좌별 그 달 마지막 거래 잔액(없으면 이전 달 잔액)의 합. 정책자금 전용통장은 따로 뺀 값도
+    var cash = monthEndCash(keys);
+    body.appendChild(h('tr', { class: 'sp-cash sp-cash-first' }, h('td', { text: '월말 잔여현금 (정책자금 포함)' }), keys.map(function (k) { return h('td', { class: 'num', text: F.man(cash[k].all) }); }),
+      h('td', { class: 'num strong', text: F.man(cash[keys[keys.length - 1]].all), title: '마지막 달 기준' }), h('td', { class: 'num meta', text: '마지막 달' }), h('td')));
+    body.appendChild(h('tr', { class: 'sp-cash' }, h('td', { text: '월말 잔여현금 (정책자금 제외)' }), keys.map(function (k) { return h('td', { class: 'num' + (cash[k].free < 0 ? ' red' : ''), text: F.man(cash[k].free) }); }),
+      h('td', { class: 'num strong', text: F.man(cash[keys[keys.length - 1]].free) }), h('td', { class: 'num meta', text: '마지막 달' }), h('td')));
     ASSET.forEach(function (c) {
       if (!sumRow(M[c])) return;
       body.appendChild(h('tr', { class: 'sp-asset' }, h('td', { text: c + ' (자산 · 합계 제외)' }), keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }), cell(c, '', sumRow(M[c])), h('td'), h('td')));

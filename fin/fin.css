@@ -274,3 +274,5 @@ a.map-card:hover { border-color: var(--black); }
 .summary.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .summary.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 760px) { .sp-kpis { grid-template-columns: 1fr; } .summary.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fin-spend tr.sp-cash td { color: var(--gray-600, #555); }
+.fin-spend tr.sp-cash-first td { border-top: 2px solid var(--black, #111); padding-top: 10px; }
