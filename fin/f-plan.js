@@ -110,12 +110,12 @@
     }
     var horizon = HR.L.addDays(t, 90), past = HR.L.addDays(t, -31);
     var occ = F.schedIn(past, horizon);
-    var overdue = occ.filter(function (o) { return o.date < t; }), next = occ.filter(function (o) { return o.date >= t; });
+    var overdue = occ.filter(function (o) { return o.date < t && !o.auto; }), next = occ.filter(function (o) { return o.date >= t; });
     var payreq = HR.load('fin@payreq', function () { return db.collection('hr_payreq').where('status', '==', 'approved').get().then(HR.rows); }) || [];
     var occRow = function (o) {
       return h('li', null, h('span', { class: 'meta fin-date' + (o.date < t ? ' red' : ''), text: fmt.date(o.date) }),
-        h('a', { class: 'grow', href: ed ? '#sched/edit/' + o.s.id : null, text: o.s.title }), h('span', { class: 'meta', text: (o.s.kind === 'monthly' ? '매월 · ' : '') + (o.s.cat || '') }),
-        h('span', { class: 'num', text: F.won(o.amount) }), ed ? ui.btn('지급 완료', function () { markPaid(o).then(function () { ui.toast('지급 완료로 표시했습니다.'); }).catch(ui.fail); }, 'btn-line btn-xs') : null);
+        h('a', { class: 'grow', href: ed && !o.auto ? '#sched/edit/' + o.s.id : null, text: o.s.title }), h('span', { class: 'meta', text: o.auto ? '매월 · 통장 이력 추정' : o.planned ? '매월 · 예정 증액' : (o.s.cat || '') }),
+        h('span', { class: 'num', text: (o.auto ? '약 ' : '') + F.won(o.amount) }), ed && !o.auto ? ui.btn('지급 완료', function () { markPaid(o).then(function () { ui.toast('지급 완료로 표시했습니다.'); }).catch(ui.fail); }, 'btn-line btn-xs') : null);
     };
     var nextSum = function (days) { var to = HR.L.addDays(t, days); return next.filter(function (o) { return o.date <= to; }).reduce(function (a, o) { return a + o.amount; }, 0); };
     var all = F.sched.slice().sort(function (a, b) { return (a.kind === b.kind ? 0 : a.kind === 'monthly' ? -1 : 1) || ((a.title || '') < (b.title || '') ? -1 : 1); });
@@ -130,12 +130,12 @@
     }));
     if (!payreq.length) prList.appendChild(h('li', { class: 'empty', text: '승인 후 입금을 기다리는 HR 입금요청이 없습니다.' }));
     ui.put(view, ui.head('Scheduled', '지출예정', ed ? ui.btn('+ 지출예정 추가', function () { HR.go('sched/edit'); }, 'btn-sm') : null),
-      F.kpi([['월 고정 지출', F.man(F.fixedMonthly(F.thisYm())), '', F.sched.filter(function (s) { return s.kind === 'monthly'; }).length + '개 항목'],
+      F.kpi([['월 반복 지출 (추정)', F.man(F.recurMonthly()), '', F.recurring().length + '개 · 최근 4개월 통장 이력'],
         ['7일 안', F.man(nextSum(7))], ['30일 안', F.man(nextSum(30))], ['90일 안', F.man(nextSum(90))],
         ['지난 미지급', F.man(overdue.reduce(function (a, o) { return a + o.amount; }, 0)), overdue.length ? 'red' : '', overdue.length + '건'],
         ['HR 입금 대기', F.man(payreq.reduce(function (a, r) { return a + (r.net || r.total || 0); }, 0)), '', payreq.length + '건']]),
       overdue.length ? ui.panel('Overdue · 지났는데 지급 표시가 없는 것', null, h('ul', { class: 'list' }, overdue.map(occRow))) : null,
-      ui.panel('Next 90 days · 다가오는 지출', null, next.length ? h('ul', { class: 'list' }, next.map(occRow)) : ui.empty('90일 안에 잡힌 지출이 없습니다.')),
+      ui.panel('다가오는 지출 (90일) — 반복은 통장 이력으로 추정, 일회성은 등록한 것', null, next.length ? h('ul', { class: 'list' }, next.map(occRow)) : ui.empty('90일 안에 잡힌 지출이 없습니다.')),
       ui.panel('HR 입금요청 · 승인됨 (입금 대기)', h('a', { href: '/hr/#payreq', target: '_blank', rel: 'opener', class: 'meta', text: 'HR에서 열기 ↗' }), prList),
       ui.panel('All · 등록된 지출예정', null, h('div', { class: 'table-wrap flat' }, tb)), F.readOnlyNote(),
       h('p', { class: 'note', text: '「매월 반복」 합계가 런웨이의 고정 지출이 됩니다. 「지급 완료」를 누르면 그 회차가 목록에서 빠집니다(반복 항목은 그 달만). HR 입금요청은 HR에서 입금 완료를 기록하면 여기서도 사라집니다.' }));

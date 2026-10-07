@@ -122,23 +122,66 @@
 
   /* ---------- 지출예정 펼치기 ---------- */
   // 매월 반복: day(1~31) · start/end(YYYY-MM) / 일회성: date. paid=true면 이미 나간 것
+  /* ---------- 반복 지출 추정 — 통장 실제 이력으로 「매달 언제 · 얼마」를 잡는다 ----------
+     최근 완료 4개월 중 3개월 이상 나간 거래처(급여 · 4대보험 · 카드대금은 분류 단위로 묶음)를
+     평균 날짜 · 최근 3개월 평균 금액으로 다음 달들에 반복. 이번 달에 이미 나갔으면 이번 달은 건너뛴다. */
+  F.RECUR_DAY = { '임대료': 25 };   // 고정 지급일 (대표 지정 261007: 임대료 · 관리비 매월 25일)
+  F.RECUR_EXCL = ['원료 · 생산(OEM)', '포장 · 부자재', '보증금 · 예치금', '비품 · 장비', BP.TRANSFER];
+  function recurKey(t) {
+    if (t.cat === '급여') return ['급여', '급여 (이체)'];
+    if (t.cat === '4대보험') return ['4대보험', '4대보험 (건강 · 연금 · 고용 · 산재)'];
+    if (t.cat === '카드대금') return ['카드대금', '법인카드 대금'];
+    if (t.cat === '임대료 · 관리비') return ['임대료', '임대료 · 관리비 (구명회 월세 + SKV1 관리비)'];
+    if (/중진공대출/.test(t.desc || '')) return ['중진공이자', '중진공 정책자금 대출 이자'];
+    var d = (t.desc || '').replace(/^[0-9０-９]+/, '').replace(/주식회사|\(주\)|㈜|（주）/g, '').replace(/\(.*\)/, '').trim();
+    return [d, d];
+  }
+  F.recurring = function () {
+    var cur = F.thisYm(), done = [fmt.ymShift(cur, -4), fmt.ymShift(cur, -3), fmt.ymShift(cur, -2), fmt.ymShift(cur, -1)];
+    var G = {};
+    F.tx.forEach(function (t) {
+      if (!(t.outAmt > 0) || F.RECUR_EXCL.indexOf(t.cat) >= 0) return;
+      var ym = F.ym(t.date); if (done.indexOf(ym) < 0 && ym !== cur) return;
+      var k = recurKey(t), g = G[k[0]] || (G[k[0]] = { key: k[0], title: k[1], cat: t.cat, m: {}, days: [] });
+      g.m[ym] = (g.m[ym] || 0) + t.outAmt; if (ym !== cur) g.days.push(+t.date.slice(8, 10));
+    });
+    return Object.keys(G).map(function (k) { return G[k]; }).filter(function (g) { return done.filter(function (ym) { return g.m[ym]; }).length >= 3; }).map(function (g) {
+      var last3 = done.slice(1).filter(function (ym) { return g.m[ym]; }), amt = last3.reduce(function (a, ym) { return a + g.m[ym]; }, 0) / (last3.length || 1);
+      var ds = g.days.slice().sort(function (a, b) { return a - b; }), day = ds[Math.floor(ds.length / 2)] || 1;
+      if (F.RECUR_DAY[g.key]) day = F.RECUR_DAY[g.key];
+      return { key: g.key, title: g.title, cat: g.cat, amount: Math.round(amt), day: day, paidThisMonth: !!g.m[cur] };
+    }).sort(function (a, b) { return a.day - b.day; });
+  };
+  F.recurMonthly = function () { return F.recurring().reduce(function (a, r) { return a + r.amount; }, 0); };
   F.schedIn = function (from, to) {
-    var out = [];
+    var out = [], cur = F.thisYm(), today = fmt.today();
+    // 반복 지출 = 통장 이력 추정 (지출 흐름의 「매월 반복」 가정값은 쓰지 않는다)
+    F.recurring().forEach(function (r) {
+      for (var ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = fmt.ymShift(ym, 1)) {
+        if (ym < cur || (ym === cur && r.paidThisMonth)) continue;
+        var last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), d = ym + '-' + ('0' + Math.min(r.day, last)).slice(-2);
+        if (d < from || d > to) continue;
+        out.push({ s: { id: '', title: r.title, cat: r.cat, kind: 'auto' }, date: d, amount: r.amount, ym: ym, auto: true });
+      }
+    });
     F.sched.forEach(function (s) {
       if (s.kind === 'monthly') {
+        // 매월 반복 중 「예정 증액」(planned)만 — 통장 이력에 아직 없는 앞으로의 변화 (예: 11월 인건비 증원)
+        if (!s.planned) return;
         for (var ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = fmt.ymShift(ym, 1)) {
-          if ((s.start && ym < s.start) || (s.end && ym > s.end)) continue;
+          if ((s.start && ym < s.start) || (s.end && ym > s.end) || ym < cur) continue;
           var last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), d = ym + '-' + ('0' + Math.min(+s.day || 1, last)).slice(-2);
-          if (d < from || d > to) continue;
-          if ((s.paidYms || []).indexOf(ym) >= 0) continue;
-          out.push({ s: s, date: d, amount: +s.amount || 0, ym: ym });
+          if (d < from || d > to || (s.paidYms || []).indexOf(ym) >= 0) continue;
+          out.push({ s: s, date: d, amount: +s.amount || 0, ym: ym, planned: true });
         }
-      } else if (s.date && s.date >= from && s.date <= to && !s.paid) out.push({ s: s, date: s.date, amount: +s.amount || 0, ym: s.date.slice(0, 7) });
+        return;
+      }
+      if (s.date && s.date >= from && s.date <= to && !s.paid) out.push({ s: s, date: s.date, amount: +s.amount || 0, ym: s.date.slice(0, 7) });
     });
     return out.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
   };
   F.fixedMonthly = function (ym) {
-    return F.sched.filter(function (s) { return s.kind === 'monthly' && (!s.start || ym >= s.start) && (!s.end || ym <= s.end); })
+    return F.sched.filter(function (s) { return s.kind === 'monthly' && !s.planned && (!s.start || ym >= s.start) && (!s.end || ym <= s.end); })
       .reduce(function (a, s) { return a + (+s.amount || 0); }, 0);
   };
 

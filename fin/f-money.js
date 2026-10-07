@@ -31,7 +31,7 @@
       var ym = fmt.ymShift(ym0, i), last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), from = i === 0 ? t : ym + '-01', to = ym + '-' + ('0' + last).slice(-2);
       var part = i === 0 ? Math.max(0, (last - (+t.slice(8, 10)) + 1) / last) : 1;
       var fixed = burn.avg * part;   // 실제 통장 월평균 지출 (최근 3개월 · 발주 · 보증금 제외)
-      var once = F.schedIn(from, to).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0);
+      var once = F.schedIn(from, to).filter(function (o) { return !o.auto; }).reduce(function (a, o) { return a + o.amount; }, 0);   // 반복(통장 추정)은 월평균 지출에 이미 있음 → 일회성 + 예정 증액만
       var fund = F.plan.filter(function (p) { return p.status === 'approved' && p.date && p.date >= from && p.date <= to; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
       cash = cash - fixed - once + fund; rows.push({ ym: ym, cash: cash, fixed: fixed, once: once, fund: fund });
       if (zero == null && cash < 0) zero = i;

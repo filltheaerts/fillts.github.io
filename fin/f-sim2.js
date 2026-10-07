@@ -45,7 +45,7 @@
   F.fixedAt = function (ym) {
     var g = { pay: 0, rent: 0, ops: 0, rows: [] };
     F.sched.forEach(function (s) {
-      if (s.kind !== 'monthly' || (s.start && ym < s.start) || (s.end && ym > s.end)) return;
+      if (s.kind !== 'monthly' || s.planned || (s.start && ym < s.start) || (s.end && ym > s.end)) return;   // planned = [실제] 예정 증액 → 시뮬에는 안 섞음
       var a = +s.amount || 0; if (!a) return;
       if (s.cat === '급여') g.pay += a; else if (s.cat === '임대료 · 관리비') g.rent += a; else g.ops += a;
       g.rows.push([s.title, a, s.cat]);
