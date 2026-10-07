@@ -229,3 +229,6 @@ a.map-card:hover { border-color: var(--black); }
 /* 상단 새로고침 버튼 (core.js) */
 .nav-reload { background: none; border: 1px solid var(--gray-200); padding: 6px 10px; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; white-space: nowrap; color: var(--black); }
 .nav-reload:hover { border-color: var(--black); }
+
+.sx-grid .sx-pct { font-size: 10px; color: var(--gray-600); margin-top: 3px; white-space: nowrap; }
+.sx-grid .sx-pct.red { color: var(--red); font-weight: 600; }

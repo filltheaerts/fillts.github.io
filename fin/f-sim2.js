@@ -59,7 +59,7 @@
     c = c || cfg();
     var u = F.unitPnl(), uo = c.unitOver || {};
     // 1개당 값: 개당 손익에서 가져온 값, 시트에서 직접 고치면 그 값 (unitOver)
-    var base = { net: u.net, vari: u.varNoAd + u.ad, cogs: u.cogs };
+    var base = { net: u.net, vari: u.varNoAd, cogs: u.cogs };   // 변동비 = 광고 제외 (광고비는 ①에서 월별 입력)
     var uv = { net: uo.net != null ? +uo.net : base.net, vari: uo.vari != null ? +uo.vari : base.vari, cogs: uo.cogs != null ? +uo.cogs : base.cogs };
     var cogs = uv.cogs, per = uv.vari, fo = c.fixOver || {};
     var ov = function (k, ym, def) { return fo[k] && fo[k][ym] != null ? +fo[k][ym] : def; };
@@ -73,10 +73,12 @@
       r.arrive = +(c.orders[fmt.ymShift(ym, -lead)] || 0); stock += r.arrive;
       r.plan = +(c.units[ym] || 0); r.sold = Math.min(r.plan, stock); r.lost = r.plan - r.sold; stock -= r.sold; r.stock = stock;
       r.order = +(c.orders[ym] || 0);
-      r.rev = r.sold * uv.net; r.vari = r.sold * per;
+      r.rev = r.sold * uv.net;
       // 변동비 구성 (1개당 변동비를 직접 고쳤으면 같은 비율로 나눔)
-      var vs = (u.varNoAd + u.ad) ? per / (u.varNoAd + u.ad) : 0;
-      r.vLogi = r.sold * u.logi * vs; r.vEtc = r.sold * (u.pg + u.ret + u.review) * vs; r.vAd = r.sold * u.ad * vs;
+      var vs = u.varNoAd ? per / u.varNoAd : 0;
+      r.vLogi = r.sold * u.logi * vs; r.vEtc = r.sold * (u.pg + u.ret + u.review) * vs;
+      r.vAd = +((c.ad || {})[ym] || 0);   // 광고비: 월별 직접 입력
+      r.vari = r.vLogi + r.vEtc + r.vAd; r.adPct = r.rev ? r.vAd / r.rev * 100 : null;
       var fx = F.fixedAt(ym);
       r.def = { pay: fx.pay, rent: fx.rent, ops: fx.ops, hire: (c.hires || []).reduce(function (a, x) { return a + (x.from && ym >= x.from ? +x.monthly || 0 : 0); }, 0) };
       r.pay = ov('pay', ym, r.def.pay); r.hire = ov('hire', ym, r.def.hire); r.rent = ov('rent', ym, r.def.rent); r.ops = ov('ops', ym, r.def.ops);
@@ -146,7 +148,7 @@
     var vb = u.e ? [['물류', u.logi], ['결제 · 반품 · 리뷰', u.pg + u.ret + u.review], ['광고 ' + u.e.adRate + '%', u.ad]] : [];
     var UROWS = [
       ['net', '순매출', '', '정가 ' + F.won(u.price) + ' − 할인 ' + u.e.discount + '% − 부가세 → 회사에 실제 들어오는 돈'],
-      ['vari', '변동비', '−', '1개 팔 때마다 나가는 돈: ' + vb.map(function (x) { return x[0] + ' ' + F.won(Math.round(x[1])); }).join(' · ')],
+      ['vari', '변동비 (광고 제외)', '−', '1개 팔 때마다 나가는 돈: ' + vb.filter(function (x) { return !/^광고/.test(x[0]); }).map(function (x) { return x[0] + ' ' + F.won(Math.round(x[1])); }).join(' · ') + ' — 광고비는 ①에서 월별로'],
       ['cogs', '제품 원가', '−', '본품 · 튜브 · 단상자 · 원료 · 샘플 등 (공급가) — 현금은 발주 때(②) 나감']
     ];
     UROWS.forEach(function (k) {
@@ -160,18 +162,29 @@
         h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote' }, own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) + ' ' : k[3] + ' ',
           own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null)));
     });
-    body.appendChild(h('tr', { class: 'sx-u sx-u-profit' }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: '=' }), h('span', { class: 'strong', text: '1개당 순익' })),
+    body.appendChild(h('tr', { class: 'sx-u sx-u-profit' }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: '=' }), h('span', { class: 'strong', text: '1개당 순익 (광고 전)' })),
       h('td', { class: 'num strong' + (unitProfit < 0 ? ' red' : '') }, F.won(Math.round(unitProfit))), h('td', { class: 'num sx-ratio strong', text: (unitProfit / pnet * 100).toFixed(1) + '%' }),
-      h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote', text: '순매출의 ' + (unitProfit / pnet * 100).toFixed(1) + '% · 고정비(③) 전 금액 → 1,000개 팔면 ' + F.man(unitProfit * 1000) + ', 고정비를 넘기려면 월 ' + (unitProfit > 0 && R[1] ? Math.ceil(R[R.length - 1].fixed / unitProfit).toLocaleString('ko-KR') + '개 (27.03 고정비 기준)' : '-') })));
+      h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote', text: '순매출의 ' + (unitProfit / pnet * 100).toFixed(1) + '% · 광고비 · 고정비 전 금액 → 1,000개 팔면 ' + F.man(unitProfit * 1000) + ', 고정비를 넘기려면 월 ' + (unitProfit > 0 && R[1] ? Math.ceil(R[R.length - 1].fixed / unitProfit).toLocaleString('ko-KR') + '개 (27.03 고정비 기준)' : '-') })));
     sec('① 판매', '런칭 2026.11.12');
     inputRow('예상 판매량 (개)', 'units', '개', '월별로 직접 입력');
     row('실제 판매 가능', function (r) { return { t: n(r.sold) + (r.lost ? ' (−' + n(r.lost) + ')' : ''), c: r.lost ? 'red' : '' }; });
     row('순매출', function (r) { return m(r.rev); });
-    var vsU = (u.varNoAd + u.ad) ? X.uv.vari / (u.varNoAd + u.ad) : 0;
+    var vsU = u.varNoAd ? X.uv.vari / u.varNoAd : 0;
     row('− 물류 (판매 × ' + F.won(Math.round(u.logi * vsU)) + ')', function (r) { return m(-r.vLogi); }, 'meta');
     row('− 결제 · 반품 · 리뷰 (판매 × ' + F.won(Math.round((u.pg + u.ret + u.review) * vsU)) + ')', function (r) { return m(-r.vEtc); }, 'meta');
-    row('− 광고 (판매 × ' + F.won(Math.round(u.ad * vsU)) + ')', function (r) { return m(-r.vAd); }, 'meta');
-    row('변동비 합계 (판매 × ' + F.won(Math.round(X.uv.vari)) + ')', function (r) { return m(-r.vari); }, '', 'sx-sum');
+    // 광고비: 월별로 직접 (만원). 칸 아래에 순매출 대비 % 자동
+    body.appendChild(h('tr', { class: 'sx-input sx-ad' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: '− 광고 · 마케팅비 (만원)' }), h('div', { class: 'meta', text: '월별로 직접 입력 · 아래 % = 그 달 순매출 대비' }),
+        ed ? h('div', { class: 'sx-tools' }, ui.btn('→ 순매출의 30%로 채우기', function () { var o = {}; R.forEach(function (r) { if (r.rev) o[r.ym] = Math.round(r.rev * 0.3 / 10000) * 10000; }); save({ ad: o }); }, 'btn-line btn-xs'),
+          ui.btn('비우기', function () { save({ ad: {} }); }, 'btn-line btn-xs')) : null),
+      R.map(function (r) {
+        var v = (c.ad || {})[r.ym];
+        var i = h('input', { type: 'text', inputmode: 'decimal', class: 'sx-cell sx-own', value: v ? (Math.round(v / 10000 * 100) / 100).toLocaleString('ko-KR') : '', 'aria-label': r.ym + ' 광고비 (만원)', disabled: ed ? null : true });
+        i.addEventListener('focus', function () { i.select(); });
+        i.addEventListener('change', function () { var o = Object.assign({}, c.ad || {}), n = Math.round(parseFloat(String(i.value).replace(/[^0-9.\-]/g, '')) * 10000) || 0; if (n) o[r.ym] = n; else delete o[r.ym]; save({ ad: o }); });
+        var pct = r.adPct, pc = pct == null ? (r.vAd ? '매출 없음' : '') : pct.toFixed(1) + '%';
+        return h('td', { class: 'num' }, i, h('div', { class: 'sx-pct' + (pct != null && pct > 40 ? ' red' : ''), text: pc ? '순매출의 ' + pc : '' }));
+      })));
+    row('변동비 합계 (물류 · 결제 · 광고)', function (r) { return m(-r.vari); }, '', 'sx-sum');
     sec('② 재고 · 발주', '현금 기준 — 발주 대금은 발주한 달에 ' + (+c.upfront >= 100 ? '전액' : c.upfront + '% (나머지는 입고 달)') + ' 나감 · ' + (+c.lead === 1 ? '다음 달 1일 입고' : c.lead + '개월 뒤 입고'));
     inputRow('발주 수량 (개)', 'orders', '개', +c.lead === 1 ? '발주한 달에 입력 → 다음 달 1일부터 판매' : '발주한 달에 입력 → ' + c.lead + '개월 뒤 1일부터 판매');
     row('입고', function (r) { return n(r.arrive); }, 'meta');
