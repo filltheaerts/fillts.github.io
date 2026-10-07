@@ -34,7 +34,7 @@
       h('tbody', null, bk.orders.map(function (o) {
         return h('tr', null, h('td', { class: 'meta', text: fmt.dot(o.x.date).slice(2) }), h('td', { text: o.x.merchant.replace(/\(SEYPAY\)|_문화비/g, '') }), h('td', { class: 'num', text: F.won(o.x.amount) }),
           h('td', { class: 'meta', text: o.books.length ? o.books.length + '권' : '—' }), h('td', { class: 'num', text: F.won(o.got) }),
-          h('td', { class: o.gap ? 'red' : '', text: o.gap ? F.won(o.gap) + ' 목록 없음 — 주문 내역 필요' : '일치' }));
+          h('td', { class: o.gap > 0 ? 'red' : '', text: o.gap > 0 ? F.won(o.gap) + ' 목록 없음 — 주문 내역 필요' : o.gap < 0 ? '일치 (포인트 · 할인 ' + F.won(-o.gap) + ')' : '일치' }));
       })))), h('p', { class: 'meta', text: '서점 주문 내역(책 제목 · 가격)을 알려주시거나 아래 「자산 추가」에서 구분을 「도서」로 넣으면 대조됩니다. 결제일이 같은 책끼리 한 주문으로 묶습니다.' }));
   }
 
