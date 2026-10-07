@@ -116,7 +116,7 @@
     if (!V.per) V.per = ys.length ? ys[ys.length - 1] : 'r12';
     var keys = months(V.per);
     var tools = h('div', { class: 'toolbar' }, F.seg(ys.map(function (y) { return [y, y + '년']; }).concat([['r12', '최근 12개월'], ['all', '전체']]), V.per, function (k) { V.per = k; V.sel = null; }, '기간'));
-    if (!F.tx.length) return ui.put(view, ui.head('실제 · 통장', '월별 사용처'), ui.empty('거래내역을 가져오면 월별 사용처가 여기에 표시됩니다.'));
+    if (!F.tx.length) return ui.put(view, ui.head('실제 · 통장', '사용분석'), ui.empty('거래내역을 가져오면 월별 사용처가 여기에 표시됩니다.'));
 
     var inK = {}; keys.forEach(function (k) { inK[k] = 1; });
     var M = {}, IN = {}, known = {};
@@ -200,7 +200,7 @@
     // 누적 자본조달 — 기간 선택과 무관, 설립 자본금(투자 · 자본금 중 설립 납입)은 뺀다
     var raised = F.tx.filter(function (t) { return t.inAmt > 0 && ['정부지원 · 정책자금', '대출 입금', '투자 · 자본금'].indexOf(t.cat) >= 0; }).reduce(function (a, t) { return a + t.inAmt; }, 0) - (+(F.cfg.capital || 0));
 
-    ui.put(view, ui.head('실제 · 통장', '월별 사용처'), tools,
+    ui.put(view, ui.head('실제 · 통장', '사용분석'), tools,
       h('div', { class: 'sp-kpis' },
         h('section', { class: 'sp-kgrp' }, h('h3', { class: 'sp-ktitle', text: '자본조달 · 누적' }),
           F.kpi([['대출 (정책자금)', F.man(raised), '', '중진공 · 갚아야 할 돈'],
