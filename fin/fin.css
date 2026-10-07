@@ -267,3 +267,10 @@ a.map-card:hover { border-color: var(--black); }
 .fin-spend th.sp-tot, .fin-spend td.sp-tot { border-left: 2px solid var(--black, #111); }
 .fin-spend tr.sp-sub td:first-child { padding-left: 40px; color: var(--gray-400); font-size: 12px; }
 .fin-spend tr.sp-sub td { font-size: 12px; }
+.sp-kpis { display: grid; grid-template-columns: 2fr 3fr; gap: 16px; margin-bottom: 20px; }
+.sp-kgrp { min-width: 0; }
+.sp-ktitle { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--gray-400); margin: 0 0 6px; padding-bottom: 6px; border-bottom: 2px solid var(--black, #111); }
+.sp-kgrp .summary { margin: 0; }
+.summary.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.summary.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .sp-kpis { grid-template-columns: 1fr; } .summary.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

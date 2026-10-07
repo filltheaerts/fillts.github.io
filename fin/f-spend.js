@@ -43,6 +43,12 @@
   // 카드대금 거래 하나에 연결된 카드 명세 중 분류가 뚜렷한 것 (fin_card.payId === 거래 id, cat 있음)
   function cardSplit(t) { return F.card.filter(function (x) { return x.payId === t.id && x.cat && x.cat !== '카드대금'; }); }
 
+  // 대표 가수금 잔액 — 결산 마감(ownerBook)까지는 장부 금액, 이후 통장 입금 · 반환을 더한다
+  function ownerBal() {
+    var ob = F.cfg.ownerBook || null, base = ob ? +ob.amount || 0 : 0, from = ob ? ob.asOf : '';
+    return F.tx.filter(function (t) { return t.cat === '대표 가수금' && (!from || t.date > from); }).reduce(function (a, t) { return a + (t.inAmt || 0) - (t.outAmt || 0); }, base);
+  }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -132,11 +138,14 @@
     var raised = F.tx.filter(function (t) { return t.inAmt > 0 && ['정부지원 · 정책자금', '대출 입금', '투자 · 자본금'].indexOf(t.cat) >= 0; }).reduce(function (a, t) { return a + t.inAmt; }, 0) - (+(F.cfg.capital || 0));
 
     ui.put(view, ui.head('실제 · 통장', '월별 사용처'), tools,
-      F.kpi([['기간 지출 (보증금 제외)', F.man(total), '', keys.length ? F.ymLabel(keys[0]) + ' ~ ' + F.ymLabel(keys[keys.length - 1]) : ''],
-        ['월평균 지출', F.man(total / active), '', active + '개월 기준'],
-        ['가장 큰 사용처', top[0] ? top[0][0] : '—', '', top[0] ? F.man(top[0][1]) + ' · ' + share(top[0][1]) : ''],
-        ['대표 가수금 입금', F.man(ownerIn), '', '같은 기간 · 대표 → 법인'],
-        ['누적 자본조달', F.man(raised), '', '정책자금 · 대출 · 투자 (전체 기간 · 설립 자본금 제외)']], 'five'),
+      h('div', { class: 'sp-kpis' },
+        h('section', { class: 'sp-kgrp' }, h('h3', { class: 'sp-ktitle', text: '자본조달 · 누적' }),
+          F.kpi([['대출 (정책자금)', F.man(raised), '', '중진공 등 · 갚아야 할 돈'],
+            ['대표 가수금', F.man(ownerBal()), '', '결산 장부 기준 잔액 · 이 기간 입금 ' + F.man(ownerIn)]], 'two')),
+        h('section', { class: 'sp-kgrp' }, h('h3', { class: 'sp-ktitle', text: '지출 · ' + (keys.length ? F.ymLabel(keys[0]) + ' ~ ' + F.ymLabel(keys[keys.length - 1]) : '') }),
+          F.kpi([['기간 지출', F.man(total), '', '보증금 제외'],
+            ['월평균 지출', F.man(total / active), '', active + '개월 기준'],
+            ['가장 큰 사용처', top[0] ? top[0][0] : '—', '', top[0] ? F.man(top[0][1]) + ' · ' + share(top[0][1]) : '']], 'three'))),
       ui.panel('어디에 썼나 (월별)', null, h('div', { class: 'table-wrap flat' }, markTot(h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, head), body), keys.length)),
         h('p', { class: 'meta', text: '통장 출금 기준(현금주의) · 금액 칸을 누르면 그 달 그 분류의 거래가 아래에 표시됩니다. ' + CARD_NOTE + ' 분류는 거래내역에서 바꾸면 바로 반영됩니다.' })),
       V.sel ? detail(V.sel, keys) : null,
