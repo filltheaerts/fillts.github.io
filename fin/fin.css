@@ -253,3 +253,6 @@ a.map-card:hover { border-color: var(--black); }
 .sx-grid td.sx-sectog { text-align: left; }
 .sx-grid .sx-chip { display: inline-block; padding: 1px 8px; font-size: 10px; border: 1px solid var(--gray-400); background: #fff; color: var(--black); }
 .sx-grid tr.sx-fold:hover .sx-chip { border-color: var(--black); }
+
+.fin-check { margin-top: 4px; font-size: 12px; color: var(--red); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fin-check .btn-xs { padding: 1px 6px; font-size: 10px; }

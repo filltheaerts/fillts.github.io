@@ -117,6 +117,7 @@
     return F.sortedTx().filter(function (t) {
       if (mode === 'uncat' && t.cat && t.cat !== '미분류') return false;
       if (mode === 'noevid' && !(t.outAmt > 0 && !F.isTransfer(t) && !t.evid)) return false;
+      if (mode === 'check' && !t.check) return false;
       if (V.ym && F.ym(t.date) !== V.ym) return false;
       if (V.dir === 'in' && !(t.inAmt > 0)) return false;
       if (V.dir === 'out' && !(t.outAmt > 0)) return false;
@@ -163,7 +164,9 @@
       var note = ui.input({ value: t.note || '', maxlength: 200, placeholder: '메모', class: 'fin-note', disabled: ed ? null : true });
       note.addEventListener('change', function () { db.doc('fin_tx/' + t.id).update({ note: note.value.trim() }).catch(ui.fail); });
       body.appendChild(h('tr', null, h('td', { class: 'fin-date', text: fmt.dot(t.date).slice(2) + (t.time ? ' ' + t.time.slice(0, 5) : '') }),
-        h('td', null, h('div', { text: t.desc || t.memo || '(내용 없음)' }), h('div', { class: 'meta', text: [t.desc ? t.memo : '', F.acctName(t)].filter(Boolean).join(' · ') })),
+        h('td', null, h('div', { text: t.desc || t.memo || '(내용 없음)' }), h('div', { class: 'meta', text: [t.desc ? t.memo : '', F.acctName(t)].filter(Boolean).join(' · ') }),
+          t.check ? h('div', { class: 'fin-check' }, h('span', { class: 'tag red', text: '확인' }), ' ' + t.check, ed ? ui.btn('확인 완료', function () { db.doc('fin_tx/' + t.id).update({ check: '', checkedAt: HR.FV.serverTimestamp() }).catch(ui.fail); }, 'btn-line btn-xs') : null) : null,
+          t.src === 'reconstructed' ? h('div', { class: 'meta', text: '※ 통장 거래내역이 아니라 지급 증빙 · 잔액으로 재구성한 줄' }) : null),
         h('td', { class: 'num in', text: t.inAmt ? F.won(t.inAmt) : '' }), h('td', { class: 'num', text: t.outAmt ? F.won(t.outAmt) : '' }), h('td', { class: 'num meta', text: t.bal != null ? F.won(t.bal) : '' }),
         h('td', null, cat), h('td', null, ev), h('td', null, note),
         ed ? h('td', null, ui.confirmBtn('삭제', function () { db.doc('fin_tx/' + t.id).delete().catch(ui.fail); })) : null));
@@ -178,11 +181,48 @@
       h('p', { class: 'note', text: '분류를 바꾸면 같은 거래처(내용 첫 단어)의 자동 분류 거래도 함께 바뀌고, 이후 가져오는 거래에도 자동 적용됩니다(설정 › 분류 규칙). 증빙은 세무사 전달 자료의 「증빙 확인」 시트에 그대로 들어갑니다.' }));
   }
 
+
+  /* ---------- 계좌 대조: 거래내역의 마지막 잔액 vs 지금 잔액(직접 입력) ---------- */
+  function reconView(view) {
+    var by = {};
+    F.tx.forEach(function (t) { var k = F.acctKey(t); (by[k] = by[k] || []).push(t); });
+    var man = {}; (F.cfg.cashAccts || []).forEach(function (m, i) { man[m.key || ('m' + i)] = m; });
+    var keys = Object.keys(by).concat(Object.keys(man).filter(function (k) { return !by[k]; }));
+    var rows = keys.map(function (k) {
+      var list = (by[k] || []).slice().sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? -1 : 1; });
+      var last = list[list.length - 1], first = list[0], m = man[k];
+      // 잔액 사슬 끊김
+      var breaks = 0; for (var i = 1; i < list.length; i++) { var a = list[i - 1], b = list[i]; if (a.bal != null && b.bal != null && Math.round(a.bal + b.inAmt - b.outAmt) !== Math.round(b.bal)) breaks++; }
+      var diff = m && last && last.bal != null ? (+m.amount || 0) - last.bal : null;
+      return { k: k, name: m ? m.name : F.acctName(last || {}), n: list.length, from: first && first.date, to: last && last.date, lastBal: last ? last.bal : null, man: m, diff: diff, breaks: breaks, recon: list.filter(function (t) { return t.src === 'reconstructed'; }).length };
+    });
+    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['계좌', '거래내역 기간', '거래내역 마지막 잔액', '지금 잔액 (직접 입력)', '차이', '잔액 사슬', '판정'].map(function (x, i) { return h('th', { class: i >= 2 && i <= 4 ? 'num' : '', text: x }); }))),
+      h('tbody', null, rows.map(function (r) {
+        var ok = r.diff === 0, gap = r.man && r.to && r.man.asOf > r.to;
+        var verdict = !r.n ? '거래내역 없음 — 통장 파일 필요' : r.diff == null ? '지금 잔액 미입력' : ok ? (r.recon ? '일치 (일부 재구성 줄 포함)' : '일치') : (gap ? fmt.dot(r.to).slice(2) + ' 이후 내역 없음 — ' + F.man(r.diff) + ' 설명 필요' : '불일치 ' + F.man(r.diff));
+        return h('tr', null, h('td', null, h('div', { class: 'strong', text: r.name }), h('div', { class: 'meta', text: r.k })),
+          h('td', { text: r.n ? fmt.dot(r.from).slice(2) + ' ~ ' + fmt.dot(r.to).slice(2) + ' · ' + r.n + '건' : '—' }),
+          h('td', { class: 'num', text: r.lastBal != null ? F.won(r.lastBal) : '' }),
+          h('td', { class: 'num', text: r.man ? F.won(r.man.amount) + ' (' + fmt.dot(r.man.asOf).slice(2) + ')' : '' }),
+          h('td', { class: 'num' + (r.diff ? ' red' : ''), text: r.diff == null ? '' : (r.diff > 0 ? '+' : '') + F.won(r.diff) }),
+          h('td', { class: r.breaks ? 'red' : '', text: r.n ? (r.breaks ? r.breaks + '곳 끊김' : '이어짐') : '' }),
+          h('td', { class: ok ? '' : 'red', text: verdict }));
+      })));
+    // 기간별 요약 (대표 가수금 누적 등)
+    var sumCat = function (c, dir) { return F.tx.filter(function (t) { return t.cat === c; }).reduce(function (a, t) { return a + (dir === 'in' ? t.inAmt : t.outAmt); }, 0); };
+    var owner = sumCat('대표 가수금', 'in'), dep = sumCat('보증금 · 예치금', 'out'), checks = F.tx.filter(function (t) { return t.check; }).length;
+    ui.put(view, F.kpi([['대표 가수금 입금 (누적)', F.man(owner), '', '거래내역 기간 합계 · 반환 0'], ['임차 보증금 (추정)', F.man(dep), '', '자산 — 비용 아님'],
+      ['확인 필요', checks + '건', checks ? 'red' : '', '거래내역 › 확인 필요'], ['거래내역', F.tx.length + '건']], 'four'),
+      ui.panel('Reconcile · 계좌별 대조', null, h('div', { class: 'table-wrap flat' }, tb),
+        h('p', { class: 'meta', text: '거래내역 마지막 잔액과 설정 › 계좌 · 잔액에 직접 넣은 지금 잔액을 비교합니다. 차이는 그 사이 거래내역 파일이 아직 없다는 뜻 — 해당 기간 통장 파일을 가져오면 0이 되어야 합니다. 잔액 사슬은 「앞 잔액 + 입금 − 출금 = 이번 잔액」이 모든 줄에서 맞는지 검사합니다.' })));
+  }
+
   function render(view, parts) {
     var sub = parts[0] || 'list';
     ui.put(view, ui.head('Transactions', '거래내역', h('span', { class: 'meta', text: F.tx.length + '건' })),
-      ui.tabs([['list', '전체'], ['list/uncat', '미분류'], ['list/noevid', '증빙 확인'], ['import', '가져오기']], sub === 'list' && parts[1] ? 'list/' + parts[1] : sub, 'tx'));
+      ui.tabs([['list', '전체'], ['list/check', '확인 필요 ' + F.tx.filter(function (t) { return t.check; }).length], ['list/uncat', '미분류'], ['list/noevid', '증빙 확인'], ['recon', '계좌 대조'], ['import', '가져오기']], sub === 'list' && parts[1] ? 'list/' + parts[1] : sub, 'tx'));
     if (sub === 'import') importView(view);
+    else if (sub === 'recon') reconView(view);
     else listView(view, parts[1] || '');
   }
   HR.register('tx', { render: render });
