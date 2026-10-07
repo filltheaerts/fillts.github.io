@@ -45,7 +45,7 @@
   var STORD = { pick: 0, review: 1, idea: 2, hold: 3 };
   var MAX_SUBS = 30, MAX_LINKS = 20;
 
-  var S = { user: null, mid: null, isAdmin: false, members: {}, items: [], boards: {}, ready: false, gotItems: false };
+  var S = { user: null, mid: null, isAdmin: false, members: {}, orgs: {}, tfs: [], items: [], boards: {}, ready: false, gotItems: false };
   var unsubs = [];
 
   /* ============ DOM helpers ============ */
@@ -163,6 +163,8 @@
     $('authView').hidden = true; $('appView').hidden = false;
     sub(db.collection('hr_members'), function (s) { S.members = {}; rows(s).forEach(function (m) { S.members[m.id] = m; }); S.ready = true; });
     sub(db.collection('mkt_items'), function (s) { S.items = rows(s); S.gotItems = true; });
+    sub(db.collection('hr_orgs'), function (s) { S.orgs = {}; rows(s).forEach(function (o) { S.orgs[o.id] = o; }); });
+    db.collection('hr_ws_tf').get().then(function (s) { S.tfs = rows(s); }).catch(function () { S.tfs = []; });   // WORK 보내기 공간 목록
     sub(db.collection('mkt_boards'), function (s) { S.boards = {}; rows(s).forEach(function (b) { S.boards[b.id] = b; }); });
     route();
   }
@@ -360,7 +362,7 @@
   var showHold = false;
   function setStatus(x, st) {
     db.doc('mkt_items/' + x.id).update({ status: st, updatedAt: FV.serverTimestamp(), updatedBy: S.mid })
-      .then(function () { toast(st === 'review' ? '「' + x.title + '」을 디벨롭으로 올렸습니다. 카드를 눌러 세부항목을 채우세요.' : '옮겼습니다.'); }).catch(function (e) { fail(e); });
+      .then(function () { if (st === 'review') { toast('「' + x.title + '」을 프로젝트로 올렸습니다. 기간 · 서브를 채우세요.'); projectModal(x.id); } else toast('옮겼습니다.'); }).catch(function (e) { fail(e); });
   }
   function addTask(inp, m) {
     var t = inp.value.replace(/^\s*[-·•*\d.)]+\s*/, '').trim();
@@ -380,6 +382,239 @@
       hold ? btn('되살리기', function () { setStatus(x, 'idea'); }, 'btn-line btn-xs')
         : h('div', { class: 'mx-task-act' }, btn('보류', function () { setStatus(x, 'hold'); }, 'btn-line btn-xs'), btn('디벨롭 →', function () { setStatus(x, 'review'); }, 'btn-xs mx-primary')));
   }
+  /* ============================================
+     프로젝트 편집 — 프로젝트(기간 · 설명) → 서브(이름 · 기간 · 설명) → HR WORK 일정으로 보내기
+     ============================================ */
+  var MAX_PSUBS = 20;   // WORK 서브 프로젝트 한도와 같게
+  function addDays(s, n) { var d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function addMonths(s, n) { var d = new Date(s + 'T00:00:00Z'), day = d.getUTCDate(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + n); var last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); d.setUTCDate(Math.min(day, last)); return d.toISOString().slice(0, 10); }
+  function today() { return kstDate(new Date()); }
+  function dot(s) { return s ? s.slice(2).replace(/-/g, '.') : ''; }
+  function daysOf(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1; }
+  function period(x) {
+    if (!x.start && !x.due) return '';
+    var t = (x.start ? dot(x.start) : '') + ' → ' + (x.due ? dot(x.due) : '');
+    if (x.start && x.due && x.due >= x.start) t += ' · ' + daysOf(x.start, x.due) + '일';
+    return t;
+  }
+  function dday(due) {
+    if (!due) return null;
+    var n = daysOf(today(), due) - 1;
+    return n === 0 ? ['D-DAY', 'red'] : n > 0 ? ['D-' + n, n <= 7 ? 'warn' : 'mute'] : ['마감 ' + (-n) + '일 지남', 'red'];
+  }
+  // WORK 공간: 전사 · 조직(하위 없는 팀) · TF — WORK와 같은 기준
+  function wsSpaces() {
+    var parents = {}; Object.keys(S.orgs).forEach(function (k) { var p = S.orgs[k].parentId; if (p && S.orgs[p]) parents[p] = 1; });
+    var orgs = Object.keys(S.orgs).filter(function (k) { return !parents[k]; }).sort(function (a, b) { return (S.orgs[a].order || 0) - (S.orgs[b].order || 0) || String(S.orgs[a].name).localeCompare(S.orgs[b].name, 'ko'); })
+      .map(function (k) { var p = S.orgs[k].parentId; return [k, (p && S.orgs[p] ? S.orgs[p].name + ' · ' : '') + S.orgs[k].name]; });
+    var tf = (S.tfs || []).filter(function (t) { return t.active !== false; }).map(function (t) { return [t.id, 'TF · ' + t.name]; });
+    return [['all', '전사']].concat(orgs, tf);
+  }
+  function wsName(key) { var s = wsSpaces().filter(function (x) { return x[0] === key; })[0]; return s ? s[1] : '(삭제된 공간)'; }
+  function canWs(key) {
+    var me = S.members[S.mid] || {};
+    if (S.isAdmin || key === 'all' || me.orgId === key) return true;
+    var tf = (S.tfs || []).filter(function (t) { return t.id === key; })[0];
+    return !!(tf && (tf.members || []).indexOf(S.mid) >= 0);
+  }
+  function wsUrl(x) { return '/hr/#ws/' + x.wsOrg + '/projects/' + x.wsPost; }
+  var WS_STATUS = { idea: 'idea', review: 'doing', pick: 'doing', hold: 'idea' };
+  // MKT 프로젝트 → WORK 프로젝트 (hr_ws_posts). 다시 보내면 제목 · 기간 · 설명 · 서브를 MKT 기준으로 덮어쓴다 (WORK 상태 · 담당은 그대로)
+  function sendToWork(x, org, m, done) {
+    var subs = (x.subs || []).filter(function (s) { return (s.t || '').trim(); }).slice(0, MAX_PSUBS).map(function (s) {
+      return { t: s.t.trim().slice(0, 80), start: s.start || '', due: s.due || '', body: String(s.body || '').slice(0, 4000), done: !!s.done, links: [] };
+    });
+    var body = String(x.body || '').slice(0, 19000) + (x.body ? '\n\n' : '') + '— fillts MKT 프로젝트에서 보냄';
+    var data = { title: x.title.slice(0, 100), body: body, start: x.start || '', due: x.due || '', subs: subs, updatedAt: FV.serverTimestamp() };
+    var same = x.wsPost && x.wsOrg === org;
+    var op = same ? db.doc('hr_ws_posts/' + x.wsPost).update(data).then(function () { return x.wsPost; })
+      : db.collection('hr_ws_posts').add(Object.assign(data, { org: org, kind: 'project', status: WS_STATUS[x.status || 'idea'], owner: S.mid, people: [], flags: [], tags: ['MKT'],
+          links: [{ t: 'MKT 프로젝트', url: 'https://fillts.com/mkt/#project' }], createdBy: S.mid, createdAt: FV.serverTimestamp() })).then(function (r) { return r.id; });
+    return op.then(function (pid) {
+      return db.doc('mkt_items/' + x.id).update({ wsOrg: org, wsPost: pid, wsAt: FV.serverTimestamp(), updatedAt: FV.serverTimestamp(), updatedBy: S.mid }).then(function () { return pid; });
+    }).then(function (pid) { if (done) done(pid); }).catch(function (e) {
+      if (same && e && e.code === 'not-found') { x.wsPost = ''; return sendToWork(x, org, m, done); }   // WORK에서 지운 경우 → 새로 만든다
+      if (e && e.code === 'permission-denied') return err(m, '「' + wsName(org) + '」 공간에 쓸 권한이 없습니다. 내 팀 · 전사 · 내가 속한 TF를 고르세요.');
+      fail(e, m);
+    });
+  }
+
+  function projectModal(id) {
+    var src = id ? itemById(id) : null;
+    if (id && !src) return toast('삭제된 항목입니다.');
+    var it = JSON.parse(JSON.stringify({ title: src ? src.title : '', body: src ? src.body || '' : '', status: src ? src.status || 'idea' : 'review',
+      start: src ? src.start || '' : today(), due: src ? src.due || '' : '', links: src ? src.links || [] : [],
+      subs: (src ? src.subs || [] : []).map(function (s) { return { t: s.t || '', done: !!s.done, start: s.start || '', due: s.due || '', body: s.body || '' }; }) }));
+    modal(src ? '프로젝트' : '새 프로젝트', 'b-project mx-detail mx-pj', function (panel, close) {
+      var m = msg();
+      var title = h('input', { type: 'text', class: 'sm-title', maxlength: '120', placeholder: PROJECT.ph, value: it.title });
+      var body = h('textarea', { rows: '4', maxlength: '8000', placeholder: '목표 · 배경 · 이 프로젝트가 끝나면 무엇이 되어 있나 (URL은 자동 링크)', value: it.body });
+      var seg = statusSeg(it.status, function (v) { it.status = v; }, 'project');
+
+      // 기간 — WORK와 같은 빠른 선택
+      var daysEl = h('span', { class: 'meta' });
+      var drawDays = function () { daysEl.textContent = it.start && it.due ? (it.due < it.start ? '마감이 시작보다 빠릅니다' : daysOf(it.start, it.due) + '일') : ''; };
+      var startI = h('input', { type: 'date', value: it.start, 'aria-label': '프로젝트 시작일', onchange: function () { it.start = this.value; drawDays(); } });
+      var dueI = h('input', { type: 'date', value: it.due, 'aria-label': '프로젝트 마감일', onchange: function () { it.due = this.value; drawDays(); } });
+      drawDays();
+      var quick = h('div', { class: 'mx-quickd' }, [['1주', 7, 'd'], ['2주', 14, 'd'], ['1달', 1, 'm'], ['2달', 2, 'm'], ['3달', 3, 'm'], ['6달', 6, 'm']].map(function (q) {
+        return h('button', { type: 'button', text: q[0], onclick: function () { var s = it.start || today(); if (!it.start) { it.start = s; startI.value = s; } it.due = q[2] === 'd' ? addDays(s, q[1] - 1) : addDays(addMonths(s, q[1]), -1); dueI.value = it.due; drawDays(); } });
+      }));
+
+      // 서브 프로젝트 — 블록마다 이름 · 기간 · 설명
+      var subBox = h('ol', { class: 'mx-psubs' }), subCount = h('span', { class: 'meta' });
+      var autoGrow = function (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 420) + 'px'; };
+      var chainStart = function (i) {   // 앞 서브 마감 다음 날 → 없으면 프로젝트 시작일
+        for (var k = i - 1; k >= 0; k--) if (it.subs[k].due) return addDays(it.subs[k].due, 1);
+        return it.start || today();
+      };
+      var drawSubs = function (focusIdx) {
+        while (subBox.firstChild) subBox.removeChild(subBox.firstChild);
+        it.subs.forEach(function (s, i) {
+          var nm = h('input', { type: 'text', class: 'mx-psub-t', maxlength: '80', placeholder: '서브 ' + (i + 1) + ' 이름', value: s.t, oninput: function () { s.t = this.value; } });
+          var ta = h('textarea', { rows: '2', maxlength: '4000', placeholder: '설명 — 무엇을 · 어떻게 · 누가 · 완료 기준 (줄바꿈 자유)', value: s.body, oninput: function () { s.body = this.value; autoGrow(this); } });
+          var sI = h('input', { type: 'date', value: s.start, 'aria-label': '서브 시작일', onchange: function () { s.start = this.value; } });
+          var dI = h('input', { type: 'date', value: s.due, 'aria-label': '서브 마감일', onchange: function () { s.due = this.value; } });
+          var ensure = function () { if (!s.start) { s.start = chainStart(i); sI.value = s.start; } };
+          var chip = function (label, fn) { return h('button', { type: 'button', text: label, onclick: fn }); };
+          var li = h('li', { class: 'mx-psub' + (s.done ? ' done' : '') },
+            h('div', { class: 'mx-psub-head' },
+              h('span', { class: 'mx-psub-no', text: String(i + 1) }),
+              nm,
+              h('label', { class: 'mx-psub-done', title: '완료' }, h('input', { type: 'checkbox', checked: s.done, onchange: function () { s.done = this.checked; li.classList.toggle('done', s.done); } }), ' 완료'),
+              h('button', { type: 'button', class: 'mx-mini', title: '위로', 'aria-label': '위로', text: '↑', disabled: i === 0, onclick: function () { var t = it.subs[i - 1]; it.subs[i - 1] = s; it.subs[i] = t; drawSubs(); } }),
+              h('button', { type: 'button', class: 'mx-mini', title: '아래로', 'aria-label': '아래로', text: '↓', disabled: i === it.subs.length - 1, onclick: function () { var t = it.subs[i + 1]; it.subs[i + 1] = s; it.subs[i] = t; drawSubs(); } }),
+              h('button', { type: 'button', class: 'mx-mini del', title: '빼기', 'aria-label': '빼기', text: '×', onclick: function () { it.subs.splice(i, 1); drawSubs(); } })),
+            h('div', { class: 'mx-psub-dates' }, sI, h('span', { class: 'meta', text: '→' }), dI,
+              h('div', { class: 'mx-quickd' },
+                chip(i ? '앞 서브 마감 후' : '프로젝트 시작일', function () { s.start = chainStart(i); sI.value = s.start; }),
+                chip('1주', function () { ensure(); s.due = addDays(s.start, 6); dI.value = s.due; }),
+                chip('2주', function () { ensure(); s.due = addDays(s.start, 13); dI.value = s.due; }),
+                chip('1달', function () { ensure(); s.due = addDays(addMonths(s.start, 1), -1); dI.value = s.due; }))),
+            ta);
+          subBox.appendChild(li);
+          setTimeout(function () { autoGrow(ta); }, 0);
+          if (focusIdx === i) setTimeout(function () { nm.focus(); }, 0);
+        });
+        subCount.textContent = it.subs.length ? it.subs.length + ' / ' + MAX_PSUBS : '';
+      };
+      drawSubs();
+      var addSub = function () {
+        if (it.subs.length >= MAX_PSUBS) return err(m, '서브는 최대 ' + MAX_PSUBS + '개입니다 (WORK와 같은 한도).');
+        it.subs.push({ t: '', done: false, start: chainStart(it.subs.length), due: '', body: '' }); drawSubs(it.subs.length - 1);
+      };
+      var quickArea = h('div', { class: 'mx-subquick', hidden: true });
+      var openQuick = function () {
+        while (quickArea.firstChild) quickArea.removeChild(quickArea.firstChild);
+        var q = quickRows('서브 이름 — 한 칸에 하나', MAX_PSUBS), auto = h('input', { type: 'checkbox' });
+        quickArea.appendChild(h('p', { class: 'muted small', text: '이름만 칸마다 적고 넣으면 아래에 서브 블록으로 생깁니다. 기간 · 설명은 블록에서 채우세요.' }));
+        quickArea.appendChild(q.el);
+        quickArea.appendChild(h('label', { class: 'check' }, auto, ' 앞 서브 마감 후부터 1주씩 자동으로 기간 배치'));
+        quickArea.appendChild(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '+ 칸 추가', onclick: function () { q.add(true); } }),
+          h('button', { type: 'button', class: 'btn btn-xs', text: '서브로 넣기', onclick: function () {
+            var v = q.values();
+            if (it.subs.length + v.length > MAX_PSUBS) return err(m, '서브는 최대 ' + MAX_PSUBS + '개입니다.');
+            v.forEach(function (t) {
+              var s = { t: t.slice(0, 80), done: false, start: '', due: '', body: '' };
+              if (auto.checked) { s.start = chainStart(it.subs.length); s.due = addDays(s.start, 6); }
+              it.subs.push(s);
+            });
+            quickArea.hidden = true; drawSubs(); err(m, '');
+          } }), h('button', { type: 'button', class: 'x-del', text: '접기', onclick: function () { quickArea.hidden = true; } })));
+        quickArea.hidden = false; q.first().focus();
+      };
+
+      var collect = function () {
+        var t = title.value.trim();
+        if (!t) { err(m, '프로젝트 이름을 적어 주세요.'); return null; }
+        if (it.start && it.due && it.due < it.start) { err(m, '프로젝트 마감이 시작보다 빠릅니다.'); return null; }
+        var bad = it.subs.filter(function (s) { return s.start && s.due && s.due < s.start; })[0];
+        if (bad) { err(m, '서브 「' + (bad.t || '이름 없음') + '」의 마감이 시작보다 빠릅니다.'); return null; }
+        if (it.subs.some(function (s) { return !s.t.trim() && (s.body.trim() || s.due); })) { err(m, '이름 없는 서브가 있습니다. 이름을 적거나 ×로 빼 주세요.'); return null; }
+        return { board: 'project', title: t.slice(0, 120), body: body.value.slice(0, 8000), status: it.status, start: it.start || '', due: it.due || '',
+          subs: it.subs.filter(function (s) { return s.t.trim(); }).map(function (s) { return { t: s.t.trim().slice(0, 80), done: !!s.done, start: s.start || '', due: s.due || '', body: String(s.body || '').slice(0, 4000) }; }),
+          links: it.links.filter(function (l) { return itemById(l); }), updatedAt: FV.serverTimestamp(), updatedBy: S.mid };
+      };
+      var save = function (after) {
+        var data = collect(); if (!data) return false;
+        var p = src ? db.doc('mkt_items/' + src.id).update(data).then(function () { return src.id; })
+          : db.collection('mkt_items').add(Object.assign(data, { likes: [], by: S.mid, at: FV.serverTimestamp() })).then(function (r) { return r.id; });
+        p.then(function (newId) { if (after) return after(newId, data); close(); toast(src ? '저장했습니다.' : '프로젝트를 만들었습니다.'); }).catch(function (e) { fail(e, m); });
+        return true;
+      };
+
+      // HR WORK 일정으로 보내기
+      var spaces = wsSpaces(), me = S.members[S.mid] || {};
+      var defOrg = src && src.wsOrg ? src.wsOrg : (me.orgId && spaces.some(function (s) { return s[0] === me.orgId; }) ? me.orgId : 'all');
+      var orgSel = h('select', { 'aria-label': 'WORK 공간' }, spaces.map(function (s) { return h('option', { value: s[0], text: s[1] + (canWs(s[0]) ? '' : ' (권한 없음)') }); }));
+      orgSel.value = defOrg;
+      var sent = src && src.wsPost;
+      var sendBtn = btn(sent ? 'WORK에 다시 반영' : 'WORK 일정으로 보내기', function () {
+        if (!canWs(orgSel.value)) return err(m, '「' + wsName(orgSel.value) + '」 공간에 쓸 권한이 없습니다. 내 팀 · 전사 · 내가 속한 TF를 고르세요.');
+        sendBtn.disabled = true;
+        var ok = save(function (newId, data) {
+          var x = Object.assign({}, data, { id: newId, wsPost: src ? src.wsPost || '' : '', wsOrg: src ? src.wsOrg || '' : '' });
+          var again = x.wsPost && x.wsOrg === orgSel.value;
+          return sendToWork(x, orgSel.value, m, function () {
+            close(); toast('WORK 「' + wsName(orgSel.value) + '」 일정에 ' + (again ? '반영했습니다.' : '보냈습니다.') + ' 타임라인에서 확인하세요.');
+          }).then(function () { sendBtn.disabled = false; });
+        });
+        if (!ok) sendBtn.disabled = false;
+      }, 'btn-sm mx-primary');
+      var workSec = h('div', { class: 'mx-sec mx-worksec' },
+        h('div', { class: 'mx-sec-head' }, h('span', { class: 'label', text: 'HR WORK 일정으로 보내기' })),
+        h('p', { class: 'muted small', text: '프로젝트 이름 · 기간 · 설명 · 서브(기간 · 설명 · 완료)가 WORK 프로젝트로 만들어져 타임라인에 그대로 나옵니다. ' + (sent ? '다시 반영하면 WORK 쪽 제목 · 기간 · 설명 · 서브가 지금 내용으로 바뀝니다 (WORK 상태 · 담당은 그대로).' : '보낸 뒤 여기서 고치면 「WORK에 다시 반영」으로 맞출 수 있습니다.') }),
+        h('div', { class: 'row mx-workrow' }, orgSel, sendBtn,
+          sent ? h('a', { class: 'btn btn-line btn-sm', href: wsUrl(src), target: '_blank', rel: 'opener', text: 'WORK에서 보기 ↗' }) : null),
+        sent ? h('p', { class: 'meta', text: '보냄 · ' + wsName(src.wsOrg) + (src.wsAt ? ' · ' + when(src.wsAt) : '') }) : null);
+
+      panel.appendChild(title);
+      panel.appendChild(h('div', { class: 'mx-field-row' }, h('span', { class: 'label', text: '상태' }), seg));
+      panel.appendChild(h('div', { class: 'mx-sec mx-period' },
+        h('div', { class: 'mx-sec-head' }, h('span', { class: 'label', text: '프로젝트 기간' }), daysEl),
+        h('div', { class: 'mx-psub-dates' }, startI, h('span', { class: 'meta', text: '→' }), dueI, quick)));
+      panel.appendChild(h('div', { class: 'field' }, h('label', { text: '프로젝트 설명' }), body));
+      panel.appendChild(h('div', { class: 'mx-sec' },
+        h('div', { class: 'mx-sec-head' }, h('span', { class: 'label', text: '서브 프로젝트 — 이름 · 기간 · 설명' }), subCount,
+          h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '+ 간단 서브', onclick: openQuick })),
+        quickArea, subBox,
+        h('button', { type: 'button', class: 'mx-subadd', text: '+ 서브 추가', onclick: addSub })));
+      panel.appendChild(workSec);
+      if (src) panel.appendChild(h('p', { class: 'meta', text: '처음 올림 ' + name(src.by) + ' · ' + when(src.at) + (src.updatedBy ? '  ·  마지막 수정 ' + name(src.updatedBy) + ' · ' + when(src.updatedAt) : '') }));
+      panel.appendChild(m);
+      panel.appendChild(h('div', { class: 'row sm-actions' }, btn(src ? '저장' : '만들기', function () { save(); }), btn('취소', close, 'btn-line'),
+        src && canDelete(src) ? confirmBtn('삭제', function () {
+          db.doc('mkt_items/' + src.id).delete().then(function () { close(); toast('삭제했습니다. (WORK로 보낸 프로젝트는 WORK에 남아 있습니다)'); }).catch(function (e) { fail(e, m); });
+        }) : null));
+      setTimeout(function () { (src ? panel.querySelector('.sm-x') : title).focus(); }, 0);
+    });
+  }
+
+  // 프로젝트 블록 (목록) — 기간 · D-day · WORK 배지 · 서브 트리(기간 · 설명 첫 줄)
+  var pjOpen = {};
+  function pjBlock(x) {
+    var subs = x.subs || [], doneN = subs.filter(function (s) { return s.done; }).length, dd = dday(x.due), open = pjOpen[x.id] !== false;
+    var openIt = function () { projectModal(x.id); };
+    return h('article', { class: 'mx-pjb st-' + (x.status || 'idea') },
+      h('div', { class: 'mx-pjb-head', tabindex: '0', role: 'button', onclick: openIt, onkeydown: function (e) { if (e.key === 'Enter') openIt(); } },
+        h('div', { class: 'mx-pjb-title' }, stTag(x.status, 'project'), h('h3', { text: x.title })),
+        h('div', { class: 'mx-pjb-meta' },
+          period(x) ? h('span', { class: 'mx-period-t', text: period(x) }) : h('span', { class: 'meta', text: '기간 미정 — 눌러서 정하기' }),
+          dd && x.status !== 'pick' ? h('span', { class: 'tag ' + dd[1], text: dd[0] }) : null,
+          x.wsPost ? h('a', { class: 'mx-wsbadge', href: wsUrl(x), target: '_blank', rel: 'opener', title: 'WORK에서 보기', text: 'WORK · ' + wsName(x.wsOrg) + ' ↗', onclick: function (e) { e.stopPropagation(); } }) : null)),
+      x.body ? h('p', { class: 'mx-pjb-body', text: String(x.body).replace(/\s+/g, ' ').slice(0, 160) }) : null,
+      subs.length ? h('div', { class: 'mx-pjb-subs' },
+        h('button', { type: 'button', class: 'mx-pjb-fold', onclick: function () { pjOpen[x.id] = !open; render(true); } },
+          (open ? '▾ ' : '▸ ') + '서브 ' + doneN + ' / ' + subs.length, h('span', { class: 'mx-bar' }, h('span', { class: 'mx-bar-fill', 'data-w': String(Math.round(doneN / subs.length * 100)) }))),
+        open ? h('ol', { class: 'mx-pjb-sublist' }, subs.map(function (s) {
+          return h('li', { class: s.done ? 'done' : '', onclick: openIt },
+            h('span', { class: 'mx-pjb-check', text: s.done ? '✓' : '' }),
+            h('div', { class: 'grow' }, h('div', { class: 'mx-pjb-subt' }, h('b', { text: s.t }), period(s) ? h('span', { class: 'meta', text: period(s) }) : null),
+              s.body ? h('p', { class: 'mx-pjb-subb', text: String(s.body).split('\n').filter(function (l) { return l.trim(); }).slice(0, 2).join(' · ').slice(0, 160) }) : null));
+        })) : null)
+        : h('button', { type: 'button', class: 'mx-pjb-nosub', text: '+ 서브로 쪼개기', onclick: openIt }));
+  }
+
   function renderProject(view) {
     var tab = h('section', { class: 'tab mk b-project' }), all = itemsOf('project');
     var dev = all.filter(function (x) { return x.status === 'review' || x.status === 'pick'; });
@@ -387,19 +622,19 @@
     var held = all.filter(function (x) { return x.status === 'hold'; });
     tab.appendChild(h('header', { class: 'tab-head mx-head' },
       h('div', null, h('div', { class: 'label', text: 'Projects' }), h('h1', { class: 'tab-title' }, '프로젝트', h('span', { class: 'mx-title-q', text: ' — ' + PROJECT.q }))),
-      h('div', { class: 'mx-head-right' }, btn('+ 과업 여러 개 적기', function () { quickModal(PROJECT); }, 'btn-sm mx-primary'), btn('+ 자세히 쓰기', function () { detailModal(null, 'project'); }, 'btn-line btn-sm'))));
+      h('div', { class: 'mx-head-right' }, btn('+ 새 프로젝트', function () { projectModal(null); }, 'btn-sm mx-primary'), btn('+ 과업 여러 개 적기', function () { quickModal(PROJECT); }, 'btn-line btn-sm'))));
 
     tab.appendChild(h('ol', { class: 'mx-howto' },
-      h('li', null, h('b', { text: '① 쭉 적기' }), h('span', { text: '떠오르는 과업을 판단 없이 전부 적습니다.' })),
-      h('li', null, h('b', { text: '② 고르기' }), h('span', { text: '키우고 싶은 과업에 ♥, 정했으면 「디벨롭 →」.' })),
-      h('li', null, h('b', { text: '③ 키우기' }), h('span', { text: '카드를 열어 내용 · 세부항목 · 보드 연결로 발전시키고, 정리되면 「확정」.' }))));
+      h('li', null, h('b', { text: '① 프로젝트 적기' }), h('span', { text: '이름 · 기간 · 설명. 아직 막연하면 아래 과업 리스트에 한 줄로 먼저 적어 두세요.' })),
+      h('li', null, h('b', { text: '② 서브로 쪼개기' }), h('span', { text: '서브마다 이름 · 기간 · 설명. 「앞 서브 마감 후」로 일정이 이어집니다.' })),
+      h('li', null, h('b', { text: '③ WORK로 보내기' }), h('span', { text: '프로젝트를 열고 「WORK 일정으로 보내기」 — HR WORK 타임라인에 그대로 올라갑니다.' }))));
 
-    // 디벨롭 중 — 카드
-    var grid = h('div', { class: 'mx-grid' });
-    dev.forEach(function (x) { grid.appendChild(card(x)); });
+    // 진행 프로젝트 — 기간 · 서브 트리
+    var grid = h('div', { class: 'mx-pjlist' });
+    dev.sort(function (a, b) { return (STORD[a.status] || 2) - (STORD[b.status] || 2) || String(a.start || '9').localeCompare(String(b.start || '9')); }).forEach(function (x) { grid.appendChild(pjBlock(x)); });
     tab.appendChild(h('section', { class: 'panel mx-dev' },
-      h('div', { class: 'panel-head' }, h('div', { class: 'label', text: '디벨롭 중 · ' + dev.length }), h('span', { class: 'meta', text: '확정 ' + dev.filter(function (x) { return x.status === 'pick'; }).length })),
-      dev.length ? grid : h('p', { class: 'empty', text: S.gotItems ? '아래 과업 리스트에서 「디벨롭 →」을 눌러 키울 과업을 고르세요.' : (S.denied ? '권한이 없습니다. 관리자에게 문의하세요.' : '불러오는 중…') })));
+      h('div', { class: 'panel-head' }, h('div', { class: 'label', text: '프로젝트 · ' + dev.length }), h('span', { class: 'meta', text: 'WORK로 보냄 ' + dev.filter(function (x) { return x.wsPost; }).length + ' · 확정 ' + dev.filter(function (x) { return x.status === 'pick'; }).length })),
+      dev.length ? grid : h('p', { class: 'empty', text: S.gotItems ? '「+ 새 프로젝트」로 만들거나, 아래 과업 리스트에서 「디벨롭 →」을 눌러 프로젝트로 키우세요.' : (S.denied ? '권한이 없습니다. 관리자에게 문의하세요.' : '불러오는 중…') })));
 
     // 과업 리스트 — 한 줄씩
     var m = msg();
@@ -571,6 +806,7 @@
   // 자세히: 제목 · 상태 · 내용 · 세부항목(간단 입력 포함) · 다른 보드와 연결
   function detailModal(id, boardId) {
     var src = id ? itemById(id) : null;
+    if ((src && src.board === 'project') || (!id && boardId === 'project')) return projectModal(id);   // 프로젝트는 기간 · 서브 · WORK 보내기가 있는 전용 편집
     if (id && !src) return toast('삭제된 항목입니다.');
     var b = BMAP[src ? src.board : boardId];
     var it = src ? JSON.parse(JSON.stringify({ title: src.title, body: src.body || '', status: src.status || 'idea', subs: src.subs || [], links: src.links || [] }))
