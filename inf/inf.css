@@ -183,3 +183,4 @@ button.in-chip:hover { border-color: var(--black); }
 .in-algo td { vertical-align: middle; }
 .in-algo-k { min-width: 130px; flex: none; font-weight: 500; }
 .in-algo-intro { margin-bottom: 16px; }
+.in-algo td, .in-algo th { white-space: normal; } .in-algo td.meta { min-width: 200px; line-height: 1.55; }
