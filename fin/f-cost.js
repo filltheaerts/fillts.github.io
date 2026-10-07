@@ -65,7 +65,7 @@
     var p = F.project('base', 24);
     ui.put(view, F.kpi([['월 고정비 (이번 달)', F.man(total), '', list.filter(function (s) { return (!s.start || ym >= s.start) && (!s.end || ym <= s.end); }).length + '개 항목'],
       ['다음 달', F.man(totalNext), totalNext > total ? 'red' : '', totalNext !== total ? (totalNext > total ? '+' : '') + F.man(totalNext - total) : '변동 없음'],
-      ['연간 환산', F.man(total * 12)], ['손익분기 판매량', bep ? bep.toLocaleString('ko-KR') + '개/월' : '-', '', u ? '개당 남는 돈 ' + won(u.contrib) + ' 기준' : ''],
+      ['연간 환산', F.man(total * 12)],
       ['가정값 남음', assumed + '개', assumed ? 'red' : '', assumed ? '노란 「가정값」 표시 — 실제 금액으로 수정' : '모두 실제 값'],
       ['판매와 무관', '매달 고정', '', '판매 · 광고에 따라 바뀌는 돈은 시뮬레이션에서']]),
       ui.panel('Fixed · 회사 운영 고정비 (매달 판매와 상관없이 나가는 돈)', ed ? ui.btn('+ 고정비 추가', function () {

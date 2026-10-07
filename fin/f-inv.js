@@ -101,16 +101,7 @@
       ['제품 1개 원가', F.won(Math.round(uc.total)), '', '원료 · 부자재 포함'], ['생산 한도', cap ? cap.covers.toLocaleString('ko-KR') + '개' : '-', '', cap ? '가장 먼저 떨어지는 것: ' + cap.it.name : '']]),
       ui.panel('Stock · 품목별 재고', null, h('div', { class: 'table-wrap flat' }, tb),
         h('p', { class: 'meta', text: '「몇 개분」 = (재고 + 입고 예정) ÷ 제품 1개당 사용량. 빨간 숫자가 다음 생산의 병목입니다. 줄을 누르면 품목을 고칩니다.' })),
-      (function () {
-        var X = F.runSim ? F.runSim() : null; if (!X) return null;
-        var rows = X.rows.filter(function (r) { return r.plan || r.order || r.arrive; });
-        var tb = h('table', { class: 'table fin-table fin-narrow' }, h('thead', null, h('tr', null, ['월', '판매 계획', '판매 가능', '발주', '입고', '월말 재고', '발주 대금'].map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))),
-          h('tbody', null, rows.map(function (r) {
-            return h('tr', null, h('td', { text: F.ymLabel(r.ym) }), h('td', { class: 'num', text: r.plan ? r.plan.toLocaleString('ko-KR') : '' }), h('td', { class: 'num' + (r.lost ? ' red' : ''), text: r.sold.toLocaleString('ko-KR') + (r.lost ? ' (−' + r.lost.toLocaleString('ko-KR') + ')' : '') }),
-              h('td', { class: 'num', text: r.order ? r.order.toLocaleString('ko-KR') : '' }), h('td', { class: 'num', text: r.arrive ? r.arrive.toLocaleString('ko-KR') : '' }), h('td', { class: 'num strong', text: r.stock.toLocaleString('ko-KR') }), h('td', { class: 'num', text: r.inv ? F.won(Math.round(r.inv)) : '' }));
-          })));
-        return ui.panel('Plan · 판매 · 발주 계획 (시뮬레이션)', h('a', { href: '#sim', class: 'meta', text: '시뮬레이션에서 수정 →' }), rows.length ? h('div', { class: 'table-wrap flat' }, tb) : ui.empty('시뮬레이션에 판매량 · 발주를 넣으면 표시됩니다.'));
-      })());
+      null);
   }
 
   /* ---------- 입고 · 매입 ---------- */
