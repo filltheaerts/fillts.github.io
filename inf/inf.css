@@ -178,3 +178,8 @@ button.in-chip:hover { border-color: var(--black); }
 .tag.in-ag.p50 { color: var(--red); border-color: var(--red); }
 .tag.in-ag.p0 { color: var(--gray-600); }
 .in-ag-line { align-items: center; gap: 8px; }
+.in-scan-list li.in-cur { background: var(--gray-100); }
+.in-algo .in-w { width: 64px; display: inline-block; }
+.in-algo td { vertical-align: middle; }
+.in-algo-k { min-width: 130px; flex: none; font-weight: 500; }
+.in-algo-intro { margin-bottom: 16px; }
