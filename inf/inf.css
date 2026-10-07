@@ -415,3 +415,9 @@ td.in-ell { display: table-cell; }
 .in-copy { border: 1px solid var(--gray-400); background: var(--paper); color: var(--gray-800); font: inherit; font-size: 10px; font-weight: 500; padding: 1px 6px; cursor: pointer; white-space: nowrap; line-height: 1.6; }
 .in-copy:hover { border-color: var(--black); color: var(--black); }
 .in-r-nm .in-ytgrp .in-yt { margin-left: 0; }
+
+/* YouTube API 사용 표시 · 개인정보 · 약관 (감사 요건) */
+.foot-link { color: inherit; }
+.yt-attr { color: #ff0033; font-weight: 600; }
+.in-foot { padding: 20px var(--gutter) 28px; font-size: 11px; color: var(--gray-400); border-top: 1px solid var(--gray-200); margin-top: 40px; }
+.in-foot a { color: var(--gray-600); }
