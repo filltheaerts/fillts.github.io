@@ -314,3 +314,7 @@ td.in-ell { display: table-cell; }
 .in-ch-xs .strong { max-width: none; }
 .in-est { color: var(--gray-600); }
 .in-refall { white-space: nowrap; }
+.in-chip.in-ex { color: var(--gray-400); text-decoration: line-through; border-style: dashed; }
+.in-chip.in-last { border-color: var(--red); }
+.in-chip.in-cust { border-color: var(--black); }
+.in-gen { align-items: center; }

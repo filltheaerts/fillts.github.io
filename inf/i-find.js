@@ -5,7 +5,7 @@
   var V = I.V.find = { input: '', seed: null, kw: [], custom: '', range: 'wide', n: '30', mode: 'similar', maxSubs: '100000', preset: '', busy: '', msg: '', err: false,
     sel: {}, sort: 'score', onlyMail: false, onlyNew: false, ag: '', q: '', open: {}, skipSeen: false,
     cond: { kw: [], custom: '', minSubs: '3000', maxSubs: '100000', days: '90', minGrowth: '0', minCmt: '3', minMedian: '2000', mailOnly: false, n: '40', preset: '', fitOn: true },
-    rnd: { cats: ['cleanse', 'skin3040', 'clean', 'premium', 'selfcare'], src: { past: false, list: false }, last: [] } };
+    rnd: { cats: ['cleanse', 'skin3040', 'clean', 'premium', 'selfcare'], src: { past: false, list: false }, last: [], pin: [], ex: [], onlyCustom: false, gen: [] } };
   var TABS = [['', '① 비슷한 유튜버 찾기'], ['cond', '② 조건 탐색'], ['random', '③ 랜덤 탐색']];
   var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
   var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회 추세 · 댓글 활발']];
@@ -198,13 +198,46 @@
     I.presetList().forEach(function (p) { if (R.cats.indexOf(p.id) >= 0) (p.keywords || []).concat(p.extra || []).forEach(function (k) { add(k, p.name); }); });
     if (R.src.past) I.scans.forEach(function (s) { (s.concept || []).forEach(function (k) { add(k, '지난 탐색'); }); });
     if (R.src.list) I.creators.forEach(function (c) { (c.tags || []).forEach(function (k) { add(k, '리스트'); }); });
+    if (R.onlyCustom) pool = {};
+    customKw().forEach(function (k) { add(k, '커스텀'); });
     return Object.keys(pool);
+  }
+  // 커스텀 키워드 — 팀 공용으로 저장 (inf_config/main.randomKw)
+  function customKw() { return (I.cfg.randomKw || []).slice(); }
+  function saveCustom(list) { return db.doc('inf_config/main').set({ randomKw: list.slice(0, 60), updatedBy: S.mid }, { merge: true }).catch(ui.fail); }
+  function addCustom(words) {
+    var cur = customKw();
+    words.forEach(function (w) { w = String(w || '').trim(); if (w && w.length <= 20 && cur.indexOf(w) < 0) cur.push(w); });
+    return saveCustom(cur);
+  }
+  // 키워드 생성: 기준(📌) · 커스텀 키워드를 브랜드 수식어와 섞어 후보를 만든다
+  var MODS = ['추천', '루틴', '리뷰', '30대', '40대', '민감성', '내돈내산', '브이로그', '꿀팁', '비교'];
+  function genKw() {
+    var R = V.rnd, base = R.pin.concat(customKw()).map(function (k) { return k.split(/\s+/)[0]; });
+    if (!base.length) base = ['클렌징', '세안', '스킨케어'];
+    var seen = {}, out = [];
+    base.forEach(function (b) { MODS.forEach(function (m) { var k = /^\d/.test(m) ? m + ' ' + b : b + ' ' + m; if (!seen[k]) { seen[k] = 1; out.push(k); } }); });
+    var pool = rndPool();
+    R.gen = pick(out.filter(function (k) { return pool.indexOf(k) < 0; }), 12);
+    HR.refresh();
+  }
+  // 키워드 칩 누르기: 보통 → 📌 기준(매번 포함) → 제외 → 보통
+  function cycle(k) {
+    var R = V.rnd, ip = R.pin.indexOf(k), ie = R.ex.indexOf(k);
+    if (ip >= 0) { R.pin.splice(ip, 1); R.ex.push(k); }
+    else if (ie >= 0) R.ex.splice(ie, 1);
+    else if (R.pin.length < 2) R.pin.push(k);
+    else { R.ex.push(k); ui.toast('기준 키워드는 2개까지 — 이 키워드는 제외로 표시했습니다.'); }
+    HR.refresh();
   }
   function pick(arr, n) { var a = arr.slice(), out = []; while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
   function randomRun() {
     var pool = rndPool();
     if (!pool.length) return setMsg('카테고리를 하나 이상 고르세요.', true);
-    var kw = pick(pool, 3);
+    var R = V.rnd, pins = R.pin.filter(function (k) { return pool.indexOf(k) >= 0 || customKw().indexOf(k) >= 0; });
+    var rest = pool.filter(function (k) { return R.ex.indexOf(k) < 0 && pins.indexOf(k) < 0; });
+    if (!rest.length && !pins.length) return setMsg('쓸 수 있는 키워드가 없습니다. 제외를 풀거나 커스텀 키워드를 더하세요.', true);
+    var kw = pins.concat(pick(rest, 3 - pins.length));   // 기준(📌) 키워드는 매번 들어가고 나머지를 무작위로
     V.rnd.last = kw; V.skipSeen = true;
     condRun(kw, { n: 40, skipSeen: true }, 'random');
   }
@@ -225,8 +258,23 @@
         h('p', { class: 'note', text: '고른 카테고리의 키워드 중 3개를 무작위로 골라 탐색합니다. 리스트에 있거나 지난 탐색에 나왔던 채널은 빼고, 바인그라피와 맞는 쓸만한 채널(구독 10만 미만 · 조회 바닥선 · 브랜드 적합) 상위 20명만 보여 줍니다.' }),
         h('div', { class: 'label in-sub', text: '1 · 카테고리 (여러 개 선택)' }), cats,
         h('div', { class: 'row in-opts' }, src('past', '지난 탐색 키워드도 섞기'), src('list', '리스트 태그도 섞기')),
-        h('div', { class: 'in-chips in-pool' }, pool.map(function (k) { return h('span', { class: 'in-chip light' + (R.last.indexOf(k) >= 0 ? ' on' : ''), text: k }); })),
-        h('p', { class: 'meta', text: '키워드 풀 ' + pool.length + '개' + (R.last.length ? ' · 지난번 고른 키워드: ' + R.last.join(' · ') : '') }),
+        h('div', { class: 'label in-sub', text: '커스텀 키워드 — 입력 후 Enter (쉼표로 여러 개) · 팀 공용 저장' }),
+        h('div', { class: 'row in-seed-form' }, ui.input({ maxlength: '120', class: 'grow', placeholder: '예: 포도 화장품, 클렌징 젤 리뷰, 30대 피부 고민',
+          onkeydown: function (e) { if (e.key === 'Enter' && this.value.trim()) { var v = this.value; this.value = ''; addCustom(v.split(/[,，]/)); } } }),
+          ui.btn('✨ 키워드 생성', genKw, 'btn-line btn-sm'),
+          h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: R.onlyCustom, onchange: function () { R.onlyCustom = this.checked; HR.refresh(); } }), ' 커스텀 키워드만 쓰기')),
+        customKw().length ? h('div', { class: 'in-chips' }, customKw().map(function (k) {
+          return h('button', { type: 'button', class: 'in-chip in-cust', title: '× 누르면 커스텀에서 지움', text: k + ' ×', onclick: function () { saveCustom(customKw().filter(function (x) { return x !== k; })); } });
+        })) : null,
+        R.gen.length ? h('div', { class: 'in-chips in-gen' }, h('span', { class: 'meta', text: '생성된 후보 — 누르면 커스텀에 추가:' }), R.gen.map(function (k) {
+          return h('button', { type: 'button', class: 'in-chip light', text: '+ ' + k, onclick: function () { R.gen = R.gen.filter(function (x) { return x !== k; }); addCustom([k]); HR.refresh(); } });
+        })) : null,
+        h('div', { class: 'label in-sub', text: '키워드 풀 — 누르면 📌 기준(매번 포함, 2개까지) → 제외 → 보통' }),
+        h('div', { class: 'in-chips in-pool' }, pool.map(function (k) {
+          var pin = R.pin.indexOf(k) >= 0, ex = R.ex.indexOf(k) >= 0;
+          return h('button', { type: 'button', class: 'in-chip ' + (pin ? 'on' : ex ? 'in-ex' : 'light') + (R.last.indexOf(k) >= 0 && !pin ? ' in-last' : ''), text: (pin ? '📌 ' : '') + k, onclick: function () { cycle(k); } });
+        })),
+        h('p', { class: 'meta', text: '키워드 풀 ' + pool.length + '개 · 기준 ' + R.pin.length + ' · 제외 ' + R.ex.length + (R.last.length ? ' · 지난번 고른 키워드: ' + R.last.join(' · ') : '') }),
         h('div', { class: 'label in-sub', text: '2 · 조건 (조건 탐색 탭과 같이 바뀝니다)' }),
         condFields(),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
