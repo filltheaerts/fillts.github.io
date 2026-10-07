@@ -288,13 +288,25 @@
   /* ---------- 법인카드 분야별 — 카드를 언제(승인월) 어디에 썼나. 지출 합계와는 별개(통장 카드대금으로 이미 포함) ---------- */
   var CFIELD = { '소프트웨어 · 구독': '소프트웨어 · 구독', '비품 · 장비': '비품 · 기기', '법무 · 특허': '상표 · 특허', '기타 지출': '도서 · 교육', '세금 · 공과금': '세금 · 공과금', '마케팅 · 광고': '마케팅', '포장 · 부자재': '포장 · 부자재', '원료 · 생산(OEM)': '원료 · 샘플', '복리후생 · 식대': '식대 · 복리' };
   function cardSubName(x) { return x.sub || x.note || x.merchant || '(미지정)'; }
+  // 소프트웨어는 한 덩어리로 묶지 않고 쓰임새별로 — [분야, 이름, 무엇을 하는 툴인지]
+  var SW = [
+    [/미드저니/, '디자인 · AI 이미지 툴', '미드저니 (Midjourney)', '텍스트로 이미지를 만드는 AI — 제품 콘셉트 · 무드보드 · SNS 콘텐츠 시안 제작 · 월 USD 60'],
+    [/구글/, '업무 기본 툴', '구글 워크스페이스', '회사 메일(@fillts) · 드라이브 · 캘린더 · 문서 — 계정 수에 따라 월 요금 변동'],
+    [/슬랙/, '업무 기본 툴', '슬랙 (Slack)', '팀 메신저 · 업무 채널 — 9월 신규 결제'],
+    [/모두싸인/, '계약 · 법무 툴', '모두싸인', '전자계약 · 전자서명 — 근로계약 · 업체 계약 체결 · 매월 9,900원'],
+    [/가비아/, '웹 · 도메인', '가비아 도메인 2건', '회사 · 브랜드 웹 주소(도메인) 구매 · 연 단위 갱신'],
+    [/카페24/, '자사몰 구축', '카페24 디자인 스킨 (한글 · 영문)', '자사몰(카페24) 화면 디자인 템플릿 — 1회 구매']
+  ];
+  function swInfo(x) { var t = cardSubName(x) + ' ' + (x.note || '') + ' ' + (x.merchant || ''); for (var i = 0; i < SW.length; i++) if (SW[i][0].test(t)) return SW[i]; return null; }
   function cardPanel(keys) {
     if (!F.card.length) return null;
     var inK = {}; keys.forEach(function (k) { inK[k] = 1; });
-    var G = {}, tot = {}, all = 0;
+    var G = {}, tot = {}, all = 0, DESC = {};
     F.card.forEach(function (x) {
       var k = F.ym(x.date); if (!inK[k]) return;
-      var g = x.cat ? (CFIELD[x.cat] || x.cat) : '미지정', sb = cardSubName(x);
+      var sw = x.cat === '소프트웨어 · 구독' ? swInfo(x) : null;
+      var g = sw ? sw[1] : x.cat ? (CFIELD[x.cat] || x.cat) : '미지정', sb = sw ? sw[2] : cardSubName(x);
+      if (sw) DESC[sb] = sw[3];
       var gg = G[g] || (G[g] = { m: {}, s: {} }); gg.m[k] = (gg.m[k] || 0) + x.amount; (gg.s[sb] = gg.s[sb] || {})[k] = (gg.s[sb][k] || 0) + x.amount;
       tot[k] = (tot[k] || 0) + x.amount; all += x.amount;
     });
@@ -311,7 +323,7 @@
           if (!v) return h('td', { class: 'num' });
           return h('td', { class: 'num' }, h('button', { type: 'button', class: 'sp-cell' + (on(k) ? ' on' : ''), text: F.man(v), onclick: function () { V.sel = on(k) ? null : { c: 'cs:' + sb, k: k }; HR.refresh(); } }));
         };
-        body.appendChild(h('tr', { class: 'sp-cat' }, h('td', { text: sb }), keys.map(function (k) { return c(k, G[g].s[sb][k]); }), c('', ss), h('td', { class: 'num meta', text: pct(ss) })));
+        body.appendChild(h('tr', { class: 'sp-cat' }, h('td', null, h('div', { text: sb }), DESC[sb] ? h('div', { class: 'meta sp-desc', text: DESC[sb] }) : null), keys.map(function (k) { return c(k, G[g].s[sb][k]); }), c('', ss), h('td', { class: 'num meta', text: pct(ss) })));
       });
     });
     body.appendChild(h('tr', { class: 'fin-sum' }, h('td', { text: '카드 사용 합계' }), keys.map(function (k) { return h('td', { class: 'num', text: man(tot[k]) }); }), h('td', { class: 'num', text: F.man(all) }), h('td', { class: 'num', text: '100%' })));
@@ -322,7 +334,7 @@
   }
   function cardSubDetail(sel, keys) {
     var sb = sel.c.slice(3), inK = {}; keys.forEach(function (k) { inK[k] = 1; });
-    var list = F.card.filter(function (x) { var k = F.ym(x.date); return cardSubName(x) === sb && inK[k] && (!sel.k || k === sel.k); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var list = F.card.filter(function (x) { var k = F.ym(x.date), sw = x.cat === '소프트웨어 · 구독' ? swInfo(x) : null; return (sw ? sw[2] : cardSubName(x)) === sb && inK[k] && (!sel.k || k === sel.k); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var sum = list.reduce(function (a, x) { return a + x.amount; }, 0);
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['승인일', '가맹점', '사용내용', '통장 결제일', '금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
       h('tbody', null, list.map(function (x) {
