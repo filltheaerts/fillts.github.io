@@ -668,11 +668,21 @@
   var deferred = false;
   document.addEventListener('focusout', function () { if (deferred) setTimeout(function () { if (!typing()) { deferred = false; render(false); } }, 0); });
   // 오래 열어 둔 탭·홈 화면 앱이 옛 코드로 남지 않게: 새 버전이 올라오면 자동 새로고침 (입력 중이면 미룸)
-  var VER = ((document.querySelector('script[src*="core.js"]') || {}).src || '').replace(/.*[?&]v=(\d+).*/, '$1');
+  // 페이지가 불러온 모든 스크립트 · 스타일의 ?v= 중 가장 큰 값 = 지금 화면 버전 (core.js만 보면 앱 파일만 바뀐 배포를 놓친다)
+  function maxVer(list) { return list.reduce(function (a, v) { return Math.max(a, +v || 0); }, 0); }
+  var VER = String(maxVer(Array.prototype.map.call(document.querySelectorAll('script[src*="?v="], link[href*="?v="]'), function (el) { return (el.src || el.href || '').replace(/.*[?&]v=(\d+).*/, '$1'); })) || '');
+  HR.VER = VER;
+  // 상단 「↻ 새로고침」: 브라우저에 남은 옛 화면(최대 10분 캐시)을 건너뛰고 최신 버전을 연다
+  (function reloadButton() {
+    if (/[?&]r=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);   // 주소창 정리
+    var right = document.querySelector('.nav-right'); if (!right || $('navReload')) return;
+    right.insertBefore(h('button', { type: 'button', id: 'navReload', class: 'nav-reload', title: '최신 버전으로 새로고침 · 지금 v' + VER, 'aria-label': '새로고침',
+      onclick: function () { location.replace(location.pathname + '?r=' + Date.now() + location.hash); } }, '↻ 새로고침'), right.firstChild);
+  })();
   function checkVersion() {
     if (!/^\d+$/.test(VER)) return;
     fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
-      var m = t.match(/core\.js\?v=(\d+)/);
+      var all = (t.match(/\?v=(\d+)/g) || []).map(function (x) { return x.slice(3); }), latest = maxVer(all), m = latest ? [null, String(latest)] : null;
       if (m && +m[1] > +VER) { if (typing()) setTimeout(checkVersion, 30000); else location.reload(); }
     }).catch(function () { /* 오프라인 등 — 다음에 다시 */ });
   }

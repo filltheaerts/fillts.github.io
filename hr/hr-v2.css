@@ -1533,3 +1533,8 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 
 /* 다른 창으로 열리는 앱 링크 (Finance ↗ · Map ↗) — 초록 지양(대표 지시), 기본 글자색 + 굵게 */
 .nav-links a.nav-ext { color: var(--black); font-weight: 500; }
+
+
+/* 상단 새로고침 버튼 (core.js) */
+.nav-reload { background: none; border: 1px solid var(--gray-200); padding: 6px 10px; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; white-space: nowrap; color: var(--black); }
+.nav-reload:hover { border-color: var(--black); }
