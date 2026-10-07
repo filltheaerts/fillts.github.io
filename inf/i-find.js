@@ -104,7 +104,7 @@
   function seedCard(c) {
     return h('div', { class: 'in-seed' }, I.thumb(c, 'lg'),
       h('div', { class: 'grow stack sm' },
-        h('div', { class: 'in-seed-title' }, h('b', { text: c.title }), c.handle ? h('span', { class: 'meta', text: ' ' + c.handle }) : null),
+        h('div', { class: 'in-seed-title' }, h('b', { text: c.title }), c.handle ? h('span', { class: 'meta', text: ' ' + c.handle }) : null, ' ', I.ytBtn(c)),
         ui.kv([['구독자', I.cnt(c.subs)], ['최근 중앙 조회수', I.cnt(c.median)], ['참여율', I.pct(c.engage)], ['쇼츠 비중', I.pct(c.shorts)], ['최근 업로드', fmt.dot(c.last)], ['메일', c.email || '설명란에 없음']], 'kv in-kv'),
         h('div', null, h('span', { class: 'label', text: '댓글 톤 ' }), I.chips(I.toneTags(c.tone), 'light')),
         (c.sample || []).length ? h('ul', { class: 'in-cmts' }, c.sample.slice(0, 3).map(function (t) { return h('li', { text: t }); })) : null));
@@ -143,7 +143,7 @@
       rows.push(h('tr', { class: 'clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); } },
         h('td', { class: 'in-cb' }, cb),
         h('td', null, h('div', { class: 'in-ch' }, I.thumb(c), h('div', { class: 'in-ch-t' }, h('div', { class: 'strong', text: c.title }),
-          h('div', { class: 'meta', text: [c.handle, c.country, c.last ? '최근 ' + fmt.dot(c.last).slice(2) : ''].filter(Boolean).join(' · ') })))),
+          h('div', { class: 'meta', text: [c.handle, c.country, c.last ? '최근 ' + fmt.dot(c.last).slice(2) : ''].filter(Boolean).join(' · ') })), I.ytBtn(c))),
         h('td', { class: 'in-reason-cell' }, (c.reason || []).slice(0, 3).map(function (r) { return h('div', { text: r }); })),
         h('td', { class: 'num', text: I.cnt(c.subs) }),
         rising ? h('td', { class: 'num' + (c.growth >= 1.2 ? ' red' : ''), text: c.growth ? c.growth + '배' : '—', title: '최근 5편 ' + I.cnt(c.recentMed) + ' / 이전 ' + I.cnt(c.prevMed) }) : h('td', { class: 'num', text: I.cnt(c.median) }),

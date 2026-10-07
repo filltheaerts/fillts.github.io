@@ -53,6 +53,8 @@
       : h('span', { class: 'in-thumb in-thumb-x ' + (cls || ''), text: ((ch && ch.title) || '?').slice(0, 1) });
   };
   I.extLink = function (href, text, cls) { return h('a', { href: href, target: '_blank', rel: 'noopener noreferrer', class: cls || '', text: text }); };
+  // 유튜브 채널로 가기 버튼 — 표 행 클릭(펼치기)과 겹치지 않게 전파를 막는다
+  I.ytBtn = function (ch) { return h('a', { href: I.chUrl(ch), target: '_blank', rel: 'noopener noreferrer', class: 'in-yt', text: '▶ 유튜브', title: ch.title + ' 채널 열기', onclick: function (e) { e.stopPropagation(); } }); };
 
   /* ---------- 댓글 톤 → 한 줄 요약 ---------- */
   I.toneTags = function (t) {
