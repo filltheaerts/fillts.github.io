@@ -1530,3 +1530,6 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 
 /* MKT(마케팅 설계 맵, /mkt/) 바로가기 */
 .nav-links a.nav-green { color: var(--red); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; }
+
+/* 다른 창으로 열리는 앱 링크 (Finance ↗ · Map ↗) — 초록 지양(대표 지시), 기본 글자색 + 굵게 */
+.nav-links a.nav-ext { color: var(--black); font-weight: 500; }

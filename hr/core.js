@@ -7,6 +7,14 @@
   'use strict';
 
   var L = window.Labor;
+  // 같은 로그인을 쓰는 다른 앱(/fin · /map 등)은 이 core.js를 그대로 불러오고 window.HR_APP으로 메뉴만 바꾼다
+  var APP = window.HR_APP || { id: 'hr' };
+  // 앱 목록 — 접근권한 대상(HR 설정 › 앱 접근)이자 /map 사이트맵의 원본. open: 구성원 전원 / 그 외: 관리자 + 권한 받은 계정
+  var APPS = [
+    { id: 'hr', name: 'HR', path: '/hr/', open: true, desc: '출퇴근 · 휴가 · 공지 · 구성원 · 목표 · WORK · +AI · 입금요청' },
+    { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
+    { id: 'mkt', name: 'Marketing', path: '/mkt/', open: true, desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' }
+  ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
   var IDLE_LIMIT_MS = 30 * 60 * 1000;
 
@@ -14,14 +22,23 @@
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
   var SNAP = { serverTimestamps: 'estimate' };
 
-  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {} };
+  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {}, APP: APP, APPS: APPS };
   var S = HR.S = {
     user: null, mid: null, role: 'employee', isAdmin: false, isLead: false,
     cfg: Object.assign({}, L.DEFAULT_CONFIG), hmap: L.holidayMap(L.DEFAULT_CONFIG),
     members: {}, orgs: {}, presence: {}, away: [], sched: [], ots: [], notices: [], feed: [], goals: [],
     myPunches: [], myFixes: [], leaves: [], fixes: [], onesM: [], onesL: [], onesAll: [],
-    notify: [], priv: null, pay: {}, users: {}, invites: {}, status: null, ready: false
+    notify: [], priv: null, pay: {}, users: {}, invites: {}, status: null, ready: false, apps: {}
   };
+  // 앱 접근: 관리자는 전부 편집, 그 외는 hr_users/{uid}.apps[앱] = 'view' | 'edit' (서버 보안 규칙도 같은 값으로 판정)
+  HR.appInfo = function (id) { return APPS.filter(function (a) { return a.id === id; })[0] || null; };
+  HR.appLevel = function (app) {
+    var a = HR.appInfo(app);
+    if (S.realAdmin || (a && a.open) || app === 'map') return 'edit';
+    return (S.apps || {})[app] || '';
+  };
+  HR.canApp = function (app) { var l = HR.appLevel(app); return l === 'view' || l === 'edit'; };
+  HR.canEditApp = function (app) { return HR.appLevel(app) === 'edit'; };
   var unsubs = [];
 
   /* ============ DOM helpers ============ */
@@ -343,9 +360,11 @@
   HR.googleRedirect = function (o) {
     o = o || {};
     var st = rnd(), nonce = rnd();
-    try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now() })); } catch (e) { /* 무시 */ }
+    // 다른 앱(/fin 등)에서 누르면 Google은 등록된 /hr/ 로 돌려주고, /hr/ 이 로그인만 마친 뒤 같은 탭에서 원래 앱으로 되돌린다 (OAuth 설정 추가 불필요)
+    var next = APP.id !== 'hr' ? location.pathname + (location.hash || '') : '';
+    try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now(), next: next })); } catch (e) { /* 무시 */ }
     var q = { client_id: GCID, redirect_uri: GRET, response_type: 'id_token token', scope: 'openid email profile' + (o.calendar ? ' ' + CAL : ''),
-      nonce: nonce, state: st, hd: 'fillts.com', prompt: o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
+      nonce: nonce, state: st, hd: 'fillts.com', prompt: o.silent ? 'none' : o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
     if (o.hint) q.login_hint = o.hint;
     location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   };
@@ -356,6 +375,8 @@
     var saved = null; try { saved = JSON.parse(localStorage.getItem('hrOAuth') || 'null'); localStorage.removeItem('hrOAuth'); } catch (e) { /* 무시 */ }
     history.replaceState(null, '', location.pathname + location.search + '#info');
     if (!saved || p.state !== saved.st || Date.now() - saved.at > 15 * 60000) { HR.oauthErr = '로그인 요청을 확인하지 못했습니다. 다시 눌러 주세요.'; return; }
+    if (saved.next && /^\/[a-z_]+\//.test(saved.next)) HR.oauthNext = saved.next;
+    if (p.error && HR.oauthNext) { location.replace(HR.oauthNext); return; }   // 자동 로그인(prompt=none) 실패 → 원래 앱의 로그인 화면으로
     if (p.error) { HR.oauthErr = p.error === 'access_denied' ? 'Google 로그인을 취소했습니다.' : 'Google 로그인 오류 (' + p.error + ')'; return; }
     var claims = {};
     try { claims = JSON.parse(decodeURIComponent(escape(atob(p.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { /* 아래에서 거절 */ }
@@ -369,6 +390,8 @@
   if (HR.pendingCred) {
     auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
       .then(function () { return auth.signInWithCredential(HR.pendingCred); })
+      .then(function () { if (HR.oauthNext) location.replace(HR.oauthNext); })   // 세션 로그인은 같은 탭 sessionStorage라 원래 앱에서도 그대로 유지된다
+      .catch(function (x) { HR.oauthNext = ''; throw x; })
       .catch(function (x) { var t = x.code === 'auth/invalid-credential' ? 'Google 로그인 정보를 확인하지 못했습니다. 다시 눌러 주세요.' : authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; HR.loginNotice = t; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   }
   if (HR.oauthErr) HR.loginNotice = HR.oauthErr;
@@ -402,11 +425,22 @@
     var a = e.target.closest && e.target.closest('.js-logout');
     if (a) { e.preventDefault(); logout(); }
   });
-  function logout() { stopAll(); auth.signOut(); }
+  function logout() { stopAll(); try { sessionStorage.setItem('hrSilentTried', '1'); } catch (e) { /* 무시 */ } auth.signOut(); }
+  // HR에서 새 창으로 연 앱: 로그인 상태가 넘어오지 않았으면 Google에 조용히(prompt=none) 한 번만 다녀온다
+  function trySilent() {
+    var hint = '', tried = true;
+    try { hint = localStorage.getItem('hrHint') || ''; tried = sessionStorage.getItem('hrSilentTried') === '1'; } catch (e) { return false; }
+    if (!hint || tried || inAppBrowser() || HR.loginNotice) return false;
+    try { sessionStorage.setItem('hrSilentTried', '1'); } catch (e) { return false; }
+    HR.googleRedirect({ silent: true, hint: hint });
+    return true;
+  }
   HR.logout = logout;
   $('noAccessRetry').addEventListener('click', function (e) { e.preventDefault(); if (auth.currentUser) enter(auth.currentUser); });
 
   auth.onAuthStateChanged(function (u) {
+    if (u && HR.oauthNext) return;   // 원래 앱으로 이동 중
+    if (!u && APP.id !== 'hr' && trySilent()) return;
     if (!u) { stopAll(); S.user = null; S.mid = null; showAuth('login'); setAuthMode('login'); return; }
     if (!u.emailVerified) {
       showAuth('verify');
@@ -509,12 +543,28 @@
       if (nx && /^\/mkt\/[#a-z\/]*$/.test(nx.to) && Date.now() - nx.at < 15 * 60000) { location.replace(nx.to); return; }
     } catch (e) { /* 무시 */ }
     stopAll();
-    S.mid = hu.memberId; S.role = hu.role || 'employee';
+    S.mid = hu.memberId; S.role = hu.role || 'employee'; S.apps = hu.apps || {};
     S.isAdmin = S.role === 'admin'; S.isLead = S.isAdmin || S.role === 'manager';
     S.realAdmin = S.isAdmin; S.realLead = S.isLead;
-    var asUser = false; try { asUser = S.realAdmin && localStorage.getItem('hrViewAsUser') === '1'; } catch (e) { /* 무시 */ }
+    try { if (/@fillts\.com$/i.test(S.user.email || '')) localStorage.setItem('hrHint', S.user.email.toLowerCase()); sessionStorage.removeItem('hrSilentTried'); } catch (e) { /* 무시 */ }
+    if (APP.id !== 'hr' && !HR.canApp(APP.id)) {
+      S.mid = null; showAuth('noaccess'); $('bootstrapForm').hidden = true;
+      $('noAccessTitle').textContent = '접근 권한이 없습니다';
+      $('noAccessText').textContent = S.user.email + ' 계정에는 ' + (APP.title || APP.id) + ' 접근 권한이 없습니다. HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.';
+      return;
+    }
+    var asUser = false; try { asUser = S.realAdmin && APP.id === 'hr' && localStorage.getItem('hrViewAsUser') === '1'; } catch (e) { /* 무시 */ }
     applyView(asUser);
     $('authView').hidden = true; $('appView').hidden = false;
+    sub(db.doc('hr_users/' + S.user.uid), function (s) { if (s.exists) S.apps = s.data().apps || {}; });
+    if (APP.lite) {   // 다른 앱: 이름 · 설정 · 알림만 받고 나머지는 앱이 직접 구독한다
+      sub(db.doc('hr_config/main'), function (s) { S.cfg = Object.assign({}, L.DEFAULT_CONFIG, s.exists ? s.data() : {}); S.hmap = L.holidayMap(S.cfg); });
+      sub(db.collection('hr_members'), function (s) { S.members = {}; HR.rows(s).forEach(function (m) { S.members[m.id] = m; }); S.ready = true; });
+      sub(db.collection('hr_notify').where('toMid', '==', S.mid).orderBy('at', 'desc').limit(40), function (s) { onNotify(HR.rows(s)); });
+      if (APP.onStart) APP.onStart(sub);
+      route();
+      return;
+    }
 
     var t = fmt.today(), cur = fmt.ymNum(t), prev = fmt.ymNum(fmt.ymShift(t.slice(0, 7), -1));
     sub(db.doc('hr_config/main'), function (s) { S.cfg = Object.assign({}, L.DEFAULT_CONFIG, s.exists ? s.data() : {}); S.hmap = L.holidayMap(S.cfg); });
@@ -581,15 +631,16 @@
   /* ============================================
      라우터 · 렌더
      ============================================ */
-  var MENUS = ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance', 'ws', 'ai'];
+  var MENUS = APP.menus || ['info', 'notice', 'about', 'people', 'work', 'leave', 'goals', 'admin', 'payreq', 'finance', 'ws', 'ai'];
+  var HOME = APP.home || 'info';
   HR.register = function (id, mod) { HR.modules[id] = mod; };
   HR.go = function (hash) { if (location.hash !== '#' + hash) location.hash = hash; else route(); };
-  var current = { menu: 'info', parts: [] };
+  var current = { menu: HOME, parts: [] };
   function route() {
     if (!S.mid) return;
-    var parts = (location.hash || '#info').slice(1).split('/').filter(Boolean);
-    var menu = parts.shift() || 'info';
-    if (MENUS.indexOf(menu) < 0 || ((menu === 'admin' || menu === 'finance') && !S.isAdmin)) { menu = 'info'; parts = []; }
+    var parts = (location.hash || '#' + HOME).slice(1).split('/').filter(Boolean);
+    var menu = parts.shift() || HOME;
+    if (MENUS.indexOf(menu) < 0 || (APP.id === 'hr' && (menu === 'admin' || menu === 'finance') && !S.isAdmin)) { menu = HOME; parts = []; }
     var moved = current.menu !== menu || current.parts.join('/') !== parts.join('/');
     current = { menu: menu, parts: parts };
     document.querySelectorAll('[data-menu]').forEach(function (a) { a.classList.toggle('active', a.dataset.menu === menu); });
@@ -626,7 +677,7 @@
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkVersion(); });
   var lastVerCheck = 0;
   window.addEventListener('hashchange', function () { if (Date.now() - lastVerCheck > 60000) { lastVerCheck = Date.now(); checkVersion(); } });   // 메뉴를 옮길 때도 새 버전 확인
-  if ($('loginForm')) $('loginForm').appendChild(h('p', { class: 'meta app-ver', text: 'fillts HR · v' + VER }));
+  if ($('loginForm')) $('loginForm').appendChild(h('p', { class: 'meta app-ver', text: (APP.title || 'fillts HR') + ' · v' + VER }));
   function typing() {
     var a = document.activeElement;
     return a && $('view').contains(a) && (a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || (a.tagName === 'INPUT' && !/checkbox|radio|button|submit/.test(a.type)));
@@ -667,6 +718,7 @@
     $('bellCount').textContent = unread > 9 ? '9+' : String(unread);
     $('bellCount').hidden = !unread;
     $('bell').setAttribute('aria-label', '알림 ' + unread + '개');
+    document.querySelectorAll('[data-app]').forEach(function (el) { el.hidden = !HR.canApp(el.dataset.app); });   // 다른 창으로 열리는 앱 링크
     if ($('bellPanel').classList.contains('open')) renderBell();
   }
 
@@ -682,14 +734,17 @@
     fresh.forEach(function (n) {
       toast(n.title);
       if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-        try { var bn = new Notification('fillts HR · ' + n.title, { body: n.body || '', tag: n.id }); bn.onclick = function () { window.focus(); openNotify(n); }; } catch (e) { /* 미지원 */ }
+        try { var bn = new Notification((APP.title || 'fillts HR') + ' · ' + n.title, { body: n.body || '', tag: n.id }); bn.onclick = function () { window.focus(); openNotify(n); }; } catch (e) { /* 미지원 */ }
       }
     });
   }
   function openNotify(n) {
     if (!n.read) db.doc('hr_notify/' + n.id).update({ read: true }).catch(function () {});
     $('bellPanel').classList.remove('open');
-    if (n.link) HR.go(n.link.replace(/^#/, ''));
+    if (n.link) {
+      var ln = n.link.replace(/^#/, '');
+      if (MENUS.indexOf(ln.split('/')[0]) < 0) location.href = '/hr/#' + ln; else HR.go(ln);   // 다른 앱의 알림은 HR에서 연다
+    }
   }
   function renderBell() {
     var p = $('bellPanel');

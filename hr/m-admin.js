@@ -176,6 +176,36 @@
       ui.panel('Accounts', null, ul));
   }
 
+  // ── 앱 접근: /fin 등 HR 밖의 앱을 계정별로 열어 준다 (hr_users/{uid}.apps — 서버 보안 규칙이 같은 값으로 판정)
+  function apps(view) {
+    var list = HR.APPS.filter(function (a) { return !a.open; });
+    var LV = [['', '없음'], ['view', '열람'], ['edit', '편집']];
+    var tb = h('table', { class: 'table' }, h('thead', null, h('tr', null, h('th', { text: '계정' }), list.map(function (a) { return h('th', { text: a.name + (a.soon ? ' (준비 중)' : '') }); }))));
+    var body = h('tbody');
+    Object.keys(S.users).map(function (uid) { return Object.assign({ uid: uid }, S.users[uid]); })
+      .sort(function (a, b) { return HR.name(a.memberId).localeCompare(HR.name(b.memberId), 'ko'); })
+      .forEach(function (u) {
+        var cur = u.apps || {}, isAdm = u.role === 'admin', self = u.uid === S.user.uid;
+        body.appendChild(h('tr', null, h('td', null, h('div', { class: 'strong', text: HR.name(u.memberId) }), h('div', { class: 'meta', text: u.email + (isAdm ? ' · 관리자' : '') })),
+          list.map(function (a) {
+            if (isAdm) return h('td', { class: 'meta', text: '관리자 — 전체 편집' });
+            var sel = ui.select(LV, cur[a.id] || '', { 'aria-label': HR.name(u.memberId) + ' ' + a.name + ' 권한', disabled: self ? true : null, onchange: function () {
+              var next = Object.assign({}, cur); if (this.value) next[a.id] = this.value; else delete next[a.id];
+              db.doc('hr_users/' + u.uid).update({ apps: next }).then(function () { ui.toast(HR.name(u.memberId) + ' · ' + a.name + ' 권한을 바꿨습니다.'); }).catch(ui.fail);
+            } });
+            return h('td', null, sel);
+          })));
+      });
+    tb.appendChild(body);
+    var cards = h('ul', { class: 'list' }, HR.APPS.map(function (a) {
+      return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: a.name + '  ' + a.path }), h('div', { class: 'meta', text: a.desc })),
+        ui.tag(a.open ? '구성원 전원' : a.soon ? '준비 중' : '권한 받은 계정', a.open ? 'mute' : 'warn'));
+    }));
+    ui.put(view, ui.panel('Access · 앱별 접근권한', null, h('div', { class: 'table-wrap flat' }, tb)),
+      h('p', { class: 'note', text: '열람 = 보기만, 편집 = 입력 · 업로드 · 세무사 메일 발송까지. 관리자는 모든 앱을 편집할 수 있습니다. 로그인은 HR과 같고, 권한은 화면이 아니라 서버(Firestore 보안 규칙)에서 강제됩니다. 바꾼 권한은 상대 화면에 바로 반영됩니다.' }),
+      ui.panel('Apps · fillts 사이트', h('a', { href: '/map/', target: '_blank', rel: 'opener', class: 'btn btn-line btn-sm', text: 'Map 열기 ↗' }), cards));
+  }
+
   // ── 원클릭 연동: Slack 앱은 미리 채운 매니페스트로 만들고, 값 2개만 붙여 넣는다 · 메일은 앱 비밀번호 1개 ──
   var SLACK_ACTIONS_URL = 'https://slackactions-syaknclaca-du.a.run.app';
   function slackManifestUrl() {
@@ -263,11 +293,12 @@
   HR.register('admin', {
     render: function (view, parts) {
       var sub = parts[0] || '';
-      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['payslip', '급여명세서'], ['integrations', '알림 연동'], ['app', '앱 아이콘']], sub, 'admin'));
+      ui.put(view, ui.head('Settings', '설정'), ui.tabs([['', '회사 기준'], ['leave', '휴가 정책'], ['holiday', '공휴일'], ['org', '조직'], ['roles', '권한'], ['apps', '앱 접근'], ['payslip', '급여명세서'], ['integrations', '알림 연동'], ['app', '앱 아이콘']], sub, 'admin'));
       if (sub === 'leave') policies(view);
       else if (sub === 'holiday') holidays(view);
       else if (sub === 'org') orgs(view);
       else if (sub === 'roles') roles(view);
+      else if (sub === 'apps') apps(view);
       else if (sub === 'payslip') HR.payslip.adminPage(view);
       else if (sub === 'app') ui.put(view, HR.app.panel());
       else if (sub === 'integrations') integrations(view);
