@@ -126,11 +126,13 @@
     var sec = function (title, note) { body.appendChild(h('tr', { class: 'sx-sec' }, h('td', { class: 'sx-k' }, h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null), cols.map(function () { return h('td'); }))); };
     var cell = function (ym, val, cls) { return h('td', { class: 'num' + '' + (cls ? ' ' + cls : ''), text: val }); };
     var row = function (label, f, cls, rowCls) { body.appendChild(h('tr', { class: rowCls || '' }, h('td', { class: 'sx-k', text: label }), R.map(function (r) { var v = f(r); return cell(r.ym, v.t != null ? v.t : v, v.c || cls); }))); };
-    var inputRow = function (label, key, unitText, guide) {
+    // scale: 화면 단위 (만원 입력이면 10000 — 저장은 늘 원 단위)
+    var inputRow = function (label, key, unitText, guide, scale) {
+      scale = scale || 1;
       body.appendChild(h('tr', { class: 'sx-input' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide })), cols.map(function (ym) {
-        var v = c[key][ym], i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell', value: v ? Number(v).toLocaleString('ko-KR') : '', 'aria-label': ym + ' ' + label, disabled: ed ? null : true });
+        var v = c[key][ym], i = h('input', { type: 'text', inputmode: 'decimal', class: 'sx-cell', value: v ? (Math.round(v / scale * 100) / 100).toLocaleString('ko-KR') : '', 'aria-label': ym + ' ' + label, disabled: ed ? null : true });
         i.addEventListener('focus', function () { i.select(); });
-        i.addEventListener('change', function () { var o = Object.assign({}, c[key]); var n = F.parseWon(i.value); if (n) o[ym] = n; else delete o[ym]; var p = {}; p[key] = o; save(p); });
+        i.addEventListener('change', function () { var o = Object.assign({}, c[key]); var n = Math.round(parseFloat(String(i.value).replace(/[^0-9.\-]/g, '')) * scale) || 0; if (n) o[ym] = n; else delete o[ym]; var p = {}; p[key] = o; save(p); });
         return h('td', { class: 'num' + '' }, i);
       })));
     };
@@ -222,8 +224,8 @@
     row('누적 순익', function (r) { return { t: F.man(r.cumProfit), c: r.cumProfit < 0 ? 'red' : '' }; });
     sec('⑤ 현금', '최소 보유 ' + F.man(+c.minCash) + ' · 원가는 판매가 아니라 발주 대금으로 나감');
     row('영업 현금 (매출 − 변동비 − 고정비)', function (r) { return { t: F.man(r.op), c: r.op < 0 ? 'red' : '' }; });
-    inputRow('대표 차입금 (원)', 'owner', '원', '대표 개인 → 법인 (가수금)');
-    inputRow('기타 조달 (원)', 'fund', '원', '정책자금 · 대출 입금');
+    inputRow('대표 차입금 (만원)', 'owner', '만원', '대표 개인 → 법인 (가수금) · 3000 = 3,000만 원', 10000);
+    inputRow('기타 조달 (만원)', 'fund', '만원', '정책자금 · 대출 입금 · 만원 단위', 10000);
     row('이 달 들어오는 돈 (순매출 + 차입 + 조달)', function (r) { return m(r.inAll); });
     row('이 달 나가는 돈 (변동비 + 고정비 + 발주 대금 + 확정 지급)', function (r) { return m(-r.outAll); }, 'strong');
     row('월 현금흐름', function (r) { return { t: F.man(r.flow), c: r.flow < 0 ? 'red' : '' }; });
