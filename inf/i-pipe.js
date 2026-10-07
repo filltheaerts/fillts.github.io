@@ -306,7 +306,7 @@
     var head = h('header', { class: 'in-hero' }, I.thumb(ch, 'lg'),
       h('div', { class: 'grow' }, h('div', { class: 'label', text: 'Influencer' + (c.seedTitle ? ' · ' + c.seedTitle + ' 탐색에서' : '') }),
         h('h1', { class: 'tab-title', text: ch.title }),
-        h('div', { class: 'row in-hero-meta' }, I.stTag(c.stage), h('span', { class: 'meta', text: (d != null ? d + '일째 · ' : '') + '구독자 ' + I.cnt(ch.subs) + ' · 점수 ' + (c.score || 0) + ' · 담당 ' + ownerName(c) }),
+        h('div', { class: 'row in-hero-meta' }, I.stTag(c.stage), I.agencyTag(ch), h('span', { class: 'meta', text: (d != null ? d + '일째 · ' : '') + '구독자 ' + I.cnt(ch.subs) + ' · 점수 ' + (c.score || 0) + ' · 담당 ' + ownerName(c) }),
           I.ytBtn(ch), c.insta ? I.extLink('https://instagram.com/' + c.insta, '인스타 ↗', 'meta') : null)),
       ui.btn('← 파이프라인', function () { HR.go('pipe'); }, 'btn-line btn-sm'));
     ui.put(view, head, stepper(c),

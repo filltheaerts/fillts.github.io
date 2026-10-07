@@ -3,7 +3,7 @@
   'use strict';
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
   var V = I.V.find = { input: '', seed: null, kw: [], custom: '', range: 'wide', n: '30', mode: 'similar', maxSubs: '100000', preset: '', busy: '', msg: '', err: false,
-    sel: {}, sort: 'score', onlyMail: false, onlyNew: false, q: '', open: {} };
+    sel: {}, sort: 'score', onlyMail: false, onlyNew: false, ag: '', q: '', open: {} };
   var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
   var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회수 상승 · 댓글 활발']];
   var MAXSUBS = [['10000', '1만 미만'], ['30000', '3만 미만'], ['50000', '5만 미만'], ['100000', '10만 미만'], ['300000', '30만 미만']];
@@ -120,9 +120,21 @@
     return list.filter(function (c) {
       if (V.onlyMail && !c.email) return false;
       if (V.onlyNew && I.creator(c.id)) return false;
+      if (V.ag) { var ap = I.agency(c).p; if (V.ag === 'agency' ? ap === 0 : V.ag === 'a100' ? ap !== 100 : V.ag === 'a50' ? ap !== 50 : ap !== 0) return false; }
       if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
       return true;
     }).sort(function (a, b) { return key(b) - key(a); });
+  }
+  // 소속 / 개인 필터 (메일 도메인 · 설명란 회사 정보 기준)
+  function agBar(s) {
+    var n = { all: 0, a100: 0, a50: 0, solo: 0 };
+    (s.cands || []).forEach(function (c) { var p = I.agency(c).p; n.all++; n[p === 100 ? 'a100' : p === 50 ? 'a50' : 'solo']++; });
+    var opts = [['', '전체 ' + n.all], ['agency', '소속 유튜버 ' + (n.a100 + n.a50)], ['a100', '소속 확실 100% · ' + n.a100], ['a50', '소속 애매 50% · ' + n.a50], ['solo', '개인 유튜버 ' + n.solo]];
+    return h('div', { class: 'row in-agbar' }, h('span', { class: 'label', text: '소속 구분' }),
+      h('div', { class: 'in-seg' }, opts.map(function (o) {
+        return h('button', { type: 'button', class: V.ag === o[0] ? 'active' : '', text: o[1], onclick: function () { V.ag = o[0]; HR.refresh(); } });
+      })),
+      h('span', { class: 'meta', text: '100% = MCN · 소속사 이름 / 회사 도메인 메일 / 설명란 회사 정보 · 50% = 개인 메일이 아닌 도메인이나 「비즈니스 · 광고 문의」 담당자 표현만 있음' }));
   }
   function result(view, s) {
     var sel = V.sel[s.id] || (V.sel[s.id] = {});
@@ -151,12 +163,13 @@
         h('td', { class: 'in-tone-cell' }, h('div', { text: I.toneTags(c.tone).slice(0, 2).join(' · ') }), h('div', { class: 'meta', text: '톤 일치 ' + Math.round((c.parts ? c.parts.tone : 0) * 100) + '%' })),
         h('td', null, I.chips((c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 4), 'light')),
         h('td', { class: 'in-mail-cell', text: c.email ? '있음' : '—' }),
+        h('td', { class: 'in-ag-cell' }, I.agencyTag(c), h('div', { class: 'meta', text: I.agency(c).why })),
         h('td', null, I.scoreBar(c.score)),
         h('td', null, inP ? I.stTag(inP.stage) : null)));
       if (open) rows.push(h('tr', { class: 'in-detail' }, h('td', { colspan: '11' }, candDetail(c, s, inP))));
     });
     var table = h('div', { class: 'table-wrap' }, h('table', { class: 'table in-table' },
-      h('thead', null, h('tr', null, ['', '채널', '찾은 이유', '구독자', rising ? '조회 상승' : '중앙 조회수', rising ? '댓글 (영상당 · 1천회당)' : '참여율', '댓글 톤', '일치 키워드', '메일', '점수', '상태'].map(function (x, i) {
+      h('thead', null, h('tr', null, ['', '채널', '찾은 이유', '구독자', rising ? '조회 상승' : '중앙 조회수', rising ? '댓글 (영상당 · 1천회당)' : '참여율', '댓글 톤', '일치 키워드', '메일', '소속', '점수', '상태'].map(function (x, i) {
         return h('th', { class: i >= 3 && i <= 5 ? 'num' : '', text: x });
       }))),
       h('tbody', null, rows.length ? rows : h('tr', null, h('td', { colspan: '11', class: 'empty', text: '조건에 맞는 후보가 없습니다.' })))));
@@ -175,6 +188,7 @@
       ui.head('Discover · ' + fmt.ts(s.at), s.seed.title + ' 와 비슷한 유튜버', h('div', { class: 'row' }, ui.btn('← 탐색', function () { HR.go('find'); }, 'btn-line btn-sm'))),
       ui.panel('씨드 · 컨셉', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
         seedCard(s.seed), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, I.chips(s.concept, 'on')),
+      agBar(s),
       h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
         ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),
@@ -196,6 +210,7 @@
           c.insta ? I.extLink('https://instagram.com/' + c.insta, '@' + c.insta + ' ↗') : null),
         h('div', { class: 'label', text: '최근 영상' }),
         h('ul', { class: 'in-vids' }, (c.recent || []).map(function (v) { return h('li', null, I.extLink(I.vidUrl(v.id), v.title), h('span', { class: 'meta', text: ' ' + I.cnt(v.views) + '회 · ' + fmt.dot(v.at).slice(2) })); })),
+        h('div', { class: 'row in-ag-line' }, I.agencyTag(c), h('span', { class: 'meta', text: I.agency(c).why })),
         (c.reason || []).length ? [h('div', { class: 'label', text: '찾은 이유' }), h('ul', { class: 'in-reason' }, c.reason.map(function (r) { return h('li', { text: r }); }))] : null,
         h('div', { class: 'label', text: '점수 구성' }),
         h('div', { class: 'in-parts' }, parts.map(function (x) { return h('span', { class: 'in-chip light', text: x[0] + ' ' + Math.round((x[1] || 0) * 100) }); })),

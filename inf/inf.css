@@ -169,3 +169,12 @@ button.in-chip:hover { border-color: var(--black); }
   font-size: 11px; font-weight: 500; text-decoration: none; white-space: nowrap; vertical-align: middle; }
 .in-yt:hover { background: var(--red); color: var(--white); }
 .in-seed-title .in-yt { margin-left: 8px; }
+
+/* 소속 구분 */
+.in-agbar { align-items: center; gap: 12px; margin: 8px 0 4px; }
+.in-ag-cell { min-width: 150px; max-width: 220px; font-size: 12px; }
+.in-ag-cell .meta { font-size: 11px; line-height: 1.5; margin-top: 2px; }
+.tag.in-ag.p100 { color: var(--white); background: var(--red); border-color: var(--red); }
+.tag.in-ag.p50 { color: var(--red); border-color: var(--red); }
+.tag.in-ag.p0 { color: var(--gray-600); }
+.in-ag-line { align-items: center; gap: 8px; }

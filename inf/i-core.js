@@ -82,6 +82,29 @@
           h('span', { class: 'in-tone-v', text: Math.round((t[r[0]] || 0) * 100) + '%' }));
       }));
   };
+  /* ---------- 소속 판정: 소속 유튜버 100% (확실) · 50% (애매) · 개인 0%
+     메일 도메인이 개인 메일(gmail · naver …)이 아닌 회사 도메인이거나, 채널 설명에 소속사 · MCN · 회사 정보가 있으면 소속 ---------- */
+  var FREE_MAIL = /@(gmail|googlemail|naver|daum|hanmail|kakao|nate|hotmail|outlook|live|msn|icloud|me|mac|yahoo|aol|proton|protonmail|zoho|gmx|yandex|qq|163)\./i;
+  var MCN = /(샌드박스|sandbox\s*network|레페리|leferi|트레져\s*헌터|treasure\s*hunter|다이아\s*티비|dia\s*tv|cj\s*enm|비디오빌리지|video\s*village|쉐어하우스|디밀|어반브릭스|유커넥|아이스크리에이티브|크리에이터\s*그룹|글랜스tv|순수\s*컴퍼니|모티브\s*인텔리전스|코코넛\s*엔터|헤비급|더블\s*엠)/i;
+  var STRONG = /(소속사|매니지먼트|management|\bmcn\b|엔터테인먼트|entertainment|에이전시|agency|주식회사|\(주\)|㈜|co\.,?\s*ltd|\binc\.|corp\.|소속\s*[:：])/i;
+  var CO_DOMAIN = /@[^@\s]*(ent|entertainment|mcn|agency|creator|creators|media|studio|studios|company|corp|group|mgmt|management|network|partners|lab|labs)[^@\s]*\.[a-z.]+$/i;
+  var WEAK = /(광고\s*문의|협찬\s*문의|비즈니스\s*문의|business\s*(inquir|contact)|비지니스\s*문의|담당자|매니저|manager|제휴\s*문의|섭외\s*문의)/i;
+  I.agency = function (c) {
+    var desc = String(c.desc || ''), emails = (desc.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []).concat(c.email ? [c.email] : []);
+    var coMail = emails.filter(function (e) { return !FREE_MAIL.test(e); })[0] || '';
+    var m;
+    if ((m = desc.match(MCN)) || (coMail && MCN.test(coMail))) return { p: 100, why: 'MCN · 소속사 이름: ' + (m ? m[1] : coMail) };
+    if (coMail && CO_DOMAIN.test(coMail)) return { p: 100, why: '회사 도메인 메일: ' + coMail };
+    if (coMail && (m = desc.match(STRONG))) return { p: 100, why: '회사 메일 ' + coMail + ' + 설명란 「' + m[1] + '」' };
+    if ((m = desc.match(STRONG))) return { p: 100, why: '설명란에 회사 정보 「' + m[1] + '」' };
+    if (coMail) return { p: 50, why: '개인 메일이 아닌 도메인: ' + coMail + ' (본인 도메인일 수도 있음)' };
+    if ((m = desc.match(WEAK))) return { p: 50, why: '설명란 「' + m[1] + '」 — 담당자를 따로 두는 표현' };
+    return { p: 0, none: !emails.length, why: emails.length ? '개인 메일: ' + emails[0] : '설명란에 연락처 · 회사 정보 없음 (유튜브 정보 탭의 비공개 메일은 직접 확인)' };
+  };
+  I.agencyTag = function (c) {
+    var a = I.agency(c);
+    return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none ? '개인 · 정보 없음' : '개인' });
+  };
   I.chips = function (list, cls) { return h('div', { class: 'in-chips' }, (list || []).map(function (x) { return h('span', { class: 'in-chip ' + (cls || ''), text: x }); })); };
   I.scoreBar = function (s) {
     var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.max(0, Math.min(100, s || 0)) + '%';
