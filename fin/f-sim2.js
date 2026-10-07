@@ -39,31 +39,40 @@
 
   F.runSim = function (c) {
     c = c || cfg();
-    var u = F.unitPnl(), cogs = u.cogs, per = u.varNoAd + u.ad;
+    var u = F.unitPnl(), uo = c.unitOver || {};
+    // 1개당 값: 개당 손익에서 가져온 값, 시트에서 직접 고치면 그 값 (unitOver)
+    var base = { net: u.net, vari: u.varNoAd + u.ad, cogs: u.cogs };
+    var uv = { net: uo.net != null ? +uo.net : base.net, vari: uo.vari != null ? +uo.vari : base.vari, cogs: uo.cogs != null ? +uo.cogs : base.cogs };
+    var cogs = uv.cogs, per = uv.vari, fo = c.fixOver || {};
+    var ov = function (k, ym, def) { return fo[k] && fo[k][ym] != null ? +fo[k][ym] : def; };
     var st = F.invStock ? F.invStock() : {}, prod = Object.keys(st).map(function (k) { return st[k]; }).filter(function (x) { return x.it.type === 'product'; })[0];
     var stock = prod ? prod.onHand + prod.ordered : 5000;
     var cash = c.cash0 != null && c.cash0 !== '' ? +c.cash0 : F.balance().amount, start = cash;
     var committed = c.committed ? F.sched.filter(function (s) { return s.kind !== 'monthly' && !s.paid && s.date >= fmt.today(); }) : [];
-    var lead = +c.lead || 0, up = (+c.upfront || 0) / 100, R = [];
+    var lead = +c.lead || 0, up = (+c.upfront || 0) / 100, R = [], cumP = 0;
     months(c).forEach(function (ym) {
       var r = { ym: ym };
       r.arrive = +(c.orders[fmt.ymShift(ym, -lead)] || 0); stock += r.arrive;
       r.plan = +(c.units[ym] || 0); r.sold = Math.min(r.plan, stock); r.lost = r.plan - r.sold; stock -= r.sold; r.stock = stock;
       r.order = +(c.orders[ym] || 0);
-      r.rev = r.sold * u.net; r.vari = r.sold * per;
+      r.rev = r.sold * uv.net; r.vari = r.sold * per;
       var fx = F.fixedAt(ym);
-      r.hire = (c.hires || []).reduce(function (a, x) { return a + (x.from && ym >= x.from ? +x.monthly || 0 : 0); }, 0);
-      r.pay = fx.pay; r.rent = fx.rent; r.ops = fx.ops; r.fixed = fx.total + r.hire;
+      r.def = { pay: fx.pay, rent: fx.rent, ops: fx.ops, hire: (c.hires || []).reduce(function (a, x) { return a + (x.from && ym >= x.from ? +x.monthly || 0 : 0); }, 0) };
+      r.pay = ov('pay', ym, r.def.pay); r.hire = ov('hire', ym, r.def.hire); r.rent = ov('rent', ym, r.def.rent); r.ops = ov('ops', ym, r.def.ops);
+      r.extra = (c.extraFixed || []).map(function (x) { return +((x.vals || {})[ym] || 0); });
+      r.fixed = r.pay + r.hire + r.rent + r.ops + r.extra.reduce(function (a, v) { return a + v; }, 0);
       r.inv = r.order * cogs * up + r.arrive * cogs * (1 - up);
       r.committed = committed.filter(function (s) { return s.date.slice(0, 7) === ym; }).reduce(function (a, s) { return a + (+s.amount || 0); }, 0);
       r.owner = +(c.owner[ym] || 0); r.fund = +(c.fund[ym] || 0);
       r.op = r.rev - r.vari - r.fixed;                     // 영업 현금 (재고 매입 전)
+      r.cogsUsed = r.sold * cogs; r.profit = r.op - r.cogsUsed;   // 월 순익 (손익 기준: 판 만큼 원가 반영, 법인세 전)
+      cumP += r.profit; r.cumProfit = cumP;
       r.flow = r.op - r.inv - r.committed + r.owner + r.fund;
       cash += r.flow; r.cash = cash;
       r.need = cash < +c.minCash ? Math.ceil((+c.minCash - cash) / 10000000) * 10000000 : 0;   // 최소 보유액까지 채우려면 (천만 원 단위)
       R.push(r);
     });
-    return { rows: R, u: u, start: start, c: c };
+    return { rows: R, u: u, uv: uv, base: base, start: start, c: c };
   };
   // 부족한 달마다 차례로 대표 차입을 채운 결과
   function fillOwner() {
@@ -83,7 +92,7 @@
     var risk = R.filter(function (r) { return r.cash < +c.minCash; });
     var ownerSum = Object.keys(c.owner).reduce(function (a, k) { return a + (+c.owner[k] || 0); }, 0);
     var firstLost = R.filter(function (r) { return r.lost > 0; })[0];
-    var opPlus = R.filter(function (r) { return r.sold && r.op >= 0; })[0];
+    var opPlus = R.filter(function (r) { return r.sold && r.profit >= 0; })[0], pSum = R.reduce(function (a, r) { return a + r.profit; }, 0);
     var ownerLimit = F.plan.filter(function (p) { return p.kind === F.OWNER && p.status !== 'dropped'; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
 
     // 엑셀형 표: 행 = 항목, 열 = 월
@@ -106,6 +115,17 @@
     var m = function (v) { return v ? F.man(v) : ''; };
     var n = function (v) { return v ? Math.round(v).toLocaleString('ko-KR') : ''; };
 
+    sec('⓪ 1개당 기준값', '개당 손익에서 가져온 값 · 고치면 이 시트에만 적용');
+    var uo = c.unitOver || {};
+    [['net', '1개당 순매출', '실결제 − 부가세 (정가 ' + F.won(u.price) + ' · 할인 ' + u.e.discount + '%)'], ['vari', '1개당 변동비', '물류 · 수수료 · 반품 · 리뷰 · 광고 ' + u.e.adRate + '%'], ['cogs', '1개당 제품 원가', '재고 품목 단가 합계 (공급가)']].forEach(function (k) {
+      var own = uo[k[0]] != null, v = own ? +uo[k[0]] : X.base[k[0]];
+      var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell sx-unit' + (own ? ' sx-own' : ''), value: Math.round(v).toLocaleString('ko-KR'), 'aria-label': k[1], disabled: ed ? null : true });
+      i.addEventListener('focus', function () { i.select(); });
+      i.addEventListener('change', function () { var o = Object.assign({}, c.unitOver || {}), n = F.parseWon(i.value); if (i.value.trim() === '' || n === Math.round(X.base[k[0]])) delete o[k[0]]; else o[k[0]] = n; save({ unitOver: o }); });
+      body.appendChild(h('tr', { class: 'sx-input' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: k[1] }), h('div', { class: 'meta', text: own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) : k[2] })),
+        h('td', { class: 'num' }, i, own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null),
+        h('td', { colspan: String(cols.length - 1), class: 'meta sx-unitnote', text: k[0] === 'cogs' ? '남는 돈(1개) = ' + F.won(Math.round(X.uv.net - X.uv.vari - X.uv.cogs)) + ' · 원가는 판매 때가 아니라 발주 대금(②)으로 현금에 반영' : '' })));
+    });
     sec('① 판매', '런칭 2026.11.12');
     inputRow('예상 판매량 (개)', 'units', '개', '월별로 직접 입력');
     row('실제 판매 가능', function (r) { return { t: n(r.sold) + (r.lost ? ' (−' + n(r.lost) + ')' : ''), c: r.lost ? 'red' : '' }; });
@@ -118,12 +138,50 @@
     row('재고 매입 대금', function (r) { return m(-r.inv); });
     if (R.some(function (r) { return r.committed; })) row('이미 정해진 지급 (에코먼트 잔금 등)', function (r) { return m(-r.committed); });
     sec('③ 판매와 무관하게 매달 나가는 돈', '지출 흐름 › 고정비 + 아래 채용 계획');
-    row('인건비 (현원)', function (r) { return m(-r.pay); });
-    row('인건비 (채용 예정)', function (r) { return m(-r.hire); });
-    row('임대료 · 관리비', function (r) { return m(-r.rent); });
-    row('운영비 (툴 · 세무 · 물류 기본료 · 이자 · 기타)', function (r) { return m(-r.ops); });
+    // 고정비 입력 행: 칸에는 가져온 기본값이 들어 있고, 고치면 그 달만 덮어씀(굵게). 비우면 기본값으로 돌아감
+    var fixRow = function (label, key, guide) {
+      var fo = c.fixOver || {}, cur = fo[key] || {};
+      var put = function (o) { var all = Object.assign({}, c.fixOver || {}); all[key] = o; save({ fixOver: all }); };
+      body.appendChild(h('tr', { class: 'sx-input sx-fix' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide }),
+        ed ? h('div', { class: 'sx-tools' }, ui.btn('→ 첫 달 값으로 채우기', function () { var o = {}; var v = cur[cols[0]] != null ? +cur[cols[0]] : R[0][key]; cols.forEach(function (ym) { o[ym] = v; }); put(o); }, 'btn-line btn-xs'),
+          Object.keys(cur).length ? ui.btn('기본값', function () { put({}); }, 'btn-line btn-xs') : null) : null),
+        R.map(function (r) {
+          var own = cur[r.ym] != null, v = own ? +cur[r.ym] : r.def[key];
+          var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell' + (own ? ' sx-own' : ''), value: v ? Math.round(v).toLocaleString('ko-KR') : '', 'aria-label': r.ym + ' ' + label, disabled: ed ? null : true, title: own ? '직접 입력 (기본 ' + F.won(r.def[key]) + ')' : '기본값 — 지출 흐름 · 채용 계획에서' });
+          i.addEventListener('focus', function () { i.select(); });
+          i.addEventListener('change', function () { var o = Object.assign({}, cur), n = F.parseWon(i.value); if (i.value.trim() === '' || n === Math.round(r.def[key])) delete o[r.ym]; else o[r.ym] = n; put(o); });
+          return h('td', { class: 'num' }, i);
+        })));
+    };
+    fixRow('인건비 (현원)', 'pay', '기본: 지출 흐름 › 고정비 인건비');
+    fixRow('인건비 (채용 예정)', 'hire', '기본: 아래 채용 계획');
+    fixRow('임대료 · 관리비', 'rent', '기본: 지출 흐름 › 고정비');
+    fixRow('운영비 (툴 · 세무 · 물류 기본료 · 이자 · 기타)', 'ops', '기본: 지출 흐름 › 고정비');
+    // 직접 추가 항목 (예: 대표 급여, 촬영비 월정액)
+    (c.extraFixed || []).forEach(function (x, idx) {
+      var setX = function (patch) { var list = (c.extraFixed || []).slice(); list[idx] = Object.assign({}, list[idx], patch); save({ extraFixed: list }); };
+      var nm = h('input', { type: 'text', class: 'sx-name', value: x.name || '', placeholder: '항목 이름', maxlength: '40', disabled: ed ? null : true });
+      nm.addEventListener('change', function () { setX({ name: nm.value.trim() }); });
+      body.appendChild(h('tr', { class: 'sx-input sx-fix' }, h('td', { class: 'sx-k' }, nm, ed ? h('div', { class: 'sx-tools' },
+          ui.btn('→ 첫 달 값으로 채우기', function () { var v = +((x.vals || {})[cols[0]] || 0), o = {}; cols.forEach(function (ym) { o[ym] = v; }); setX({ vals: o }); }, 'btn-line btn-xs'),
+          ui.confirmBtn('삭제', function () { var list = (c.extraFixed || []).slice(); list.splice(idx, 1); save({ extraFixed: list }); })) : null),
+        cols.map(function (ym) {
+          var v = (x.vals || {})[ym], i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell sx-own', value: v ? Number(v).toLocaleString('ko-KR') : '', 'aria-label': ym + ' ' + (x.name || ''), disabled: ed ? null : true });
+          i.addEventListener('focus', function () { i.select(); });
+          i.addEventListener('change', function () { var o = Object.assign({}, x.vals || {}), n = F.parseWon(i.value); if (n) o[ym] = n; else delete o[ym]; setX({ vals: o }); });
+          return h('td', { class: 'num' }, i);
+        })));
+    });
+    if (ed) body.appendChild(h('tr', { class: 'sx-addrow' }, h('td', { class: 'sx-k' }, ui.btn('+ 고정비 항목 추가', function () { save({ extraFixed: (c.extraFixed || []).concat([{ name: '', vals: {} }]) }); }, 'btn-line btn-xs')), cols.map(function () { return h('td'); })));
     row('고정비 합계', function (r) { return m(-r.fixed); }, 'strong', 'sx-sum');
-    sec('④ 현금', '최소 보유 ' + F.man(+c.minCash));
+    sec('④ 월 순익', '손익 기준 — 판 만큼만 원가를 잡는다 (법인세 · 감가상각 전)');
+    row('순매출', function (r) { return m(r.rev); }, 'meta');
+    row('− 제품 원가 (판매분)', function (r) { return m(-r.cogsUsed); }, 'meta');
+    row('− 변동비', function (r) { return m(-r.vari); }, 'meta');
+    row('− 고정비', function (r) { return m(-r.fixed); }, 'meta');
+    row('월 순익', function (r) { return { t: F.man(r.profit), c: r.profit < 0 ? 'red' : '' }; }, 'strong', 'sx-sum sx-cash');
+    row('누적 순익', function (r) { return { t: F.man(r.cumProfit), c: r.cumProfit < 0 ? 'red' : '' }; });
+    sec('⑤ 현금', '최소 보유 ' + F.man(+c.minCash) + ' · 원가는 판매가 아니라 발주 대금으로 나감');
     row('영업 현금 (매출 − 변동비 − 고정비)', function (r) { return { t: F.man(r.op), c: r.op < 0 ? 'red' : '' }; });
     inputRow('대표 차입금 (원)', 'owner', '원', '대표 개인 → 법인 (가수금)');
     inputRow('기타 조달 (원)', 'fund', '원', '정책자금 · 대출 입금');
@@ -158,9 +216,9 @@
         ['27.03 월말 현금', F.man(c12.cash || 0), (c12.cash || 0) < +c.minCash ? 'red' : '', '누적 판매 ' + R.reduce(function (a, r) { return a + r.sold; }, 0).toLocaleString('ko-KR') + '개 · 남은 재고 ' + (c12.stock || 0).toLocaleString('ko-KR') + '개'],
         ['현금 리스크 구간', risk.length ? risk.length + '개월' : '없음', risk.length ? 'red' : '', risk.length ? F.ymLabel(risk[0].ym) + ' ~ ' + F.ymLabel(risk[risk.length - 1].ym) + ' · 최저 ' + F.man(low.cash) + ' (' + F.ymLabel(low.ym) + ')' : '최소 보유액 위'],
         ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', ownerLimit ? '한도 ' + F.man(ownerLimit) + ' (자금조달 계획)' : ''],
-        ['영업 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '매출 − 변동비 − 고정비 ≥ 0' + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
+        ['월 순익 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '기간 누적 순익 ' + F.man(pSum) + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
       h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
-      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '1개당 순매출 ' + F.won(Math.round(u.net)) + ' · 변동비 ' + F.won(Math.round(u.varNoAd + u.ad)) + ' · 원가 ' + F.won(Math.round(u.cogs)) + ' (개당 손익 메뉴)' }),
+      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값' }),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Hires · 채용 계획 (③ 인건비 채용 예정에 들어감)', null, hires,
@@ -168,7 +226,7 @@
         ui.panel('Settings · 기준값', null, h('div', { class: 'stack fin-form' },
           h('div', { class: 'row' }, setting('최소 보유 현금', 'minCash', 'money'), setting('시작 현금 (비우면 실잔액)', 'cash0', 'money')),
           h('div', { class: 'row' }, setting('발주 → 입고 리드타임 (개월)', 'lead'), setting('발주 선금 (%)', 'upfront'))),
-          h('p', { class: 'meta', text: '재고 매입 대금 = 발주 수량 × 제품 원가(공급가 ' + F.won(Math.round(u.cogs)) + '). 선금은 발주한 달, 잔금은 입고한 달에 나갑니다. 부가세 · 정산 시차는 무시한 단순 현금 모형입니다.' }))));
+          h('p', { class: 'meta', text: '재고 매입 대금 = 발주 수량 × 1개당 제품 원가(' + F.won(Math.round(X.uv.cogs)) + '). 선금은 발주한 달, 잔금은 입고한 달에 나갑니다. 부가세 · 정산 시차는 무시한 단순 현금 모형입니다.' }))));
   }
   HR.register('sim', { render: render });
 })();
