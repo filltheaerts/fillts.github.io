@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://fillts-web.firebaseapp.com; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>fillts MKT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../hr/hr.css?v=2610071200">
+  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610071200">
+  <link rel="stylesheet" href="mkt.css?v=2610071200">
+  <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
+</head>
+<body>
+
+  <!-- ============ 로그인 필요 (HR 계정 공유) ============ -->
+  <section class="auth" id="authView" hidden>
+    <div class="auth-side">
+      <a href="/" class="logo">fillts</a>
+      <div>
+        <div class="label">Fillts MKT</div>
+        <h1 class="auth-title">Marketing, <span class="accent">fill</span>ed<br>from map to launch<span class="accent">.</span></h1>
+        <p class="auth-sub">목표 · 타겟 · 소구점 · 전략 · 계획 · 실행을 한 장의 맵으로.</p>
+      </div>
+      <div class="auth-foot">&copy; 2026 fillts Inc. &nbsp;|&nbsp; 임직원 전용</div>
+    </div>
+    <div class="auth-main">
+      <div class="auth-form">
+        <div class="label">Sign in</div>
+        <h2 class="h2" id="authTitle">fillts HR 계정으로 들어옵니다</h2>
+        <p class="muted" id="authText">HR에서 로그인하면 이 화면으로 바로 돌아옵니다.</p>
+        <button class="btn" type="button" id="toHrLogin">HR 계정으로 로그인</button>
+        <div class="auth-links"><a href="/hr/">fillts HR로 가기</a><a href="#" class="js-logout" id="authLogout" hidden>다른 계정으로 로그인</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 앱 ============ -->
+  <div class="app" id="appView" hidden>
+    <nav class="nav">
+      <a href="#map" class="logo">fillts <span class="logo-sub mkt-sub">MKT</span></a>
+      <div class="nav-right">
+        <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
+      </div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#map" data-menu="map" class="nav-green">MAP</a></li>
+        <li class="nav-sep"><a href="#b/goal" data-menu="goal">목표</a></li>
+        <li><a href="#b/target" data-menu="target">타겟</a></li>
+        <li><a href="#b/appeal" data-menu="appeal">소구점</a></li>
+        <li><a href="#b/strategy" data-menu="strategy">전략</a></li>
+        <li><a href="#b/plan" data-menu="plan">계획</a></li>
+        <li><a href="#b/exec" data-menu="exec">실행</a></li>
+        <li class="nav-sep"><a href="/hr/#ws">HR</a></li>
+        <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
+      </ul>
+    </nav>
+    <main class="main" id="view" tabindex="-1"></main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="../hr/firebase-config.js?v=2610071200"></script>
+  <script src="mkt.js?v=2610071200"></script>
+</body>
+</html>

@@ -503,6 +503,11 @@
     if (sw) { sw.hidden = !S.realAdmin; sw.setAttribute('aria-checked', String(S.viewAsUser)); sw.title = S.viewAsUser ? '지금 사용자 화면 — 누르면 관리자 모드' : '누르면 일반 구성원 화면으로 미리보기'; }
   }
   function start(hu) {
+    // /mkt 등 다른 화면에서 로그인하러 왔으면 로그인 직후 그 화면으로 돌려보낸다 (15분 안, 같은 사이트 경로만)
+    try {
+      var nx = JSON.parse(localStorage.getItem('hrNext') || 'null'); localStorage.removeItem('hrNext');
+      if (nx && /^\/mkt\/[#a-z\/]*$/.test(nx.to) && Date.now() - nx.at < 15 * 60000) { location.replace(nx.to); return; }
+    } catch (e) { /* 무시 */ }
     stopAll();
     S.mid = hu.memberId; S.role = hu.role || 'employee';
     S.isAdmin = S.role === 'admin'; S.isLead = S.isAdmin || S.role === 'manager';
