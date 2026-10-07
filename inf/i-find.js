@@ -152,25 +152,28 @@
       var inP = I.creator(c.id), open = V.open[c.id], ag = I.agency(c);
       var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP, 'aria-label': c.title + ' 선택',
         onclick: function (e) { e.stopPropagation(); }, onchange: function () { sel[c.id] = this.checked; HR.refresh(); } });
-      var why = (c.reason || []).filter(function (r) { return !/^검색 「|^업로드 주|^댓글 톤/.test(r); }).slice(0, 2).map(short);
+      var kws = (c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 5);
       var stats = rising ? [stat('구독', I.cnt(c.subs)), stat('조회 상승', c.growth ? c.growth + '배' : '—', c.growth >= 1.2 ? 'red' : ''), stat('댓글/편', (c.cmtMed || 0) + '개')]
         : [stat('구독', I.cnt(c.subs)), stat('중앙 조회', I.cnt(c.median)), stat('톤 일치', Math.round(((c.parts || {}).tone || 0) * 100) + '%')];
       rows.push(h('div', { class: 'in-row clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), tabindex: '0',
         onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); }, onkeydown: function (e) { if (e.key === 'Enter') { V.open[c.id] = !V.open[c.id]; HR.refresh(); } } },
         h('div', { class: 'in-r-cb' }, cb),
         h('div', { class: 'in-r-score' }, h('b', { text: String(c.score || 0) }), h('span', { class: 'in-score-track' }, (function () { var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.min(100, c.score || 0) + '%'; return f; })())),
-        h('div', { class: 'in-r-ch' }, I.thumb(c), h('div', { class: 'in-r-t' },
-          h('div', { class: 'in-r-name', text: c.title }),
+        h('div', { class: 'in-r-ch' }, I.thumb(c, 'sm'), h('div', { class: 'in-r-t' },
+          h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: c.title + (c.handle ? ' ' + c.handle : ''), text: c.title.length > 14 ? c.title.slice(0, 13) + '…' : c.title }), I.ytBtn(c)),
           h('div', { class: 'in-r-tags' }, I.agencyTag(c), c.email ? h('span', { class: 'tag', text: '메일' }) : null, inP ? I.stTag(inP.stage) : null,
             h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })))),
         h('div', { class: 'in-r-stats' }, stats),
-        h('div', { class: 'in-r-why' }, why.length ? why.map(function (r) { return h('div', { text: r }); }) : h('div', { class: 'meta', text: ag.why })),
-        h('div', { class: 'in-r-act' }, I.ytBtn(c))));
+        h('div', { class: 'in-r-why' }, kws.length ? kws.map(function (k, i) { return h('span', { class: 'in-chip ' + (i < (c.matched || []).length ? 'on' : 'light'), text: k }); }) : h('span', { class: 'meta', text: '키워드 겹침 적음' }))));
       if (open) rows.push(h('div', { class: 'in-row-detail' }, h('div', { class: 'in-r-agwhy meta', text: '소속 근거: ' + ag.why }), candDetail(c, s, inP)));
     });
+    var avail = list.filter(function (c) { return !I.creator(c.id); });
+    var allOn = avail.length > 0 && avail.every(function (c) { return sel[c.id]; });
+    var all = h('input', { type: 'checkbox', checked: allOn, 'aria-label': '보이는 후보 전체 선택', title: '보이는 후보 전체 선택 / 해제',
+      onchange: function () { var on = this.checked; avail.forEach(function (c) { sel[c.id] = on; }); HR.refresh(); } });
     var table = h('div', { class: 'in-rows' },
-      h('div', { class: 'in-row in-row-head' }, h('div', { class: 'in-r-cb' }), h('div', { class: 'in-r-score', text: '점수' }), h('div', { class: 'in-r-ch', text: '채널 · 소속' }),
-        h('div', { class: 'in-r-stats', text: rising ? '구독 · 조회 상승 · 댓글' : '구독 · 조회 · 톤' }), h('div', { class: 'in-r-why', text: '찾은 이유 (행을 누르면 전체)' }), h('div', { class: 'in-r-act' })),
+      h('div', { class: 'in-row in-row-head' }, h('label', { class: 'in-r-cb in-all' }, all, h('span', { text: '전체' })), h('div', { class: 'in-r-score', text: '점수' }), h('div', { class: 'in-r-ch', text: '채널 · 소속' }),
+        h('div', { class: 'in-r-stats', text: rising ? '구독 · 조회 상승 · 댓글' : '구독 · 조회 · 톤' }), h('div', { class: 'in-r-why', text: '찾은 이유 · 일치 키워드 (행을 누르면 전체)' })),
       rows.length ? rows : h('p', { class: 'empty', text: '조건에 맞는 후보가 없습니다.' }));
 
     var bar = h('div', { class: 'in-actionbar' + (nSel ? ' show' : '') },
