@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt;
-  var V = I.V.done = { url: {}, busy: {}, open: {}, msg: '', err: false, pick: '', pickUrl: '', sort: 'views' };
+  var V = I.V.done = { url: {}, busy: {}, open: {}, msg: '', err: false, pick: '', pickUrl: '', sort: 'views', quick: '', qbusy: false };
   var WAIT = ['contract', 'seeding', 'waiting'];
 
   function setMsg(t, err) { V.msg = t; V.err = !!err; HR.refresh(); }
@@ -14,6 +14,16 @@
     return I.call('infYt', { action: 'content', creatorId: c.id, url: url.trim(), markDone: !!markDone }).then(function () {
       V.busy[c.id] = false; V.url[c.id] = ''; setMsg('「' + c.ch.title + '」 콘텐츠를 추적합니다.');
     }).catch(function (e) { V.busy[c.id] = false; setMsg(e.message, true); });
+  }
+  // 영상 주소만 붙여 넣으면 서버가 제목 · 채널 · 조회 · 댓글을 읽어 온다 (채널이 리스트에 없으면 「완료」로 자동 추가)
+  function addByUrl() {
+    var url = (V.quick || '').trim();
+    if (!url) return setMsg('유튜브 영상 주소를 붙여 넣으세요.', true);
+    V.qbusy = true; setMsg('영상 · 채널 · 댓글을 읽는 중입니다… (5 ~ 20초)');
+    I.call('infYt', { action: 'content', url: url }).then(function (r) {
+      V.qbusy = false; V.quick = '';
+      setMsg('「' + (r.title || '콘텐츠') + '」' + (r.channel ? ' — ' + r.channel : '') + ' 추적을 시작했습니다.');
+    }).catch(function (e) { V.qbusy = false; setMsg(e.message, true); });
   }
   function refreshContents(c) {
     V.busy[c.id] = true; HR.refresh();
@@ -79,6 +89,12 @@
           inp, b);
       })) : ui.empty('콘텐츠를 기다리는 계약 건이 없습니다. 파이프라인에서 「계약」으로 옮기면 여기에 나타납니다.'));
 
+    var quick = ui.input({ value: V.quick || '', maxlength: '300', class: 'grow', placeholder: '완료 콘텐츠 영상 주소 붙여넣기 — https://www.youtube.com/watch?v=… · youtu.be/… · 쇼츠',
+      oninput: function () { V.quick = this.value; }, onkeydown: function (e) { if (e.key === 'Enter' && !V.qbusy) addByUrl(); } });
+    var quickBtn = ui.btn(V.qbusy ? '읽는 중…' : '+ 콘텐츠 추가', addByUrl, 'btn-sm');
+    if (V.qbusy) quickBtn.disabled = true;
+    var quickPanel = ui.panel('영상 주소로 바로 추가', null, h('div', { class: 'row in-seed-form' }, quick, quickBtn),
+      h('p', { class: 'note', text: '주소만 넣으면 제목 · 채널 · 업로드일 · 조회 · 좋아요 · 댓글 · 특이 댓글을 알아서 읽어 옵니다. 채널이 리스트에 없으면 「완료」 단계로 함께 추가됩니다.' }));
     var picker = ui.select([['', '채널 선택']].concat(I.creators.slice().sort(function (a, b) { return (a.ch.title || '').localeCompare(b.ch.title || '', 'ko'); }).map(function (c) { return [c.id, c.ch.title + ' · ' + I.stName(c.stage)]; })),
       V.pick, { onchange: function () { V.pick = this.value; } });
     var pickUrl = ui.input({ value: V.pickUrl, placeholder: '영상 주소', class: 'grow', oninput: function () { V.pickUrl = this.value; } });
@@ -102,18 +118,17 @@
         if (V.open[k]) out.push(h('tr', { class: 'in-detail' }, h('td', { colspan: '9' }, insight(r.ct),
           h('div', { class: 'row in-ct-act' }, ui.confirmBtn('이 콘텐츠 추적 그만', function () { removeContent(r.c, r.ct.vid); })))));
         return out;
-      }))))) : ui.empty('추적 중인 완료 콘텐츠가 없습니다. 위 「콘텐츠 대기」에서 영상 주소를 넣거나, 아래에서 채널을 골라 추가하세요.');
+      }))))) : ui.empty('추적 중인 완료 콘텐츠가 없습니다. 위에 영상 주소를 붙여 넣으세요.');
 
     ui.put(view,
       ui.head('Contents', '완료 콘텐츠', h('span', { class: 'meta', text: '매일 09:10 자동 최신화 · ↻ 수동' })),
       kpi,
+      quickPanel,
       V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
       waitPanel,
       ui.panel('완료 콘텐츠', h('div', { class: 'in-seg' }, [['views', '누적 조회'], ['recent', '하루 증가'], ['brand', '브랜드 언급'], ['at', '최근 업로드']].map(function (x) {
         return h('button', { type: 'button', class: V.sort === x[0] ? 'active' : '', text: x[1], onclick: function () { V.sort = x[0]; HR.refresh(); } });
-      })), table,
-        h('div', { class: 'row in-opts' }, ui.field('다른 채널 콘텐츠 추가', picker), ui.field('영상 주소', pickUrl, 'grow'),
-          ui.btn('추가', function () { var c = I.creator(V.pick); if (!c) return setMsg('채널을 고르세요.', true); Promise.resolve(addContent(c, V.pickUrl, false)).then(function () { if (!V.err) V.pickUrl = ''; }); }, 'btn-line btn-sm'))));
+      })), table));
   }
   HR.register('done', { render: function (view) { render(view); } });
 })();
