@@ -3,7 +3,10 @@
   'use strict';
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
   var V = I.V.find = { input: '', seed: null, kw: [], custom: '', range: 'wide', n: '30', mode: 'similar', maxSubs: '100000', preset: '', busy: '', msg: '', err: false,
-    sel: {}, sort: 'score', onlyMail: false, onlyNew: false, ag: '', q: '', open: {} };
+    sel: {}, sort: 'score', onlyMail: false, onlyNew: false, ag: '', q: '', open: {}, skipSeen: false,
+    cond: { kw: [], custom: '', minSubs: '1000', maxSubs: '100000', days: '90', minGrowth: '0', minCmt: '0', mailOnly: false, n: '30', preset: '' },
+    rnd: { src: { preset: true, past: true, list: true }, last: [] } };
+  var TABS = [['', '① 비슷한 유튜버 찾기'], ['cond', '② 조건 탐색'], ['random', '③ 랜덤 탐색']];
   var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
   var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회수 상승 · 댓글 활발']];
   var MAXSUBS = [['10000', '1만 미만'], ['30000', '3만 미만'], ['50000', '5만 미만'], ['100000', '10만 미만'], ['300000', '30만 미만']];
@@ -37,21 +40,32 @@
     if (!V.seed) return;
     if (!V.kw.length) return setMsg('컨셉 키워드를 하나 이상 고르세요.', true);
     V.busy = 'scan'; setMsg('「' + V.kw.join(' · ') + '」로 찾고, 후보 채널의 영상 · 댓글을 읽는 중입니다… (20 ~ 60초)');
-    I.call('infYt', { action: 'scan', seedId: V.seed.id, seed: V.input, keywords: V.kw, range: V.range, n: +V.n, mode: V.mode, maxSubs: +V.maxSubs, preset: V.preset }).then(function (r) {
-      V.busy = ''; V.msg = ''; ui.toast('후보 ' + r.count + '명을 찾았습니다.');
+    I.call('infYt', { action: 'scan', seedId: V.seed.id, seed: V.input, keywords: V.kw, range: V.range, n: +V.n, mode: V.mode, maxSubs: +V.maxSubs, preset: V.preset, skipSeen: V.skipSeen }).then(function (r) {
+      V.busy = ''; V.msg = ''; ui.toast(doneText(r));
       HR.go('find/' + r.id);
     }).catch(function (e) { V.busy = ''; setMsg(e.message, true); });
   }
+  function doneText(r) {
+    var sk = r.skipped || {}, t = '후보 ' + r.count + '명을 찾았습니다.';
+    if (sk.known || sk.seen) t += ' (중복 제외: 리스트 ' + (sk.known || 0) + '명' + (sk.seen ? ' · 지난 탐색 ' + sk.seen + '명' : '') + ')';
+    return t;
+  }
+  function dedupBox() {
+    return h('label', { class: 'check', title: '리스트(디벨롭 이후)에 있는 채널은 항상 뺍니다. 이 칸을 켜면 지난 탐색 50건에 나왔던 채널도 뺍니다.' },
+      h('input', { type: 'checkbox', checked: V.skipSeen, onchange: function () { V.skipSeen = this.checked; } }), ' 지난 탐색에 나온 채널도 빼기 (리스트 채널은 항상 제외)');
+  }
 
-  /* ============ 탐색 첫 화면 ============ */
-  function home(view) {
+  /* ============ 탐색 첫 화면: ① 비슷한 유튜버 · ② 조건 탐색 · ③ 랜덤 탐색 ============ */
+  function home(view, tab) {
+    if (tab === 'cond') return condTab(view);
+    if (tab === 'random') return randomTab(view);
     var inp = ui.input({ value: V.input, placeholder: '예: https://www.youtube.com/@채널 · @핸들 · 영상 주소 · 채널 이름', maxlength: '300', class: 'grow',
       oninput: function () { V.input = this.value; }, onkeydown: function (e) { if (e.key === 'Enter' && !V.busy) analyze(this.value); } });
     var step1 = ui.panel('1 · 씨드 유튜버', h('span', { class: 'meta', text: I.quotaText() }),
       h('p', { class: 'note', text: '컨셉 · 주제가 딱 맞는 유튜버 한 명을 넣으면, 그 채널의 영상 제목 · 태그 · 댓글을 읽어 컨셉 키워드를 뽑습니다.' }),
       h('div', { class: 'row in-seed-form' }, inp, ui.btn(V.busy === 'analyze' ? '읽는 중…' : '채널 분석', function () { analyze(inp.value); }, V.busy ? 'btn-line' : '')),
       V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null);
-    var parts = [ui.head('Discover', '비슷한 유튜버 찾기'), step1];
+    var parts = [ui.head('Discover', '탐색'), ui.tabs(TABS, '', 'find'), step1];
     if (V.busy && V.busy === 'analyze') step1.querySelector('button').disabled = true;
 
     if (V.seed) {
@@ -87,6 +101,7 @@
         h('div', { class: 'label in-sub', text: '카테고리 프리셋 (알고리즘 + 키워드 한 번에)' }), presets,
         h('div', { class: 'row in-opts' }, ui.field('알고리즘', mode, 'grow'), V.mode === 'rising' ? ui.field('구독자 상한', maxS) : null),
         h('div', { class: 'row in-opts' }, ui.field('직접 추가', custom, 'grow'), V.mode === 'rising' ? null : ui.field('구독자 범위', range), ui.field('깊게 볼 후보 수', n)),
+        h('div', { class: 'row in-opts' }, dedupBox()),
         h('div', { class: 'row' }, go, h('span', { class: 'meta', text: '1회 ≈ 20 ~ 60초 · ' + I.quotaText() }))));
     }
 
@@ -95,6 +110,96 @@
     ui.put(view, parts);
   }
 
+  /* ---------- ② 조건 탐색: 씨드 없이 키워드 + 조건 ---------- */
+  function condRun(kw, opt, label) {
+    var C = V.cond;
+    V.busy = 'cond'; setMsg('「' + kw.join(' · ') + '」 조건으로 찾는 중입니다… (20 ~ 60초)');
+    return I.call('infYt', Object.assign({ action: 'scan', mode: 'cond', keywords: kw, minSubs: +C.minSubs, maxSubs: +C.maxSubs, days: +C.days,
+      minGrowth: +C.minGrowth, minCmt: +C.minCmt, mailOnly: C.mailOnly, n: +C.n, preset: label || C.preset, skipSeen: V.skipSeen }, opt || {}))
+      .then(function (r) { V.busy = ''; V.msg = ''; ui.toast(doneText(r)); HR.go('find/' + r.id); })
+      .catch(function (e) { V.busy = ''; setMsg(e.message, true); });
+  }
+  function kwPicker(list, max, onChange) {
+    var custom = ui.input({ maxlength: '30', placeholder: '키워드 입력 후 Enter — 예: 육아 브이로그, 민감성 피부',
+      onkeydown: function (e) { if (e.key === 'Enter' && this.value.trim()) { var k = this.value.trim(); if (list.indexOf(k) < 0 && list.length < max) list.push(k); this.value = ''; onChange(); } } });
+    return h('div', { class: 'stack sm' },
+      h('div', { class: 'in-chips' }, list.length ? list.map(function (k, i) {
+        return h('button', { type: 'button', class: 'in-chip on', text: k + ' ×', onclick: function () { list.splice(i, 1); onChange(); } });
+      }) : h('span', { class: 'meta', text: '1 ~ ' + max + '개' })), custom);
+  }
+  function sel(opts, val, set) { return ui.select(opts, val, { onchange: function () { set(this.value); } }); }
+  function condTab(view) {
+    var C = V.cond;
+    var presets = h('div', { class: 'in-chips' }, I.presetList().map(function (pr) {
+      return h('button', { type: 'button', class: 'in-chip' + (C.preset === pr.id ? ' on' : ''), title: pr.desc, text: '카테고리 · ' + pr.name, onclick: function () {
+        C.preset = pr.id; C.kw = pr.keywords.slice(0, 5); if (pr.maxSubs) C.maxSubs = String(pr.maxSubs); HR.refresh();
+      } });
+    }));
+    var go = ui.btn(V.busy === 'cond' ? '찾는 중…' : '조건으로 찾기', function () { if (!C.kw.length) return setMsg('키워드를 하나 이상 넣으세요.', true); condRun(C.kw.slice()); });
+    if (V.busy) go.disabled = true;
+    ui.put(view, ui.head('Discover', '탐색'), ui.tabs(TABS, 'cond', 'find'),
+      ui.panel('조건 탐색 — 씨드 없이 키워드와 조건으로', h('span', { class: 'meta', text: I.quotaText() }),
+        h('p', { class: 'note', text: '기준 유튜버 없이, 주제 키워드로 최근 영상을 검색한 뒤 구독자 · 조회 상승 · 댓글 조건에 맞는 채널만 남깁니다. 점수 = ' + condW() + '.' }),
+        h('div', { class: 'label in-sub', text: '카테고리 프리셋' }), presets,
+        h('div', { class: 'label in-sub', text: '키워드 (1 ~ 5개)' }), kwPicker(C.kw, 5, HR.refresh),
+        h('div', { class: 'row in-opts' },
+          ui.field('최소 구독', sel([['0', '제한 없음'], ['1000', '1천'], ['5000', '5천'], ['10000', '1만'], ['30000', '3만'], ['50000', '5만'], ['100000', '10만']], C.minSubs, function (v) { C.minSubs = v; })),
+          ui.field('구독 상한 (미만)', sel([['10000', '1만'], ['30000', '3만'], ['50000', '5만'], ['100000', '10만'], ['300000', '30만'], ['1000000', '100만'], ['0', '제한 없음']], C.maxSubs, function (v) { C.maxSubs = v; })),
+          ui.field('최근 영상 기간', sel([['30', '30일'], ['60', '60일'], ['90', '90일'], ['180', '180일'], ['365', '1년']], C.days, function (v) { C.days = v; }))),
+        h('div', { class: 'row in-opts' },
+          ui.field('조회 상승 (최근 5편 ÷ 이전)', sel([['0', '상관없음'], ['1', '1배 이상 (유지 · 상승)'], ['1.2', '1.2배 이상'], ['1.5', '1.5배 이상'], ['2', '2배 이상']], C.minGrowth, function (v) { C.minGrowth = v; })),
+          ui.field('영상당 댓글', sel([['0', '상관없음'], ['5', '5개 이상'], ['10', '10개 이상'], ['30', '30개 이상'], ['50', '50개 이상'], ['100', '100개 이상']], C.minCmt, function (v) { C.minCmt = v; })),
+          ui.field('깊게 볼 후보 수', sel([['20', '20명'], ['30', '30명'], ['40', '40명']], C.n, function (v) { C.n = v; }))),
+        h('div', { class: 'row in-opts' }, h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: C.mailOnly, onchange: function () { C.mailOnly = this.checked; } }), ' 메일 공개한 채널만'), dedupBox()),
+        V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
+        h('div', { class: 'row' }, go, h('span', { class: 'meta', text: '조건이 엄격하면 결과가 적게 나옵니다 — 기간을 늘리거나 조건을 풀어 보세요.' }))),
+      pastPanel(''));
+  }
+  function condW() {
+    var w = ((I.cfg.algos || {}).cond || {}).w || { kw: 35, growth: 30, cmt: 25, reach: 10 };
+    var nm = { kw: '키워드', growth: '조회 상승', cmt: '댓글 활발', reach: '구독 대비 조회', tone: '댓글 톤' };
+    return Object.keys(w).filter(function (k) { return +w[k]; }).map(function (k) { return nm[k] + ' ' + w[k] + '%'; }).join(' · ');
+  }
+
+  /* ---------- ③ 랜덤 탐색: 키워드 풀에서 무작위로 골라 지난 탐색과 겹치지 않는 20명씩 ---------- */
+  function rndPool() {
+    var R = V.rnd.src, pool = {};
+    var add = function (k, src) { k = String(k || '').trim(); if (k && k.length >= 2 && k.length <= 20) (pool[k] = pool[k] || []).push(src); };
+    if (R.preset) I.presetList().forEach(function (p) { (p.keywords || []).forEach(function (k) { add(k, '프리셋'); }); });
+    if (R.past) I.scans.forEach(function (s) { (s.concept || []).forEach(function (k) { add(k, '지난 탐색'); }); });
+    if (R.list) I.creators.forEach(function (c) { ((c.ch && c.ch.keywords) || []).slice(0, 3).concat(c.tags || []).forEach(function (k) { add(k, '리스트'); }); });
+    return Object.keys(pool);
+  }
+  function pick(arr, n) { var a = arr.slice(), out = []; while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
+  function randomRun() {
+    var pool = rndPool();
+    if (!pool.length) return setMsg('키워드 풀이 비었습니다. 프리셋을 만들거나 탐색 · 리스트를 먼저 쌓아 주세요.', true);
+    var kw = pick(pool, 3);
+    V.rnd.last = kw; V.skipSeen = true;
+    condRun(kw, { n: 30, skipSeen: true }, 'random');
+  }
+  I.randomRun = randomRun;
+  function randomTab(view) {
+    var R = V.rnd, pool = rndPool(), C = V.cond;
+    var src = function (k, label) { return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: R.src[k], onchange: function () { R.src[k] = this.checked; HR.refresh(); } }), ' ' + label); };
+    var go = ui.btn(V.busy === 'cond' ? '찾는 중…' : '랜덤 20명 탐색', randomRun);
+    if (V.busy) go.disabled = true;
+    ui.put(view, ui.head('Discover', '탐색'), ui.tabs(TABS, 'random', 'find'),
+      ui.panel('랜덤 탐색 — 누를 때마다 다른 키워드 · 새로운 20명', h('span', { class: 'meta', text: I.quotaText() }),
+        h('p', { class: 'note', text: '키워드 풀에서 3개를 무작위로 골라 조건 탐색을 돌립니다. 리스트에 있는 채널과 지난 탐색에 나왔던 채널은 빼고, 점수 상위 20명만 보여 줍니다. 조건(구독 · 기간 · 조회 상승 · 댓글)은 「② 조건 탐색」 탭의 설정을 그대로 씁니다.' }),
+        h('div', { class: 'row in-opts' }, h('span', { class: 'label', text: '키워드 풀' }), src('preset', '카테고리 프리셋'), src('past', '지난 탐색 키워드'), src('list', '리스트 채널 키워드')),
+        h('div', { class: 'in-chips in-pool' }, pool.slice(0, 60).map(function (k) { return h('span', { class: 'in-chip light' + (R.last.indexOf(k) >= 0 ? ' on' : ''), text: k }); })),
+        h('p', { class: 'meta', text: '풀 ' + pool.length + '개 · 지금 조건: 구독 ' + I.cnt(+C.minSubs) + ' ~ ' + (+C.maxSubs ? I.cnt(+C.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + C.days + '일 · 조회 상승 ' + (+C.minGrowth ? C.minGrowth + '배↑' : '무관') + ' · 댓글 ' + (+C.minCmt ? C.minCmt + '개↑' : '무관') }),
+        V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
+        h('div', { class: 'row' }, go, R.last.length ? h('span', { class: 'meta', text: '지난번: ' + R.last.join(' · ') }) : null)),
+      pastPanel(''));
+  }
+
+  function condCard(s) {
+    var c = s.cond || {};
+    return h('p', { class: 'meta', text: '구독 ' + I.cnt(c.minSubs || 0) + ' ~ ' + (c.maxSubs ? I.cnt(c.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + (c.days || 90) + '일 영상 · 조회 상승 ' + (c.minGrowth ? c.minGrowth + '배 이상' : '무관')
+      + ' · 영상당 댓글 ' + (c.minCmt ? c.minCmt + '개 이상' : '무관') + (c.mailOnly ? ' · 메일 공개만' : '') + (s.skipped ? ' · 중복 제외 ' + ((s.skipped.known || 0) + (s.skipped.seen || 0)) + '명' : '') });
+  }
   function seedCard(c) {
     return h('div', { class: 'in-seed' }, I.thumb(c, 'lg'),
       h('div', { class: 'grow stack sm' },
@@ -135,7 +240,10 @@
   }
   function result(view, s) {
     var sel = V.sel[s.id] || (V.sel[s.id] = {});
-    var list = sorted(s), nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
+    var isRandom = (s.opts || {}).preset === 'random';
+    var list = sorted(s);
+    if (isRandom) list = list.slice(0, 20);   // 랜덤 탐색은 20명씩
+    var nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
     var rising = s.mode === 'rising';
     var seg = h('div', { class: 'in-seg' }, (rising ? [['score', '점수'], ['growth', '조회 상승'], ['cmt', '댓글 활발'], ['subs', '구독자'], ['tone', '댓글 톤']]
       : [['score', '점수'], ['subs', '구독자'], ['median', '조회수'], ['tone', '댓글 톤'], ['engage', '참여율']]).map(function (x) {
@@ -187,9 +295,12 @@
       ui.btn('선택 해제', function () { V.sel[s.id] = {}; HR.refresh(); }, 'btn-line btn-sm'));
 
     ui.put(view,
-      ui.head('Discover · ' + fmt.ts(s.at), s.seed.title + ' 와 비슷한 유튜버', h('div', { class: 'row' }, ui.btn('← 탐색', function () { HR.go('find'); }, 'btn-line btn-sm'))),
-      ui.panel('씨드 · 컨셉', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
-        seedCard(s.seed), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, I.chips(s.concept, 'on')),
+      ui.head('Discover · ' + fmt.ts(s.at), I.scanTitle(s), h('div', { class: 'row' },
+        isRandom ? ui.btn(V.busy ? '찾는 중…' : '다음 20명 (다른 키워드)', function () { if (!V.busy) randomRun(); }, 'btn-sm') : null,
+        ui.btn('← 탐색', function () { HR.go(isRandom ? 'find/random' : s.mode === 'cond' ? 'find/cond' : 'find'); }, 'btn-line btn-sm'))),
+      V.msg && isRandom ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), text: V.msg }) : null,
+      ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
+        s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, I.chips(s.concept, 'on')),
       agBar(s),
       h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
@@ -219,7 +330,7 @@
         h('div', { class: 'in-parts' }, parts.map(function (x) { return h('span', { class: 'in-chip light', text: x[0] + ' ' + Math.round((x[1] || 0) * 100) }); })),
         c.via && c.via.length ? h('p', { class: 'meta', text: '검색 「' + c.via.join('」 「') + '」에서 발견' }) : null),
       h('div', { class: 'in-cand-col' },
-        h('div', { class: 'label', text: '댓글 톤 — 씨드와 비교' }), I.toneBars(c.tone, s.seed.tone, s.seed.title),
+        h('div', { class: 'label', text: '댓글 톤 — 씨드와 비교' }), I.toneBars(c.tone, s.seed && s.seed.tone, s.seed && s.seed.title),
         (c.sample || []).length ? h('ul', { class: 'in-cmts' }, c.sample.slice(0, 4).map(function (t) { return h('li', { text: t }); })) : null,
         h('div', { class: 'row in-cand-act' },
           inP ? ui.btn('파이프라인에서 열기', function () { HR.go('c/' + c.id); }, 'btn-sm')
@@ -259,13 +370,14 @@
       list.length ? h('ul', { class: 'list in-scan-list' }, list.map(function (s) {
         var picked = (s.cands || []).filter(function (c) { return I.creator(c.id); }).length;
         return h('li', { class: 'clickable' + (s.id === cur ? ' in-cur' : ''), tabindex: '0', onclick: function () { openScan(s.id); }, onkeydown: function (e) { if (e.key === 'Enter') openScan(s.id); } },
-          I.thumb(s.seed), h('div', { class: 'grow' }, h('div', { class: 'strong', text: (s.seed ? s.seed.title : '?') + ' 와 비슷한 유튜버' + (s.id === cur ? ' — 지금 보는 중' : '') }),
+          I.thumb(s.seed || { title: s.mode === 'cond' ? ((s.opts || {}).preset === 'random' ? '랜' : '조') : '?' }), h('div', { class: 'grow' }, h('div', { class: 'strong', text: I.scanTitle(s) + (s.id === cur ? ' — 지금 보는 중' : '') }),
             h('div', { class: 'meta', text: (s.mode === 'rising' ? '라이징 · ' : '') + (s.concept || []).join(' · ') + ' — 후보 ' + (s.cands || []).length + '명 · 파이프라인 ' + picked + '명' })),
           h('span', { class: 'meta', text: HR.name(s.by) + ' · ' + fmt.ts(s.at) }));
       })) : ui.empty(F.listBusy || !I.loaded.scans ? '불러오는 중…' : '아직 탐색 기록이 없습니다. 위에서 씨드 유튜버를 넣어 시작하세요.'));
   }
 
   HR.register('find', { render: function (view, parts) {
+    if (parts[0] === 'cond' || parts[0] === 'random') return home(view, parts[0]);
     if (parts[0]) {
       var s = I.scan(parts[0]), id = parts[0];
       if (!s) {
@@ -275,7 +387,7 @@
       }
       return result(view, s);
     }
-    home(view);
+    home(view, '');
   } });
   I.analyze = analyze;
 })();

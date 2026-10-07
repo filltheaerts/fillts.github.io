@@ -127,15 +127,21 @@
     return o;
   };
   // 탐색 후보 → 파이프라인 「디벨롭」 (이미 있는 채널은 건너뜀)
+  // 탐색 제목: 씨드 탐색 = 「OO 와 비슷한 유튜버」, 조건 · 랜덤 탐색 = 키워드
+  I.scanTitle = function (s) {
+    if (!s) return '';
+    if (s.seed && s.seed.title) return s.seed.title + ' 와 비슷한 유튜버';
+    return ((s.opts || {}).preset === 'random' ? '랜덤 탐색 · ' : '조건 탐색 · ') + (s.concept || []).join(' · ');
+  };
   I.addToPipe = function (cands, scan) {
     var b = db.batch(), n = 0, skip = 0;
     cands.forEach(function (c) {
       if (I.creator(c.id)) { skip++; return; }
       b.set(db.doc('inf_creators/' + c.id), {
         ch: I.snap(c), stage: 'review', stageAt: I.now(), owner: S.mid, score: c.score || 0,
-        scanId: scan ? scan.id : '', seedTitle: scan && scan.seed ? scan.seed.title : '',
+        scanId: scan ? scan.id : '', seedTitle: scan ? I.scanTitle(scan) : '',
         email: c.email || '', insta: c.insta || '', manager: '', phone: '', memo: '', tags: (c.matched || []).slice(0, 5),
-        log: [I.logItem('stage', scan ? '탐색 「' + scan.seed.title + '와 비슷한 유튜버」에서 디벨롭으로 추가' : '디벨롭으로 추가')],
+        log: [I.logItem('stage', scan ? '탐색 「' + I.scanTitle(scan) + '」에서 디벨롭으로 추가' : '디벨롭으로 추가')],
         mails: 0, by: S.mid, at: FV.serverTimestamp(), updatedAt: FV.serverTimestamp(), updatedBy: S.mid
       });
       n++;

@@ -228,3 +228,36 @@ button.in-chip:hover { border-color: var(--black); }
   .in-row .in-r-stats, .in-row .in-r-why { grid-column: 2 / -1; }
   .in-row-head .in-r-score, .in-row-head .in-r-ch, .in-row-head .in-r-stats { display: none; }
 }
+
+/* 리스트 · 완료 콘텐츠 — 엑셀처럼 촘촘한 표, 가로 스크롤 없음 */
+.in-xls-wrap { border: 1px solid var(--gray-200); background: var(--paper); }
+.in-xls { width: 100%; table-layout: fixed; font-size: 12px; }
+.in-xls th { font-size: 10px; padding: 8px 8px; white-space: nowrap; position: sticky; top: 0; background: var(--paper); z-index: 1; }
+.in-xls td { padding: 7px 8px; vertical-align: middle; overflow: hidden; }
+.in-xls td.num, .in-xls th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.in-xls .tag { font-size: 10px; white-space: nowrap; }
+.in-xls tr.in-open td { background: var(--gray-100); }
+.in-xls tr.in-detail td { background: var(--paper); padding: 0; white-space: normal; }
+.in-ell { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+td.in-ell { display: table-cell; }
+.in-upd { white-space: nowrap; }
+.in-upd .in-mv { margin-left: 6px; height: 22px; min-width: 24px; }
+.in-xls .in-r-nm .in-yt { padding: 0 5px; font-size: 10px; }
+.in-pool { max-height: 150px; overflow: auto; }
+.in-wait { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.in-wait .grow { flex: 1 1 200px; min-width: 0; }
+.in-wait input { flex: 1 1 220px; min-width: 0; }
+.in-hbars { display: flex; align-items: flex-end; gap: 4px; height: 110px; overflow-x: auto; }
+.in-hbar { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 0 0 22px; height: 100%; }
+.in-hbar-track { flex: 1; width: 12px; display: flex; align-items: flex-end; background: var(--gray-100); }
+.in-hbar-fill { display: block; width: 100%; background: var(--black); }
+.in-hbar-d { font-size: 9px; color: var(--gray-400); white-space: nowrap; }
+.in-flags { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.in-flags li { font-size: 12px; line-height: 1.6; padding-left: 10px; border-left: 2px solid var(--gray-200); }
+.in-flags li .tag { font-size: 10px; margin-bottom: 2px; }
+.in-chip.warn-chip { border-color: var(--red); color: var(--red); }
+.in-ct-act { padding: 0 24px 16px; }
+@media (max-width: 760px) {
+  .in-xls col:nth-child(9), .in-xls th:nth-child(9), .in-xls td:nth-child(9) { display: none; }
+  .in-xls { font-size: 11px; }
+}

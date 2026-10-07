@@ -51,8 +51,8 @@
       h('div', { class: 'in-two' },
         ui.panel('최근 탐색', h('a', { href: '#find', class: 'meta', text: '탐색 →' }),
           I.scans.length ? h('ul', { class: 'list' }, I.scans.slice(0, 5).map(function (s) {
-            return h('li', { class: 'clickable', onclick: function () { HR.go('find/' + s.id); } }, I.thumb(s.seed, 'sm'),
-              h('div', { class: 'grow' }, h('div', { class: 'strong', text: s.seed.title }), h('div', { class: 'meta', text: (s.concept || []).join(' · ') + ' · 후보 ' + (s.cands || []).length + '명' })),
+            return h('li', { class: 'clickable', onclick: function () { HR.go('find/' + s.id); } }, I.thumb(s.seed || { title: '조' }, 'sm'),
+              h('div', { class: 'grow' }, h('div', { class: 'strong', text: I.scanTitle(s) }), h('div', { class: 'meta', text: (s.concept || []).join(' · ') + ' · 후보 ' + (s.cands || []).length + '명' })),
               h('span', { class: 'meta', text: fmt.ts(s.at) }));
           })) : ui.empty('아직 탐색이 없습니다.')),
         ui.panel('최근 활동', null, acts.length ? h('ul', { class: 'list in-log' }, acts.slice(0, 10).map(function (x) {
@@ -263,7 +263,10 @@
       }, c.stage !== 'done' ? ui.btn('저장 + 완료', function () {
         var v = val(); if (!v.url) return ui.toast('콘텐츠 주소를 넣으세요.');
         if (!v.at) v.at = fmt.today();
-        I.save(c, { content: v, stage: 'done', stageAt: I.now() }, I.stName(c.stage) + ' → 완료 · 업로드 확인', 'stage').then(function () { ui.toast('완료로 옮겼습니다.'); }).catch(ui.fail);
+        I.save(c, { content: v, stage: 'done', stageAt: I.now() }, I.stName(c.stage) + ' → 완료 · 업로드 확인', 'stage').then(function () {
+          ui.toast('완료로 옮겼습니다 — 「완료 콘텐츠」에서 조회 · 댓글을 계속 추적합니다.');
+          return I.call('infYt', { action: 'content', creatorId: c.id, url: v.url });   // 완료 콘텐츠 추적 시작 (유튜브 영상일 때)
+        }).catch(function (e) { ui.toast(e.message || '저장하지 못했습니다.'); });
       }, 'btn-line btn-sm') : null));
   }
   function logPanel(c) {
