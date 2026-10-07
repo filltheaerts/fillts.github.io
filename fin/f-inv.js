@@ -103,7 +103,7 @@
         h('p', { class: 'meta', text: '「몇 개분」 = (재고 + 입고 예정) ÷ 제품 1개당 사용량. 빨간 숫자가 다음 생산의 병목입니다. 줄을 누르면 품목을 고칩니다.' })),
       ui.panel('Forecast · 소진 예상', null, h('div', { class: 'row fin-form' }, ui.field('월 판매 예상 (개)', muIn), ui.field('재발주 리드타임 (일)', ldIn)),
         mu ? F.kpi([['완제품 소진', months.toFixed(1) + '개월', months < 3 ? 'red' : '', fmt.dot(outDate) + ' 무렵'], ['재발주 시점', fmt.dot(reorder), reorder <= fmt.today() ? 'red' : '', '리드타임 ' + lead + '일 역산'],
-          ['월 매출 (예상)', F.man(mu * econ().price)], ['월 공헌이익 (예상)', F.man(mu * contribution().unit)]], 'fin-kpi-sm')
+          ['월 순매출 (예상)', F.man(mu * F.unitPnl().net)], ['월 남는 돈 (예상)', F.man(mu * F.unitPnl().contrib)]], 'fin-kpi-sm')
           : h('p', { class: 'meta', text: '월 판매 예상 수량을 넣으면 완제품이 언제 떨어지는지, 언제 재발주해야 하는지 계산합니다.' })));
   }
 
@@ -253,10 +253,10 @@
   function render(view, parts) {
     var sub = parts[0] || '';
     ui.put(view, ui.head('Inventory', '재고', h('div', { class: 'row' }, F.seg([[true, '부가세 포함'], [false, '공급가']], V.vat, function (k) { V.vat = k; }, '금액 기준'))),
-      ui.tabs([['', '현황'], ['in', '입고 · 매입'], ['out', '출고 · 사용'], ['unit', '단위 원가'], ['items', '품목']], sub, 'inv'));
+      ui.tabs([['', '현황'], ['in', '입고 · 매입'], ['out', '출고 · 사용'], ['items', '품목']], sub, 'inv'));
     if (sub === 'in') purchases(view, parts.slice(1));
     else if (sub === 'out') outs(view);
-    else if (sub === 'unit') unitView(view);
+    else if (sub === 'unit') { HR.go('unit'); return; }
     else if (sub === 'items') itemsView(view, parts.slice(1));
     else overview(view);
   }

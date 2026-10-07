@@ -78,3 +78,25 @@ a.map-card:hover { border-color: var(--black); }
 .fin-acct-row > .field.grow { flex: 1 1 180px; }
 
 .table.fin-narrow { min-width: 0; }
+
+/* 개당 손익 워터폴 */
+.fin-water td { vertical-align: middle; }
+.fin-water .fw-name { white-space: nowrap; }
+.fin-water .fw-bar { width: 30%; min-width: 120px; }
+.fw-track { display: block; height: 10px; background: var(--gray-100); }
+.fw-fill { display: block; height: 100%; background: var(--black); }
+.fw-fill.neg { background: var(--gray-400); }
+.fin-water tr.fw-sum td { font-weight: 500; border-top: 1px solid var(--gray-400); }
+.fin-water tr.fw-final td { font-weight: 600; background: var(--gray-100); border-top: 2px solid var(--black); }
+.fin-water tr.fw-final .fw-fill { background: var(--red); }
+.fin-water tr.fw-top .fw-fill { background: var(--black); }
+.fin-sim td, .fin-sim th { font-size: 12px; padding-left: 8px; padding-right: 8px; }
+.fin-sim-note { margin: 0 0 16px; }
+/* 메뉴가 많아 한 줄에 들어가게 */
+@media (min-width: 1100px) { .nav-links { gap: 18px; } .nav-links a { font-size: 11px; letter-spacing: 0.04em; } }
+
+.fin-econ .row > .field { min-width: 150px; flex: 1 1 150px; }
+.fin-econ .label { margin-top: 6px; }
+.fin-mixbar { width: 30%; min-width: 80px; margin: 0 12px; }
+.fw-fill.red { background: var(--red); }
+.fin-mk td, .fin-mk th { font-size: 12px; }
