@@ -151,7 +151,9 @@
       var ym = fmt.ymShift(start, i), from = i === 0 ? today : ym + '-01', last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate();
       var part = i === 0 ? Math.max(0, (last - (+today.slice(8, 10)) + 1) / last) : 1;   // 이번 달은 남은 날짜 비율만
       var fixed = F.fixedMonthly(ym) * part;
-      var once = F.schedIn(from, ym + '-' + ('0' + last).slice(-2)).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0);
+      var mEnd = ym + '-' + ('0' + last).slice(-2);
+      var once = F.schedIn(from, mEnd).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0)
+        + (F.extraOut ? F.extraOut(from, mEnd).reduce(function (a, o) { return a + o.amount; }, 0) : 0);   // 재고 매입 미지급분 (결제 예정일 기준)
       var rev = revBase * Math.pow(1 + growth, i) * part;
       var fund = F.plan.reduce(function (a, p) { if (opt.noOwner && p.kind === F.OWNER) return a; return a + (p.date && p.date.slice(0, 7) === ym && p.date >= (i === 0 ? today : '') ? (+p.amount || 0) * F.planWeight(p, scen) : 0); }, 0);
       var outM = fixed + variable * part + once;

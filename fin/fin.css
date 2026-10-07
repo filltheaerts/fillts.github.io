@@ -76,3 +76,5 @@ a.map-card:hover { border-color: var(--black); }
 .fin-acct-row { flex-wrap: wrap; gap: 10px; align-items: flex-end; padding-bottom: 10px; border-bottom: 1px solid var(--gray-100); }
 .fin-acct-row > .field { min-width: 120px; }
 .fin-acct-row > .field.grow { flex: 1 1 180px; }
+
+.table.fin-narrow { min-width: 0; }
