@@ -5,13 +5,14 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, BP = window.BankParse;
-  var F = HR.F = { tx: [], plan: [], sched: [], files: [], mail: [], cfg: {}, status: {}, loaded: {} };
+  var F = HR.F = { tx: [], card: [], plan: [], sched: [], files: [], mail: [], cfg: {}, status: {}, loaded: {} };
   F.FN = 'https://asia-northeast3-fillts-web.cloudfunctions.net/';
   F.DRIVE_SA = 'hr-calendar@fillts-web.iam.gserviceaccount.com';
 
   HR.APP.onStart = function (sub) {
     var on = function (k) { return function (s) { F[k] = HR.rows(s); F.loaded[k] = true; }; };
     sub(db.collection('fin_tx'), on('tx'));
+    sub(db.collection('fin_card'), on('card'));   // 법인카드 명세 — 통장 「카드대금」 한 줄을 사용처별로 나눌 때 (payId = 그 카드대금 거래)
     sub(db.collection('fin_plan'), on('plan'));
     sub(db.collection('fin_sched'), on('sched'));
     sub(db.collection('fin_files').orderBy('at', 'desc').limit(60), on('files'));

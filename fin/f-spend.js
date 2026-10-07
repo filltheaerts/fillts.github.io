@@ -16,7 +16,7 @@
     ['금융 · 기타', ['이자 · 수수료', '대출 상환', '소프트웨어 · 구독', '출장 · 교통', '기타 지출', '미분류']]
   ];
   var ASSET = ['보증금 · 예치금'];
-  var CARD_NOTE = '법인카드는 통장에서 「카드대금」 한 줄로 빠져 실제 사용처는 카드 명세서에 있습니다.';
+  var CARD_NOTE = '법인카드는 통장에서 「카드대금」 한 줄로 빠집니다. 카드 명세서로 용도가 뚜렷한 것(특허 · 가구 · 구글 · 지방세 등)은 그 사용처로 옮기고, 남은 금액(해외 수수료 · 용도 불명)만 카드대금에 둡니다.';
   var man = function (v) { return v ? F.man(v) : ''; };
   // 세금 · 공과금 세부 — 거래처 이름(desc) 먼저, 없으면 메모로 판정
   var TAXT = ['법인세', '부가가치세', '원천세 (근로소득세)', '지방소득세 (원천분)', '주민세 (사업소분)', '등록면허세', '등기 수수료', '기타 세금 · 공과금'];
@@ -40,6 +40,9 @@
     return table;
   }
 
+  // 카드대금 거래 하나에 연결된 카드 명세 중 분류가 뚜렷한 것 (fin_card.payId === 거래 id, cat 있음)
+  function cardSplit(t) { return F.card.filter(function (x) { return x.payId === t.id && x.cat && x.cat !== '카드대금'; }); }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -61,7 +64,11 @@
     GROUPS.forEach(function (g) { g[1].forEach(function (c) { known[c] = 1; }); }); ASSET.forEach(function (c) { known[c] = 1; });
     F.tx.forEach(function (t) {
       var k = F.ym(t.date); if (!inK[k] || F.isTransfer(t)) return;
-      if (t.outAmt > 0) { var c = known[t.cat] ? t.cat : '미분류'; (M[c] = M[c] || {})[k] = (M[c][k] || 0) + t.outAmt; }
+      if (t.outAmt > 0) {
+        var c = known[t.cat] ? t.cat : '미분류', amt = t.outAmt;
+        if (c === '카드대금') cardSplit(t).forEach(function (x) { (M[x.cat] = M[x.cat] || {})[k] = (M[x.cat][k] || 0) + x.amount; amt -= x.amount; });
+        if (amt) (M[c] = M[c] || {})[k] = (M[c][k] || 0) + amt;
+      }
       if (t.inAmt > 0) { var ci = t.cat || '기타 입금'; (IN[ci] = IN[ci] || {})[k] = (IN[ci][k] || 0) + t.inAmt; }
     });
     var sumRow = function (o) { return keys.reduce(function (a, k) { return a + ((o || {})[k] || 0); }, 0); };
@@ -121,12 +128,15 @@
     GROUPS.forEach(function (g) { g[1].forEach(function (c) { var s = sumRow(M[c]); if (s) top.push([c, s]); }); });
     top.sort(function (a, b) { return b[1] - a[1]; });
     var ownerIn = sumRow(IN['대표 가수금']);
+    // 누적 자본조달 — 기간 선택과 무관, 설립 자본금(투자 · 자본금 중 설립 납입)은 뺀다
+    var raised = F.tx.filter(function (t) { return t.inAmt > 0 && ['정부지원 · 정책자금', '대출 입금', '투자 · 자본금'].indexOf(t.cat) >= 0; }).reduce(function (a, t) { return a + t.inAmt; }, 0) - (+(F.cfg.capital || 0));
 
     ui.put(view, ui.head('실제 · 통장', '월별 사용처'), tools,
       F.kpi([['기간 지출 (보증금 제외)', F.man(total), '', keys.length ? F.ymLabel(keys[0]) + ' ~ ' + F.ymLabel(keys[keys.length - 1]) : ''],
         ['월평균 지출', F.man(total / active), '', active + '개월 기준'],
         ['가장 큰 사용처', top[0] ? top[0][0] : '—', '', top[0] ? F.man(top[0][1]) + ' · ' + share(top[0][1]) : ''],
-        ['대표 가수금 입금', F.man(ownerIn), '', '같은 기간 · 대표 → 법인']], 'four'),
+        ['대표 가수금 입금', F.man(ownerIn), '', '같은 기간 · 대표 → 법인'],
+        ['누적 자본조달', F.man(raised), '', '정책자금 · 대출 · 투자 (전체 기간 · 설립 자본금 제외)']], 'five'),
       ui.panel('어디에 썼나 (월별)', null, h('div', { class: 'table-wrap flat' }, markTot(h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, head), body), keys.length)),
         h('p', { class: 'meta', text: '통장 출금 기준(현금주의) · 금액 칸을 누르면 그 달 그 분류의 거래가 아래에 표시됩니다. ' + CARD_NOTE + ' 분류는 거래내역에서 바꾸면 바로 반영됩니다.' })),
       V.sel ? detail(V.sel, keys) : null,
@@ -173,14 +183,27 @@
       if (isTax) return t.outAmt > 0 && t.cat === '세금 · 공과금' && taxType(t) === cat;
       return t.outAmt > 0 && (t.cat === cat || (cat === '미분류' && !t.cat));
     }).sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? 1 : -1; });
-    var sum = list.reduce(function (a, t) { return a + (isIn ? t.inAmt : t.outAmt); }, 0);
+    var rows = list.map(function (t) {
+      var a = isIn ? t.inAmt : t.outAmt;
+      if (!isIn && t.cat === '카드대금') { var sp = cardSplit(t); a -= sp.reduce(function (x, y) { return x + y.amount; }, 0); return { t: t, a: a, memo: t.note || '', sub: sp.length ? '명세에서 ' + sp.length + '건을 사용처로 옮기고 남은 금액 (해외 결제 · 수수료 · 용도 불명)' : '' }; }
+      return { t: t, a: a, memo: t.note || '' };
+    }).filter(function (r) { return r.a; });
+    if (!isIn && !isTax) F.card.forEach(function (x) {
+      if (x.cat !== cat || !x.payId) return;
+      var pt = F.tx.filter(function (t) { return t.id === x.payId; })[0]; if (!pt) return;
+      var k = F.ym(pt.date); if (!inK[k] || (sel.k && k !== sel.k)) return;
+      rows.push({ t: { date: x.date, desc: x.merchant, acct: '', bank: '', seq: 0, time: '' }, a: x.amount, memo: (x.note || '') + ' · 법인카드 (' + fmt.dot(pt.date).slice(2) + ' 카드대금에서 분리)', card: true });
+    });
+    rows.sort(function (a, b) { return (a.t.date || '') < (b.t.date || '') ? 1 : -1; });
+    var sum = rows.reduce(function (a, r) { return a + r.a; }, 0);
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['날짜', '거래처 · 내용', '메모', '계좌', '금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
-      h('tbody', null, list.map(function (t) {
-        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(t.date).slice(2) }), h('td', { text: t.desc || t.memo || '' }), h('td', { class: 'meta', text: t.note || '' }),
-          h('td', { class: 'meta', text: F.acctName(t) }), h('td', { class: 'num', text: F.won(isIn ? t.inAmt : t.outAmt) }));
+      h('tbody', null, rows.map(function (r) {
+        var t = r.t;
+        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(t.date).slice(2) }), h('td', { text: t.desc || t.memo || '' }), h('td', { class: 'meta', text: [r.memo, r.sub].filter(Boolean).join(' · ') }),
+          h('td', { class: 'meta', text: r.card ? '법인카드' : F.acctName(t) }), h('td', { class: 'num', text: F.won(r.a) }));
       })));
     return ui.panel('거래 상세 · ' + (sel.k ? F.ymLabel(sel.k) + ' ' : '기간 전체 ') + cat, h('button', { type: 'button', class: 'btn btn-line btn-sm', text: '닫기', onclick: function () { V.sel = null; HR.refresh(); } }),
-      h('p', { class: 'meta', text: list.length + '건 · ' + F.won(sum) + '원' + (cat === '카드대금' ? ' · ' + CARD_NOTE : '') }),
+      h('p', { class: 'meta', text: rows.length + '건 · ' + F.won(sum) + '원' + (cat === '카드대금' ? ' · ' + CARD_NOTE : '') }),
       h('div', { class: 'table-wrap flat' }, tb));
   }
 
