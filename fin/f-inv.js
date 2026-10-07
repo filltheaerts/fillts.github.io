@@ -132,22 +132,39 @@
     var sel = function (opts, val, field, m) {
       return ui.select(opts, val, { disabled: ed ? null : true, class: 'fin-cat', onchange: function () { var p = {}; p[field] = this.value; db.doc('fin_inv_moves/' + m.id).update(p).catch(ui.fail); } });
     };
-    var tb = h('table', { class: 'table fin-table fin-tx' }, h('thead', null, h('tr', null, ['날짜', '품목 · 거래처', '수량', '공급가', '부가세', '합계', '상태', '결제', '결제 예정일', ''].map(function (x, i) { return h('th', { class: i >= 2 && i <= 5 ? 'num' : '', text: x }); }))),
-      h('tbody', null, list.length ? list.map(function (m) {
+    // 결제 기준으로 두 표: 결제 남음(예정 · 확인 필요 · 미지급 · 지출예정 관리) / 지급 완료
+    var itemCell = function (m) {
+      return h('td', null, h('div', { class: 'strong', text: itemName(m.itemId) }),
+        h('div', { class: 'meta', text: [m.vendor, m.invoice === 'issued' ? '세금계산서' : '', m.memo].filter(Boolean).join(' · ') }),
+        ed ? h('div', { class: 'fin-rowact' }, ui.confirmBtn('삭제', function () { db.doc('fin_inv_moves/' + m.id).delete().catch(ui.fail); }, 'btn-link btn-xs')) : null);
+    };
+    var sum = function (m) { return (+m.amount || 0) + (+m.vat || 0); };
+    var stSel = function (m) { return sel([['ordered', '발주'], ['received', '입고 완료']], m.status || 'ordered', 'status', m); };
+    var open = list.filter(function (m) { return m.pay !== 'paid'; }), paid = list.filter(function (m) { return m.pay === 'paid'; });
+    var openTb = h('table', { class: 'table fin-table fin-inv-tb' }, h('thead', null, h('tr', null, ['발주일', '품목 · 거래처', '수량', '금액 (부가세 포함)', '결제', '결제 예정일', '입고'].map(function (x, i) { return h('th', { class: i === 2 || i === 3 ? 'num' : '', text: x }); }))),
+      h('tbody', null, open.length ? open.map(function (m) {
         var due = ui.input({ type: 'date', value: m.dueDate || '', disabled: ed ? null : true });
         due.addEventListener('change', function () { db.doc('fin_inv_moves/' + m.id).update({ dueDate: due.value }).catch(ui.fail); });
-        return h('tr', null, h('td', { class: 'fin-date', text: fmt.dot(m.date).slice(2) }),
-          h('td', null, h('div', { class: 'strong', text: itemName(m.itemId) }), h('div', { class: 'meta', text: [m.vendor, m.invoice === 'issued' ? '세금계산서 발행' : '', m.memo].filter(Boolean).join(' · ') })),
-          h('td', { class: 'num', text: (+m.qty || 0).toLocaleString('ko-KR') }), h('td', { class: 'num', text: F.won(m.amount) }), h('td', { class: 'num meta', text: F.won(m.vat) }), h('td', { class: 'num strong', text: F.won((+m.amount || 0) + (+m.vat || 0)) }),
-          h('td', null, sel([['ordered', '발주'], ['received', '입고 완료']], m.status || 'ordered', 'status', m)),
-          h('td', null, sel(PAY, m.pay || 'unknown', 'pay', m)), h('td', null, due),
-          ed ? h('td', null, ui.confirmBtn('삭제', function () { db.doc('fin_inv_moves/' + m.id).delete().catch(ui.fail); })) : h('td'));
-      }) : h('tr', null, h('td', { colspan: '10', class: 'empty', text: '매입 기록이 없습니다.' }))));
+        return h('tr', null, h('td', { class: 'fin-date', text: fmt.dot(m.date).slice(2) }), itemCell(m), h('td', { class: 'num', text: (+m.qty || 0).toLocaleString('ko-KR') }),
+          h('td', { class: 'num' }, h('div', { class: 'strong', text: F.won(sum(m)) }), h('div', { class: 'meta', text: '공급가 ' + F.won(m.amount) })),
+          h('td', null, sel(PAY, m.pay || 'unknown', 'pay', m)), h('td', null, due), h('td', null, stSel(m)));
+      }) : h('tr', null, h('td', { colspan: '7', class: 'empty', text: '결제가 남은 매입이 없습니다.' }))));
+    var paidTb = h('table', { class: 'table fin-table fin-inv-tb' }, h('thead', null, h('tr', null, ['발주일', '품목 · 거래처', '수량', '공급가', '부가세', '합계', '입고', '결제'].map(function (x, i) { return h('th', { class: i >= 2 && i <= 5 ? 'num' : '', text: x }); }))),
+      h('tbody', null, paid.length ? paid.map(function (m) {
+        return h('tr', null, h('td', { class: 'fin-date', text: fmt.dot(m.date).slice(2) }), itemCell(m), h('td', { class: 'num', text: (+m.qty || 0).toLocaleString('ko-KR') }),
+          h('td', { class: 'num', text: F.won(m.amount) }), h('td', { class: 'num meta', text: F.won(m.vat) }), h('td', { class: 'num strong', text: F.won(sum(m)) }),
+          h('td', null, stSel(m)), h('td', null, sel(PAY, 'paid', 'pay', m)));
+      }) : h('tr', null, h('td', { colspan: '8', class: 'empty', text: '지급 완료한 매입이 없습니다.' }))));
+    var openSum = open.reduce(function (a, m) { return a + sum(m); }, 0), paidSum = paid.reduce(function (a, m) { return a + sum(m); }, 0);
+    var tb = h('div', null,
+      ui.panel('결제 남음 — 예정 · 확인 필요', h('span', { class: 'meta', text: open.length + '건 · ' + F.won(openSum) }), h('div', { class: 'table-wrap flat' }, openTb),
+        h('p', { class: 'meta', text: '「지출예정에서 관리」는 선금 · 잔금처럼 나눠 내는 건(예: 에코먼트 선금 50% 9/22 지급 · 잔금 50% 11/5 예정)입니다. 다 내면 「지급 완료」로 바꾸면 아래로 내려갑니다.' })),
+      ui.panel('지급 완료', h('span', { class: 'meta', text: paid.length + '건 · ' + F.won(paidSum) }), h('div', { class: 'table-wrap flat' }, paidTb)));
     ui.put(view, F.kpi([['매입 합계 (공급가)', F.man(tot)], ['부가세', F.man(totV), '', '매입세액 공제 대상'], ['합계', F.man(tot + totV)],
       ['결제 미확인', list.filter(function (m) { return (m.pay || 'unknown') === 'unknown'; }).length + '건', '', ''], ['미지급', F.man(list.filter(function (m) { return m.pay === 'unpaid'; }).reduce(function (a, m) { return a + (+m.amount || 0) + (+m.vat || 0); }, 0))],
       ['입고 전', list.filter(function (m) { return m.status !== 'received'; }).length + '건']], 'fin-kpi-sm'),
       ed ? h('div', { class: 'toolbar' }, ui.btn('+ 매입 추가', function () { HR.go('inv/in/new'); }, 'btn-sm')) : null,
-      h('div', { class: 'table-wrap' }, tb),
+      tb,
       h('p', { class: 'note', text: '입고 완료로 바꾸면 재고 수량에 들어갑니다. 결제를 「미지급」으로 두고 결제 예정일을 넣으면 런웨이의 일회성 지출로 들어갑니다(지급 완료 · 결제 확인 필요는 런웨이에서 제외). 재고 매입은 비용이 아니라 재고 자산이고, 팔리는 시점에 매출원가가 됩니다.' }));
   }
 
