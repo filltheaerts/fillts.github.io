@@ -243,3 +243,5 @@ button.mx-chip { cursor: pointer; }
 .nav-links a.nav-map { font-weight: 700; padding-left: 11px; }
 .nav-links a.nav-map::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: var(--black); transform: translateY(-50%); }
 @media (max-width: 900px) { .nav-links a.nav-map::before { top: 50%; } }
+/* 열람 권한(view)만 있는 계정: 쓰기 버튼 숨김 — 실제 차단은 서버 규칙 */
+.mx-ro .mx-head-right, .mx-ro .mx-add, .mx-ro .mx-task-add, .mx-ro .mx-pjb-act, .mx-ro .mx-task-act, .mx-ro .mx-edit, .mx-ro .mx-like, .mx-ro .sm-actions .btn:first-child, .mx-ro .mx-worksec { display: none !important; }

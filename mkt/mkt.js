@@ -160,6 +160,10 @@
   function start(hu) {
     stopAll();
     S.mid = hu.memberId; S.isAdmin = hu.role === 'admin';
+    // 앱 접근: 관리자 또는 HR 설정 › 앱 접근에서 Marketing 열람 · 편집을 받은 계정만 (서버 규칙도 같은 값으로 판정)
+    var lv = S.isAdmin ? 'edit' : ((hu.apps || {}).mkt || '');
+    if (lv !== 'view' && lv !== 'edit') { S.mid = null; return showAuth('blocked', S.user.email + ' 계정에는 Marketing 접근 권한이 없습니다. HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.'); }
+    S.canEdit = lv === 'edit'; document.body.classList.toggle('mx-ro', !S.canEdit);
     $('authView').hidden = true; $('appView').hidden = false;
     sub(db.collection('hr_members'), function (s) { S.members = {}; rows(s).forEach(function (m) { S.members[m.id] = m; }); S.ready = true; });
     sub(db.collection('mkt_items'), function (s) { S.items = rows(s); S.gotItems = true; });
