@@ -20,6 +20,14 @@
     sub(db.doc('fin_status/main'), function (s) { F.status = s.exists ? s.data() : {}; });
   };
   F.canEdit = function () { return HR.canEditApp('fin'); };
+  // 화면 제목 위에 [시뮬] / [실제] 표시 (메뉴 구분과 같은 기준 — app.js FIN_SIM_MENUS)
+  var baseHead = ui.head;
+  ui.head = function (label, title, right) {
+    var el = baseHead(label, title, right), menu = (location.hash || '#home').slice(1).split('/')[0] || 'home';
+    var sim = (window.FIN_SIM_MENUS || []).indexOf(menu) >= 0, lab = el.querySelector('.label');
+    if (lab) lab.insertBefore(h('span', { class: 'fin-mode ' + (sim ? 'sim' : 'real'), text: sim ? '시뮬 · 가정' : '실제 · 장부' }), lab.firstChild);
+    return el;
+  };
   F.cfgSet = function (patch) { return db.doc('fin_config/main').set(patch, { merge: true }); };
 
   /* ---------- 포맷 ---------- */

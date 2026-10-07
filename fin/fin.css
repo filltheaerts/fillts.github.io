@@ -173,3 +173,21 @@ a.map-card:hover { border-color: var(--black); }
 
 .sx-grid tr.sx-fix td input.sx-cell[type="text"] { width: 96px; min-width: 96px; }
 .sx-grid tr.sx-fix td.num { min-width: 104px; }
+
+/* 메뉴 구분: [시뮬] 가정으로 돌려 보는 화면 | [실제] 통장 · 장부 · 세무사에게 나가는 데이터 */
+.nav-links li.nav-grp { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--gray-400); white-space: nowrap; align-self: center; }
+.nav-links li.nav-grp-sim { color: #8a6d00; }
+.nav-links li.nav-grp-real { color: var(--black); }
+.fin-mode { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; padding: 2px 6px; margin-right: 6px; border: 1px solid currentColor; vertical-align: middle; }
+.fin-mode.sim { color: #8a6d00; background: #fffdf2; }
+.fin-mode.real { color: var(--black); }
+
+/* 메뉴 한 줄 유지 */
+.nav .logo { white-space: nowrap; }
+.nav-links a { white-space: nowrap; }
+@media (min-width: 1100px) {
+  .nav { gap: 16px; }
+  .nav-links { gap: 12px; }
+  .nav-links a { font-size: 11px; letter-spacing: 0.02em; }
+  .nav-links li.nav-sep { padding-left: 14px; }
+}
