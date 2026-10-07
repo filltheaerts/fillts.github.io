@@ -370,3 +370,4 @@ td.in-ell { display: table-cell; }
 .in-ex-chip { border-color: var(--red); color: var(--red); }
 .in-rules { margin: 0 0 0 18px; font-size: 13px; line-height: 1.8; }
 @media (max-width: 960px) { .in-idea-cols { grid-template-columns: minmax(0, 1fr); } }
+.in-st-top .grow, .in-br-head .grow, .in-idea-foot .grow { flex: 1; min-width: 0; }
