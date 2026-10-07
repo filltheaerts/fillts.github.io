@@ -120,7 +120,8 @@
       oninput: function () { V.add = this.value; }, onkeydown: function (e) { if (e.key === 'Enter' && !V.busy) addOne(); } });
     var addBtn = ui.btn(V.busy === 'add' ? '읽는 중…' : '+ 추가', addOne, 'btn-sm');
     if (V.busy) addBtn.disabled = true;
-    var allBtn = ui.btn(V.prog ? '최신화 중 ' + V.prog.i + ' / ' + V.prog.n : '보이는 ' + list.length + '명 전체 최신화', function () { refreshAll(list.slice()); }, 'btn-line btn-sm');
+    var allBtn = ui.btn(V.prog ? '↻ 새로고침 중 ' + V.prog.i + ' / ' + V.prog.n : '↻ 전체 새로고침 (' + list.length + '명)', function () { refreshAll(list.slice()); }, 'btn-sm in-refall');
+    allBtn.title = '보이는 채널 전부의 구독 · 조회 · 댓글 · 주기 · 조회 추세를 유튜브에서 다시 읽습니다 — 1명당 약 5포인트(하루 한도 10,000), 1명당 3 ~ 8초';
     if (V.prog || !list.length) allBtn.disabled = true;
     var stSel = ui.select([['', '모든 단계']].concat(I.STAGES.map(function (s) { return [s.id, s.name + ' (' + I.byStage(s.id).length + ')']; })), V.st, { onchange: function () { V.st = this.value; HR.refresh(); } });
     var agSel = ui.select([['', '소속 · 개인 전체'], ['agency', '소속 유튜버 (50% 이상)'], ['solo', '개인 유튜버']], V.ag, { onchange: function () { V.ag = this.value; HR.refresh(); } });
@@ -141,12 +142,12 @@
       empty: I.creators.length ? '조건에 맞는 유튜버가 없습니다.' : '아직 리스트가 비어 있습니다. 탐색 결과에서 체크해 「디벨롭으로 추가」하거나 위에서 직접 추가하세요.'
     });
     ui.put(view,
-      ui.head('List', '리스트', h('div', { class: 'row' }, allBtn, ui.btn('CSV 내보내기', function () { csv(list); }, 'btn-line btn-sm'))),
+      ui.head('List', '리스트', h('div', { class: 'row' }, ui.btn('CSV 내보내기', function () { csv(list); }, 'btn-line btn-sm'))),
       ui.panel(null, null,
         h('div', { class: 'row in-seed-form' }, addIn, addBtn),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
         h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트의 채널은 다음 탐색부터 자동으로 빠집니다. 머리줄(구독 · 조회 · 댓글수 · 주기 · 조회 추세 …)을 누르면 그 기준으로 정렬되고, 한 번 더 누르면 반대로 정렬됩니다. 줄을 누르면 채널 데이터베이스가 열립니다.' })),
-      h('div', { class: 'toolbar in-toolbar' }, q, stSel, agSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명' })),
+      h('div', { class: 'toolbar in-toolbar' }, q, stSel, agSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명 · 약 ' + list.length * 5 + '포인트' }), allBtn),
       table);
   }
   HR.register('list', { render: function (view) { render(view); } });

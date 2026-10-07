@@ -26,6 +26,15 @@
     V.one[c.id] = true; HR.refresh();
     I.call('infYt', { action: 'celeb', id: c.id }).then(function () { V.one[c.id] = false; HR.refresh(); }).catch(function (e) { V.one[c.id] = false; ui.toast(e.message); });
   }
+  function refreshAll(list) {
+    if (V.prog) return;
+    V.prog = { i: 0, n: list.length }; HR.refresh();
+    var next = function () {
+      if (V.prog.i >= list.length) { V.prog = null; setMsg('셀럽 전체 새로고침을 마쳤습니다.'); return; }
+      I.call('infYt', { action: 'celeb', id: list[V.prog.i].id }).catch(function () {}).then(function () { V.prog.i++; HR.refresh(); next(); });
+    };
+    next();
+  }
   function save(c, patch) { return db.doc('inf_celebs/' + c.id).update(Object.assign(patch, { updatedAt: FV.serverTimestamp(), updatedBy: S.mid })).catch(ui.fail); }
   function toPipe(c) {
     V.one[c.id] = true; HR.refresh();
@@ -81,7 +90,9 @@
         h('div', { class: 'row in-seed-form' }, addIn, catIn, prio, addBtn),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
         h('p', { class: 'note', text: '구독자가 많고 브랜드가 지향하는 유튜버, 지금은 아니어도 나중에 컨택하고 싶은 유튜버를 모아 둡니다. 탐색 중복 제외 대상은 아니며, 준비되면 줄을 눌러 「파이프라인으로」를 누르세요.' })),
-      h('div', { class: 'toolbar in-toolbar' }, ui.input({ value: V.q, placeholder: '이름 · 카테고리 · 메모 검색 (Enter)', onchange: function () { V.q = this.value; HR.refresh(); } })),
+      h('div', { class: 'toolbar in-toolbar' }, ui.input({ value: V.q, placeholder: '이름 · 카테고리 · 메모 검색 (Enter)', onchange: function () { V.q = this.value; HR.refresh(); } }),
+        h('span', { class: 'meta grow in-right', text: list.length + '명 · 약 ' + list.length * 5 + '포인트' }),
+        (function () { var b = ui.btn(V.prog ? '↻ 새로고침 중 ' + V.prog.i + ' / ' + V.prog.n : '↻ 전체 새로고침 (' + list.length + '명)', function () { refreshAll(list.slice()); }, 'btn-sm in-refall'); if (V.prog || !list.length) b.disabled = true; return b; })()),
       table);
   }
   HR.register('celeb', { render: function (view) { render(view); } });

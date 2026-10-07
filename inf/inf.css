@@ -313,3 +313,4 @@ td.in-ell { display: table-cell; }
 .in-ch-xs .in-ch-t { min-width: 0; width: 100%; }
 .in-ch-xs .strong { max-width: none; }
 .in-est { color: var(--gray-600); }
+.in-refall { white-space: nowrap; }
