@@ -77,7 +77,8 @@
       // 변동비 구성 (1개당 변동비를 직접 고쳤으면 같은 비율로 나눔)
       var vs = u.varNoAd ? per / u.varNoAd : 0;
       r.vLogi = r.sold * u.logi * vs; r.vEtc = r.sold * (u.pg + u.ret + u.review) * vs;
-      r.vAd = +((c.ad || {})[ym] || 0);   // 광고비: 월별 직접 입력
+      // 광고 · 마케팅비 = 퍼포먼스(sim2.ad) + 인플루언서(sim2.adInf), 월별 직접 입력
+      r.vPerf = +((c.ad || {})[ym] || 0); r.vInf = +((c.adInf || {})[ym] || 0); r.vAd = r.vPerf + r.vInf;
       r.vari = r.vLogi + r.vEtc + r.vAd; r.adPct = r.rev ? r.vAd / r.rev * 100 : null;
       var fx = F.fixedAt(ym);
       r.def = { pay: fx.pay, rent: fx.rent, ops: fx.ops, hire: (c.hires || []).reduce(function (a, x) { return a + (x.from && ym >= x.from ? +x.monthly || 0 : 0); }, 0) };
@@ -172,18 +173,26 @@
     var vsU = u.varNoAd ? X.uv.vari / u.varNoAd : 0;
     row('− 물류 (판매 × ' + F.won(Math.round(u.logi * vsU)) + ')', function (r) { return m(-r.vLogi); }, 'meta');
     row('− 결제 · 반품 · 리뷰 (판매 × ' + F.won(Math.round((u.pg + u.ret + u.review) * vsU)) + ')', function (r) { return m(-r.vEtc); }, 'meta');
-    // 광고비: 월별로 직접 (만원). 칸 아래에 순매출 대비 % 자동
-    body.appendChild(h('tr', { class: 'sx-input sx-ad' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: '− 광고 · 마케팅비 (만원)' }), h('div', { class: 'meta', text: '월별로 직접 입력 · 아래 % = 그 달 순매출 대비' }),
-        ed ? h('div', { class: 'sx-tools' }, ui.btn('→ 순매출의 30%로 채우기', function () { var o = {}; R.forEach(function (r) { if (r.rev) o[r.ym] = Math.round(r.rev * 0.3 / 10000) * 10000; }); save({ ad: o }); }, 'btn-line btn-xs'),
-          ui.btn('비우기', function () { save({ ad: {} }); }, 'btn-line btn-xs')) : null),
-      R.map(function (r) {
-        var v = (c.ad || {})[r.ym];
-        var i = h('input', { type: 'text', inputmode: 'decimal', class: 'sx-cell sx-own', value: v ? (Math.round(v / 10000 * 100) / 100).toLocaleString('ko-KR') : '', 'aria-label': r.ym + ' 광고비 (만원)', disabled: ed ? null : true });
-        i.addEventListener('focus', function () { i.select(); });
-        i.addEventListener('change', function () { var o = Object.assign({}, c.ad || {}), n = Math.round(parseFloat(String(i.value).replace(/[^0-9.\-]/g, '')) * 10000) || 0; if (n) o[r.ym] = n; else delete o[r.ym]; save({ ad: o }); });
-        var pct = r.adPct, pc = pct == null ? (r.vAd ? '매출 없음' : '') : pct.toFixed(1) + '%';
-        return h('td', { class: 'num' }, i, h('div', { class: 'sx-pct' + (pct != null && pct > 40 ? ' red' : ''), text: pc ? '순매출의 ' + pc : '' }));
-      })));
+    // 광고 · 마케팅비: 퍼포먼스 / 인플루언서 따로 입력(만원) → 합계. 칸 아래 % = 그 달 순매출 대비
+    var pctText = function (v, rev) { if (!v) return ''; return rev ? '순매출의 ' + (v / rev * 100).toFixed(1) + '%' : (v ? '매출 없음' : ''); };
+    var adRow = function (label, key, guide, tools) {
+      body.appendChild(h('tr', { class: 'sx-input sx-ad' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide }), ed && tools ? h('div', { class: 'sx-tools' }, tools) : null),
+        R.map(function (r) {
+          var v = (c[key] || {})[r.ym];
+          var i = h('input', { type: 'text', inputmode: 'decimal', class: 'sx-cell sx-own', value: v ? (Math.round(v / 10000 * 100) / 100).toLocaleString('ko-KR') : '', 'aria-label': r.ym + ' ' + label, disabled: ed ? null : true });
+          i.addEventListener('focus', function () { i.select(); });
+          i.addEventListener('change', function () { var o = Object.assign({}, c[key] || {}), n = Math.round(parseFloat(String(i.value).replace(/[^0-9.\-]/g, '')) * 10000) || 0; if (n) o[r.ym] = n; else delete o[r.ym]; var p = {}; p[key] = o; save(p); });
+          return h('td', { class: 'num' }, i, h('div', { class: 'sx-pct', text: pctText(+v || 0, r.rev) }));
+        })));
+    };
+    var fill = function (key, rate) { return function () { var o = {}; R.forEach(function (r) { if (r.rev) o[r.ym] = Math.round(r.rev * rate / 10000) * 10000; }); var p = {}; p[key] = o; save(p); }; };
+    var clearK = function (key) { return function () { var p = {}; p[key] = {}; save(p); }; };
+    adRow('− 퍼포먼스 광고 (만원)', 'ad', '메타 · 네이버 · 구글 · 쿠팡 광고 등', [ui.btn('→ 순매출의 25%', fill('ad', 0.25), 'btn-line btn-xs'), ui.btn('비우기', clearK('ad'), 'btn-line btn-xs')]);
+    adRow('− 인플루언서 · 콘텐츠 (만원)', 'adInf', '시딩 제품비 · 원고료 · 공동구매 수수료 등', [ui.btn('→ 순매출의 5%', fill('adInf', 0.05), 'btn-line btn-xs'), ui.btn('비우기', clearK('adInf'), 'btn-line btn-xs')]);
+    body.appendChild(h('tr', { class: 'sx-sum sx-adsum' }, h('td', { class: 'sx-k strong', text: '광고 · 마케팅비 합계' }), R.map(function (r) {
+      var pct = r.rev ? r.vAd / r.rev * 100 : null;
+      return h('td', { class: 'num strong' }, h('div', { text: r.vAd ? F.man(-r.vAd) : '' }), h('div', { class: 'sx-pct' + (pct != null && pct > 40 ? ' red' : ''), text: pctText(r.vAd, r.rev) }));
+    })));
     row('변동비 합계 (물류 · 결제 · 광고)', function (r) { return m(-r.vari); }, '', 'sx-sum');
     sec('② 재고 · 발주', '현금 기준 — 발주 대금은 발주한 달에 ' + (+c.upfront >= 100 ? '전액' : c.upfront + '% (나머지는 입고 달)') + ' 나감 · ' + (+c.lead === 1 ? '다음 달 1일 입고' : c.lead + '개월 뒤 입고'));
     inputRow('발주 수량 (개)', 'orders', '개', +c.lead === 1 ? '발주한 달에 입력 → 다음 달 1일부터 판매' : '발주한 달에 입력 → ' + c.lead + '개월 뒤 1일부터 판매');
