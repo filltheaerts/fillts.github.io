@@ -139,6 +139,21 @@
         db.collection('fin_inv_moves').add(d).then(function () { ui.toast('추가했습니다.'); done && done(); }).catch(function (e) { ui.fail(e, msg); });
       }), ui.btn('취소', function () { done && done(); }, 'btn-line')));
   }
+  // 선금 · 잔금으로 나눠 내는 발주 — 거래처 · 날짜 단위 합계
+  function splitSummary(list) {
+    var G = {};
+    list.filter(function (m) { return m.split; }).forEach(function (m) {
+      var k = (m.vendor || '') + '|' + m.split.depDate + '|' + m.split.balDate, g = G[k] || (G[k] = { v: m.vendor, sp: m.split, tot: 0, dep: 0, bal: 0, n: 0 });
+      g.tot += (+m.amount || 0) + (+m.vat || 0); g.dep += m.split.depAmt; g.bal += m.split.balAmt; g.n++;
+    });
+    var ks = Object.keys(G); if (!ks.length) return null;
+    return h('div', { class: 'fin-splitsum' }, ks.map(function (k) {
+      var g = G[k];
+      return h('div', { class: 'fin-splitrow' }, h('span', { class: 'strong', text: g.v + ' 발주 ' + g.n + '건 · 합계 ' + F.won(g.tot) }),
+        h('span', { class: 'ok', text: '선금 ' + g.sp.depRate + '% ' + F.won(g.dep) + ' — ' + fmt.dot(g.sp.depDate).slice(2) + (g.sp.depPaid ? ' 지급 완료' : ' 예정') }),
+        h('span', { class: g.sp.balPaid ? 'ok' : 'red', text: '잔금 ' + (100 - g.sp.depRate) + '% ' + F.won(g.bal) + ' — ' + fmt.dot(g.sp.balDate).slice(2) + (g.sp.balPaid ? ' 지급 완료' : ' 예정') }));
+    }));
+  }
   function purchases(view, parts) {
     var ed = F.canEdit();
     if (parts[0] === 'new' && ed) { ui.put(view, ui.panel('New · 매입 추가', null, inForm(function () { HR.go('inv/in'); }))); return; }
@@ -161,8 +176,10 @@
         var due = ui.input({ type: 'date', value: m.dueDate || '', disabled: ed ? null : true });
         due.addEventListener('change', function () { db.doc('fin_inv_moves/' + m.id).update({ dueDate: due.value }).catch(ui.fail); });
         return h('tr', null, h('td', { class: 'fin-date', text: fmt.dot(m.date).slice(2) }), itemCell(m), h('td', { class: 'num', text: (+m.qty || 0).toLocaleString('ko-KR') }),
-          h('td', { class: 'num' }, h('div', { class: 'strong', text: F.won(sum(m)) }), h('div', { class: 'meta', text: '공급가 ' + F.won(m.amount) })),
-          h('td', null, sel(PAY, m.pay || 'unknown', 'pay', m)), h('td', null, due), h('td', null, stSel(m)));
+          h('td', { class: 'num' }, h('div', { class: 'strong', text: F.won(sum(m)) }), h('div', { class: 'meta', text: '공급가 ' + F.won(m.amount) }),
+            m.split ? h('div', { class: 'fin-split' }, h('div', { class: m.split.depPaid ? 'ok' : '', text: '선금 ' + m.split.depRate + '% ' + F.won(m.split.depAmt) + ' · ' + fmt.dot(m.split.depDate).slice(2) + (m.split.depPaid ? ' 지급 ✓' : ' 예정') }),
+              h('div', { class: m.split.balPaid ? 'ok' : 'red', text: '잔금 ' + (100 - m.split.depRate) + '% ' + F.won(m.split.balAmt) + ' · ' + fmt.dot(m.split.balDate).slice(2) + (m.split.balPaid ? ' 지급 ✓' : ' 예정') })) : null),
+          h('td', null, m.split ? h('div', { class: 'meta', text: m.split.depPaid ? '선금 지급 · 잔금 남음' : '선금 전' }) : null, sel(PAY, m.pay || 'unknown', 'pay', m)), h('td', null, due), h('td', null, stSel(m)));
       }) : h('tr', null, h('td', { colspan: '7', class: 'empty', text: '결제가 남은 매입이 없습니다.' }))));
     var paidTb = h('table', { class: 'table fin-table fin-inv-tb' }, h('thead', null, h('tr', null, ['발주일', '품목 · 거래처', '수량', '공급가', '부가세', '합계', '입고', '결제'].map(function (x, i) { return h('th', { class: i >= 2 && i <= 5 ? 'num' : '', text: x }); }))),
       h('tbody', null, paid.length ? paid.map(function (m) {
@@ -170,9 +187,10 @@
           h('td', { class: 'num', text: F.won(m.amount) }), h('td', { class: 'num meta', text: F.won(m.vat) }), h('td', { class: 'num strong', text: F.won(sum(m)) }),
           h('td', null, stSel(m)), h('td', null, sel(PAY, 'paid', 'pay', m)));
       }) : h('tr', null, h('td', { colspan: '8', class: 'empty', text: '지급 완료한 매입이 없습니다.' }))));
-    var openSum = open.reduce(function (a, m) { return a + sum(m); }, 0), paidSum = paid.reduce(function (a, m) { return a + sum(m); }, 0);
+    var left = function (m) { return m.split ? (m.split.depPaid ? 0 : m.split.depAmt) + (m.split.balPaid ? 0 : m.split.balAmt) : sum(m); };
+    var openSum = open.reduce(function (a, m) { return a + left(m); }, 0), paidSum = paid.reduce(function (a, m) { return a + sum(m); }, 0);
     var tb = h('div', null,
-      ui.panel('결제 남음 — 예정 · 확인 필요', h('span', { class: 'meta', text: open.length + '건 · ' + F.won(openSum) }), h('div', { class: 'table-wrap flat' }, openTb),
+      ui.panel('결제 남음 — 예정 · 확인 필요', h('span', { class: 'meta', text: open.length + '건 · 남은 금액 ' + F.won(openSum) }), splitSummary(open), h('div', { class: 'table-wrap flat' }, openTb),
         h('p', { class: 'meta', text: '「지출예정에서 관리」는 선금 · 잔금처럼 나눠 내는 건(예: 에코먼트 선금 50% 9/22 지급 · 잔금 50% 11/5 예정)입니다. 다 내면 「지급 완료」로 바꾸면 아래로 내려갑니다.' })),
       ui.panel('지급 완료', h('span', { class: 'meta', text: paid.length + '건 · ' + F.won(paidSum) }), h('div', { class: 'table-wrap flat' }, paidTb)));
     ui.put(view, F.kpi([['매입 합계 (공급가)', F.man(tot)], ['부가세', F.man(totV), '', '매입세액 공제 대상'], ['합계', F.man(tot + totV)],
