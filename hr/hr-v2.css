@@ -1575,3 +1575,12 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .ws-top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ws-mkt-link { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 5px 12px; border: 1px solid var(--black); color: var(--black); white-space: nowrap; }
 .ws-mkt-link:hover { background: var(--black); color: #fff; }
+/* 설정 › 앱 접근 — 앱별 권한 받은 사람 · 할 수 있는 것 */
+.app-who { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding: 10px 12px; background: var(--gray-100); font-size: 13px; }
+.app-who-row { display: flex; gap: 10px; align-items: baseline; margin-top: 4px; }
+.app-who-row:first-child { margin-top: 0; }
+.app-who-k { flex: none; width: 44px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+.app-who-k.edit { color: var(--black); } .app-who-k.view { color: var(--gray-600); } .app-who-k.adm { color: var(--gray-400); }
+.app-can { padding-left: 54px; font-size: 11px; }
+.app-none { margin-top: 6px; color: var(--warn); }
+.app-cards li { align-items: flex-start; }

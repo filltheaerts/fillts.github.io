@@ -197,12 +197,36 @@
           })));
       });
     tb.appendChild(body);
-    var cards = h('ul', { class: 'list' }, HR.APPS.map(function (a) {
-      return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: a.name + '  ' + a.path }), h('div', { class: 'meta', text: a.desc })),
-        ui.tag(a.open ? '구성원 전원' : a.soon ? '준비 중' : '권한 받은 계정', a.open ? 'mute' : 'warn'));
+    // 앱별로 「열람 · 편집이면 무엇을 할 수 있나」와 「지금 누가 받았나」를 같이 보여 준다
+    var CAN = {
+      fin: ['자금조달 · 런웨이 · 현금흐름 · 거래내역 보기', '거래 입력 · 통장 파일 업로드 · 계획 수정 · 세무사 메일 발송'],
+      mkt: ['마케팅 맵 · 보드 · 프로젝트 보기', '아이디어 · 프로젝트 · 서브 작성과 수정 · ♥ · WORK 일정으로 보내기'],
+      inf: ['탐색 결과 · 인플루언서 파이프라인 보기', '유튜브 채널 탐색 · 컨택 단계 관리 · 협업 메일 발송 · 메모']
+    };
+    var holders = function (app) {
+      var r = { edit: [], view: [], admin: [] };
+      Object.keys(S.users).forEach(function (uid) {
+        var u = S.users[uid], nm = HR.name(u.memberId);
+        if (u.role === 'admin') r.admin.push(nm); else { var lv = (u.apps || {})[app]; if (lv === 'edit' || lv === 'view') r[lv].push(nm); }
+      });
+      return r;
+    };
+    var cards = h('ul', { class: 'list app-cards' }, HR.APPS.map(function (a) {
+      var who = null;
+      if (!a.open && !a.soon) {
+        var r = holders(a.id), can = CAN[a.id] || ['보기만', '입력 · 수정까지'];
+        var row = function (label, names, cls) { return h('div', { class: 'app-who-row' }, h('span', { class: 'app-who-k ' + cls, text: label }), h('span', { text: names.length ? names.join(', ') : '없음' })); };
+        who = h('div', { class: 'app-who' },
+          row('편집', r.edit, 'edit'), h('div', { class: 'meta app-can', text: '할 수 있는 것 — ' + can[1] }),
+          row('열람', r.view, 'view'), h('div', { class: 'meta app-can', text: '할 수 있는 것 — ' + can[0] }),
+          row('관리자', r.admin, 'adm'),
+          !r.edit.length && !r.view.length ? h('p', { class: 'meta app-none', text: '관리자 말고는 아직 아무도 못 들어옵니다. 위 표에서 사람별로 「열람 · 편집」을 고르세요. 권한이 없는 사람이 열면 「접근 권한이 없습니다」 화면이 나옵니다.' }) : null);
+      }
+      return h('li', { class: 'app-card' }, h('div', { class: 'grow' }, h('div', { class: 'strong', text: a.name + '  ' + a.path }), h('div', { class: 'meta', text: a.desc }), who),
+        ui.tag(a.open ? '구성원 전원' : a.soon ? '준비 중' : '권한 받은 계정만', a.open ? 'mute' : 'warn'));
     }));
     ui.put(view, ui.panel('Access · 앱별 접근권한', null, h('div', { class: 'table-wrap flat' }, tb)),
-      h('p', { class: 'note', text: '열람 = 보기만, 편집 = 입력 · 업로드 · 세무사 메일 발송까지. 관리자는 모든 앱을 편집할 수 있습니다. 로그인은 HR과 같고, 권한은 화면이 아니라 서버(Firestore 보안 규칙)에서 강제됩니다. 바꾼 권한은 상대 화면에 바로 반영됩니다.' }),
+      h('p', { class: 'note', text: '없음 = 앱을 열면 「접근 권한이 없습니다」 · 열람 = 보기만 · 편집 = 입력 · 수정 · 발송까지. 관리자는 모든 앱을 편집합니다. 로그인은 HR과 같고, 권한은 화면이 아니라 서버(보안 규칙)에서 막습니다. 바꾼 권한은 상대 화면에 바로 반영됩니다. 앱마다 할 수 있는 것은 아래에 있습니다.' }),
       ui.panel('Apps · fillts 사이트', h('a', { href: '/map/', target: '_blank', rel: 'opener', class: 'btn btn-line btn-sm', text: 'Map 열기 ↗' }), cards));
   }
 
