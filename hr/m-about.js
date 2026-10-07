@@ -154,10 +154,11 @@
     return ui.panel('Links · 기본 링크', head, grid, form);
   }
 
-  var ABOUT_TABS = [['', '기본안내'], ['onboarding', '온보딩 가이드'], ['qa', '필츠 Q&A']];
+  var ABOUT_TABS = [['', '기본안내'], ['onboarding', '온보딩 가이드'], ['program', '필츠 프로그램'], ['qa', '필츠 Q&A']];
   function render(view, parts) {
-    var sub = ['qa', 'onboarding'].indexOf((parts || [])[0]) >= 0 ? parts[0] : '';
+    var sub = ['qa', 'onboarding', 'program'].indexOf((parts || [])[0]) >= 0 ? parts[0] : '';
     if (sub === 'onboarding') { ui.put(view, ui.head('About', '기본안내'), ui.tabs(ABOUT_TABS, sub, 'about')); return HR.onboard.render(view); }
+    if (sub === 'program') { ui.put(view, ui.head('About', '기본안내'), ui.tabs(ABOUT_TABS, sub, 'about')); return HR.program.render(view); }
     if (sub === 'qa') { ui.put(view, ui.head('About', '기본안내'), ui.tabs(ABOUT_TABS, sub, 'about')); return HR.qa.render(view); }
     var info = HR.load('hr_about', function () { return db.doc('hr_about/main').get().then(function (s) { return s.exists ? s.data() : {}; }); }) || {};
     var docs = HR.load('hr_about_docs', function () { return db.collection('hr_about_docs').get().then(HR.rows); }) || [];

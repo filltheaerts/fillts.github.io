@@ -1491,3 +1491,39 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .tl-today { z-index: 1 !important; }
 .tl-track { z-index: 0; }
 @media (max-width: 760px) { .tl-subadd, .tl-subsort, .tl-subtoggle { font-size: 9.5px; padding: 0 4px !important; } .tl-subadd-row { gap: 3px; } }
+
+/* 기본안내 › 필츠 프로그램 (m-program.js) */
+.prg-rhythm { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; background: #404040; border: 1px solid #404040; margin-top: 10px; }
+.prg-rhythm li { background: var(--black); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.prg-rhythm-no { font-size: 11px; letter-spacing: 0.12em; color: var(--red); font-weight: 700; }
+.prg-rhythm b { font-size: 15px; font-weight: 600; }
+.prg-rhythm li > span:last-child:not(.prg-rhythm-no) { font-size: 12px; color: #a3a3a3; }
+.prg-cards { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+.prg-card { background: var(--paper); border: 1px solid var(--gray-200); padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+.prg-card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.prg-no { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #fff; background: var(--red); padding: 3px 8px; }
+.prg-name { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.prg-name h3 { font-size: 18px; font-weight: 600; }
+.prg-en { font-size: 12px; color: var(--gray-600); letter-spacing: 0.04em; }
+.prg-cycle { margin-left: auto; font-size: 12px; font-weight: 500; border: 1px solid var(--black); padding: 3px 10px; }
+.prg-purpose { font-size: 14px; line-height: 1.7; }
+.prg-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; }
+.prg-meta div { display: flex; gap: 8px; }
+.prg-meta dt { color: var(--gray-600); }
+.prg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; border-top: 1px solid var(--gray-100); padding-top: 12px; }
+.prg-sub { display: block; font-size: 11px; letter-spacing: 0.08em; color: var(--gray-600); margin-bottom: 6px; }
+.prg-list { padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.7; }
+.prg-prep { list-style: '☐  '; }
+.prg-note { font-size: 12px; color: var(--gray-600); background: var(--gray-100); padding: 8px 12px; }
+.prg-edit { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.prg-edit-item { display: flex; flex-direction: column; gap: 10px; }
+.prg-edit-item.is-del { opacity: 0.45; }
+.prg-edit-top { display: flex; align-items: center; gap: 6px; }
+.prg-edit-top .prg-no { margin-right: auto; }
+.prg-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.prg-edit-grid textarea { width: 100%; }
+@media (max-width: 640px) {
+  .prg-card { padding: 18px 16px; }
+  .prg-cycle { margin-left: 0; }
+  .prg-cols, .prg-edit-grid { grid-template-columns: 1fr; }
+}
