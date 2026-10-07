@@ -248,7 +248,10 @@
     var sum = list.reduce(function (a, x) { return a + x.amount; }, 0), chk = all.filter(function (x) { return x.check; }).length, none = all.filter(function (x) { return !x.cat; }).length;
     // 카드대금 중 명세로 설명되지 않는 금액
     var gaps = F.tx.filter(function (t) { return t.cat === '카드대금' && t.outAmt > 0; }).map(function (t) {
-      var s = F.card.filter(function (x) { return x.payId === t.id; }).reduce(function (a, x) { return a + x.amount; }, 0); return { t: t, gap: t.outAmt - s };
+      var ln = F.card.filter(function (x) { return x.payId === t.id; }), s = ln.reduce(function (a, x) { return a + x.amount; }, 0), g = t.outAmt - s;
+      // 명세가 연결된 카드대금의 연회비(1만) · 문자 발송(SMS 400원)은 설명된 금액으로 본다 (대표 확인 261007)
+      if (ln.length) { if (g >= 10000) g -= 10000; if (g === 400) g = 0; }
+      return { t: t, gap: g };
     }).filter(function (g) { return g.gap >= 1000; }).sort(function (a, b) { return a.t.date < b.t.date ? 1 : -1; });
     ui.put(view, F.kpi([['카드 사용 (명세)', all.length + '건', '', F.man(all.reduce(function (a, x) { return a + x.amount; }, 0))], ['확인 필요', chk + '건', chk ? 'red' : '', '용도를 알려주시면 분류'],
         ['사용처 미지정', none + '건', none ? 'red' : '', ''], ['명세 없는 카드대금', gaps.length + '건', gaps.length ? 'red' : '', F.man(gaps.reduce(function (a, g) { return a + g.gap; }, 0)) + ' · 해외결제 등']], 'four'),
