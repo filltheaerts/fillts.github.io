@@ -1529,4 +1529,4 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 }
 
 /* MKT(마케팅 설계 맵, /mkt/) 바로가기 */
-.nav-links a.nav-green { color: #0f766e; font-weight: 600; letter-spacing: 0.08em; }
+.nav-links a.nav-green { color: var(--red); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; }
