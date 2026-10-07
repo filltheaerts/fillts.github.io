@@ -1,8 +1,8 @@
 /* ============================================
    fillts MKT — HR 기본 스타일(hr.css · hr-v2.css) 위에 마케팅 맵 전용 레이어
-   보드별 색: 목표 red · 타겟 blue · 소구점 purple · 전략 green · 계획 amber · 실행 black
+   보드별 색: 목표 red · 타겟 blue · 소구점 purple · 전략 slate · 계획 amber · 실행 black
    ============================================ */
-:root { --mk: var(--red); --b-goal: #c8102e; --b-target: #1d4ed8; --b-appeal: #7c3aed; --b-strategy: #0f766e; --b-plan: #b45309; --b-exec: #0a0a0a; }
+:root { --mk: var(--red); --b-goal: #c8102e; --b-target: #1d4ed8; --b-appeal: #7c3aed; --b-strategy: #475569; --b-plan: #b45309; --b-exec: #0a0a0a; }
 .b-goal { --bc: var(--b-goal); } .b-target { --bc: var(--b-target); } .b-appeal { --bc: var(--b-appeal); }
 .b-strategy { --bc: var(--b-strategy); } .b-plan { --bc: var(--b-plan); } .b-exec { --bc: var(--b-exec); }
 
