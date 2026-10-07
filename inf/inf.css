@@ -261,3 +261,17 @@ td.in-ell { display: table-cell; }
   .in-xls col:nth-child(9), .in-xls th:nth-child(9), .in-xls td:nth-child(9) { display: none; }
   .in-xls { font-size: 11px; }
 }
+
+/* 메뉴 7개 + 바로가기 — 넓은 화면에서 줄바꿈 없이 */
+@media (min-width: 901px) {
+  .nav-links { gap: 20px; }
+  .nav-links a { white-space: nowrap; }
+  .nav .logo { white-space: nowrap; flex: none; }
+  .nav-user { white-space: nowrap; }
+}
+@media (min-width: 901px) and (max-width: 1240px) {
+  .nav-links { gap: 14px; }
+  .nav-links a { font-size: 10px; letter-spacing: 0.06em; }
+  .nav-links .nav-ext-hide { display: none; }
+  .nav-user span { display: none; }
+}
