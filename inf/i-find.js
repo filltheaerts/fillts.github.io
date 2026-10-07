@@ -144,32 +144,34 @@
     var chk = function (label, key) { return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: V[key], onchange: function () { V[key] = this.checked; HR.refresh(); } }), ' ' + label); };
     var q = ui.input({ value: V.q, placeholder: '채널 · 키워드 검색', onchange: function () { V.q = this.value; HR.refresh(); } });
 
+    // 한 줄 카드 목록 — 가로 스크롤 없이: 점수 → 채널(소속 · 메일 · 상태) → 핵심 지표 3개 → 찾은 이유 2줄
+    var short = function (t) { return String(t).replace(/^컨셉 키워드 /, '').replace(/ — 구독자 밖으로 노출 중$/, '').replace(/ · 씨드와 겹치는 말: .*$/, ''); };
+    var stat = function (k, v, cls) { return h('div', { class: 'in-stat' + (cls ? ' ' + cls : '') }, h('span', { class: 'in-stat-k', text: k }), h('b', { text: v })); };
     var rows = [];
     list.forEach(function (c) {
-      var inP = I.creator(c.id), open = V.open[c.id];
+      var inP = I.creator(c.id), open = V.open[c.id], ag = I.agency(c);
       var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP, 'aria-label': c.title + ' 선택',
         onclick: function (e) { e.stopPropagation(); }, onchange: function () { sel[c.id] = this.checked; HR.refresh(); } });
-      rows.push(h('tr', { class: 'clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); } },
-        h('td', { class: 'in-cb' }, cb),
-        h('td', null, h('div', { class: 'in-ch' }, I.thumb(c), h('div', { class: 'in-ch-t' }, h('div', { class: 'strong', text: c.title }),
-          h('div', { class: 'meta', text: [c.handle, c.country, c.last ? '최근 ' + fmt.dot(c.last).slice(2) : ''].filter(Boolean).join(' · ') })), I.ytBtn(c))),
-        h('td', { class: 'in-reason-cell' }, (c.reason || []).slice(0, 3).map(function (r) { return h('div', { text: r }); })),
-        h('td', { class: 'num', text: I.cnt(c.subs) }),
-        rising ? h('td', { class: 'num' + (c.growth >= 1.2 ? ' red' : ''), text: c.growth ? c.growth + '배' : '—', title: '최근 5편 ' + I.cnt(c.recentMed) + ' / 이전 ' + I.cnt(c.prevMed) }) : h('td', { class: 'num', text: I.cnt(c.median) }),
-        rising ? h('td', { class: 'num', text: (c.cmtMed || 0) + '개 · ' + (c.cpk || 0), title: '영상당 중앙 댓글 · 조회 1천 회당 댓글' }) : h('td', { class: 'num', text: I.pct(c.engage) }),
-        h('td', { class: 'in-tone-cell' }, h('div', { text: I.toneTags(c.tone).slice(0, 2).join(' · ') }), h('div', { class: 'meta', text: '톤 일치 ' + Math.round((c.parts ? c.parts.tone : 0) * 100) + '%' })),
-        h('td', null, I.chips((c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 4), 'light')),
-        h('td', { class: 'in-mail-cell', text: c.email ? '있음' : '—' }),
-        h('td', { class: 'in-ag-cell' }, I.agencyTag(c), h('div', { class: 'meta', text: I.agency(c).why })),
-        h('td', null, I.scoreBar(c.score)),
-        h('td', null, inP ? I.stTag(inP.stage) : null)));
-      if (open) rows.push(h('tr', { class: 'in-detail' }, h('td', { colspan: '11' }, candDetail(c, s, inP))));
+      var why = (c.reason || []).filter(function (r) { return !/^검색 「|^업로드 주|^댓글 톤/.test(r); }).slice(0, 2).map(short);
+      var stats = rising ? [stat('구독', I.cnt(c.subs)), stat('조회 상승', c.growth ? c.growth + '배' : '—', c.growth >= 1.2 ? 'red' : ''), stat('댓글/편', (c.cmtMed || 0) + '개')]
+        : [stat('구독', I.cnt(c.subs)), stat('중앙 조회', I.cnt(c.median)), stat('톤 일치', Math.round(((c.parts || {}).tone || 0) * 100) + '%')];
+      rows.push(h('div', { class: 'in-row clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), tabindex: '0',
+        onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); }, onkeydown: function (e) { if (e.key === 'Enter') { V.open[c.id] = !V.open[c.id]; HR.refresh(); } } },
+        h('div', { class: 'in-r-cb' }, cb),
+        h('div', { class: 'in-r-score' }, h('b', { text: String(c.score || 0) }), h('span', { class: 'in-score-track' }, (function () { var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.min(100, c.score || 0) + '%'; return f; })())),
+        h('div', { class: 'in-r-ch' }, I.thumb(c), h('div', { class: 'in-r-t' },
+          h('div', { class: 'in-r-name', text: c.title }),
+          h('div', { class: 'in-r-tags' }, I.agencyTag(c), c.email ? h('span', { class: 'tag', text: '메일' }) : null, inP ? I.stTag(inP.stage) : null,
+            h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })))),
+        h('div', { class: 'in-r-stats' }, stats),
+        h('div', { class: 'in-r-why' }, why.length ? why.map(function (r) { return h('div', { text: r }); }) : h('div', { class: 'meta', text: ag.why })),
+        h('div', { class: 'in-r-act' }, I.ytBtn(c))));
+      if (open) rows.push(h('div', { class: 'in-row-detail' }, h('div', { class: 'in-r-agwhy meta', text: '소속 근거: ' + ag.why }), candDetail(c, s, inP)));
     });
-    var table = h('div', { class: 'table-wrap' }, h('table', { class: 'table in-table' },
-      h('thead', null, h('tr', null, ['', '채널', '찾은 이유', '구독자', rising ? '조회 상승' : '중앙 조회수', rising ? '댓글 (영상당 · 1천회당)' : '참여율', '댓글 톤', '일치 키워드', '메일', '소속', '점수', '상태'].map(function (x, i) {
-        return h('th', { class: i >= 3 && i <= 5 ? 'num' : '', text: x });
-      }))),
-      h('tbody', null, rows.length ? rows : h('tr', null, h('td', { colspan: '11', class: 'empty', text: '조건에 맞는 후보가 없습니다.' })))));
+    var table = h('div', { class: 'in-rows' },
+      h('div', { class: 'in-row in-row-head' }, h('div', { class: 'in-r-cb' }), h('div', { class: 'in-r-score', text: '점수' }), h('div', { class: 'in-r-ch', text: '채널 · 소속' }),
+        h('div', { class: 'in-r-stats', text: rising ? '구독 · 조회 상승 · 댓글' : '구독 · 조회 · 톤' }), h('div', { class: 'in-r-why', text: '찾은 이유 (행을 누르면 전체)' }), h('div', { class: 'in-r-act' })),
+      rows.length ? rows : h('p', { class: 'empty', text: '조건에 맞는 후보가 없습니다.' }));
 
     var bar = h('div', { class: 'in-actionbar' + (nSel ? ' show' : '') },
       h('span', { class: 'strong', text: nSel + '명 선택' }),
