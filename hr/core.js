@@ -679,20 +679,16 @@
     right.insertBefore(h('button', { type: 'button', id: 'navReload', class: 'nav-reload', title: '최신 버전으로 새로고침 · 지금 v' + VER, 'aria-label': '새로고침',
       onclick: function () { location.replace(location.pathname + '?r=' + Date.now() + location.hash); } }, '↻ 새로고침'), right.firstChild);
   })();
-  // 새 버전으로: location.reload()는 10분 캐시된 옛 HTML을 다시 받아 무한 새로고침이 된다 → 주소에 ?r=를 붙여 캐시를 건너뛴다.
-  // 같은 버전으로 1분 안에 이미 한 번 옮겼는데도 옛 화면이면(배포 반영 전) 반복하지 않고 다음 확인 때 다시 본다.
-  function freshReload(v) {
-    var k = 'hrFreshTo', t = null;
-    try { t = JSON.parse(sessionStorage.getItem(k) || 'null'); } catch (e) { /* 무시 */ }
-    if (t && t.v === v && Date.now() - t.at < 60000) return;
-    try { sessionStorage.setItem(k, JSON.stringify({ v: v, at: Date.now() })); } catch (e) { /* 무시 */ }
-    location.replace(location.pathname + '?r=' + v + location.hash);
+  function markNew(v) {
+    var b = $('navReload'); if (!b) return;
+    b.textContent = '↻ 새 버전'; b.title = '새 버전 v' + v + '이 있습니다 — 누르면 최신 화면으로 바뀝니다 (지금 v' + VER + ')';
+    b.style.color = '#c8102e'; b.style.fontWeight = '600';
   }
   function checkVersion() {
     if (!/^\d+$/.test(VER)) return;
     fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
       var all = (t.match(/\?v=(\d+)/g) || []).map(function (x) { return x.slice(3); }), latest = maxVer(all), m = latest ? [null, String(latest)] : null;
-      if (m && +m[1] > +VER) { if (typing()) setTimeout(checkVersion, 30000); else freshReload(m[1]); }
+      if (m && +m[1] > +VER) markNew(m[1]);   // 자동으로 새로고침하지 않는다(화면 튐 방지) — 상단 ↻ 버튼만 「새 버전」으로 바꿔 알린다
     }).catch(function () { /* 오프라인 등 — 다음에 다시 */ });
   }
   setTimeout(checkVersion, 3000);
