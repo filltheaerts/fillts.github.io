@@ -538,6 +538,9 @@
     if (sw) { sw.hidden = !S.realAdmin; sw.setAttribute('aria-checked', String(S.viewAsUser)); sw.title = S.viewAsUser ? '지금 사용자 화면 — 누르면 관리자 모드' : '누르면 일반 구성원 화면으로 미리보기'; }
   }
   function start(hu) {
+    // 다른 앱(/fin · /inf 등)은 core.js 뒤에 화면 코드(큰 라이브러리 포함)를 더 불러온다. 로그인 확인이 그보다 먼저 끝나면
+    // 앱의 데이터 구독(APP.onStart)이 붙기 전에 시작돼 화면이 비어 버린다 → 페이지 스크립트가 모두 실행된 뒤에 시작한다.
+    if (document.readyState !== 'complete') { window.addEventListener('load', function () { start(hu); }, { once: true }); return; }
     // /mkt 등 다른 화면에서 로그인하러 왔으면 로그인 직후 그 화면으로 돌려보낸다 (15분 안, 같은 사이트 경로만)
     try {
       var nx = JSON.parse(localStorage.getItem('hrNext') || 'null'); localStorage.removeItem('hrNext');
