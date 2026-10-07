@@ -114,6 +114,12 @@
       var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return;
       put(c === '급여' ? '급여 이체' : c === '4대보험' ? (t.desc || '').replace(/^[0-9０-９]+/, '') : clean(t.desc), k, t.outAmt);
     });
+    if (c === '이자 · 수수료') F.tx.forEach(function (t) {
+      var k = F.ym(t.date); if (!inK[k] || t.cat !== '카드대금' || !(t.outAmt > 0)) return;
+      var ln = F.card.filter(function (x) { return x.payId === t.id; }); if (!ln.length) return;
+      var r = t.outAmt - ln.reduce(function (a, x) { return a + x.amount; }, 0) - cardSplit(t).reduce(function () { return 0; }, 0);
+      if (r) put('카드 수수료 · 연회비 (카드대금 − 명세)', k, r);
+    });
     F.card.forEach(function (x) {
       if (x.cat !== c || !x.payDate) return; var k = F.ym(x.payDate); if (!inK[k]) return;
       put((x.sub || x.note || x.merchant) + ' (카드)', k, x.amount);
@@ -149,7 +155,11 @@
       var k = F.ym(t.date); if (!inK[k] || F.isTransfer(t)) return;
       if (t.outAmt > 0) {
         var c = known[t.cat] ? t.cat : '미분류', amt = t.outAmt;
-        if (c === '카드대금') cardSplit(t).forEach(function (x) { (M[x.cat] = M[x.cat] || {})[k] = (M[x.cat][k] || 0) + x.amount; amt -= x.amount; });
+        if (c === '카드대금') {
+          cardSplit(t).forEach(function (x) { (M[x.cat] = M[x.cat] || {})[k] = (M[x.cat][k] || 0) + x.amount; amt -= x.amount; });
+          // 명세가 연결된 카드대금의 남은 차액(연회비 · 수수료 등)은 카드가 아니라 「이자 · 수수료」로
+          if (amt && F.card.some(function (x) { return x.payId === t.id; })) { M['이자 · 수수료'] = M['이자 · 수수료'] || {}; M['이자 · 수수료'][k] = (M['이자 · 수수료'][k] || 0) + amt; amt = 0; }
+        }
         if (amt) (M[c] = M[c] || {})[k] = (M[c][k] || 0) + amt;
       }
       if (t.inAmt > 0) { var ci = t.cat || '기타 입금'; (IN[ci] = IN[ci] || {})[k] = (IN[ci][k] || 0) + t.inAmt; }
