@@ -146,6 +146,14 @@
     var growth = (+cfg.revGrowth || 0) / 100;
     var fixedNow = F.fixedMonthly(start);
     var variable = cfg.varBurn != null && cfg.varBurn !== '' ? +cfg.varBurn : Math.max(0, rc.gross - fixedNow);
+    // 판매량 기반 (지출 흐름 › 변동비의 월 판매 예상): 매출 = 수량 × 순매출, 변동비 = 수량 × (물류 · 수수료 · 반품 · 리뷰 + 광고)
+    var rs = cfg.runSales || {}, byUnits = +rs.units > 0 && F.unitPnl, uu = byUnits ? F.unitPnl() : null;
+    var unitsAt = function (ym) {
+      if (!byUnits || ym < (rs.from || start)) return 0;
+      var k = 0; for (var y = rs.from || start; y < ym; y = fmt.ymShift(y, 1)) k++;
+      return Math.min(+rs.cap || Infinity, Math.round(+rs.units * Math.pow(1 + (+rs.growth || 0) / 100, k)));
+    };
+    if (byUnits) { revBase = unitsAt(start) * uu.net; variable = unitsAt(start) * (uu.varNoAd + uu.ad); }
     var cash = bal.amount, rows = [], zero = null, today = fmt.today();
     for (var i = 0; i < months; i++) {
       var ym = fmt.ymShift(start, i), from = i === 0 ? today : ym + '-01', last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate();
@@ -154,16 +162,17 @@
       var mEnd = ym + '-' + ('0' + last).slice(-2);
       var once = F.schedIn(from, mEnd).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0)
         + (F.extraOut ? F.extraOut(from, mEnd).reduce(function (a, o) { return a + o.amount; }, 0) : 0);   // 재고 매입 미지급분 (결제 예정일 기준)
-      var rev = revBase * Math.pow(1 + growth, i) * part;
+      var rev = byUnits ? unitsAt(ym) * uu.net * part : revBase * Math.pow(1 + growth, i) * part;
+      var varM = byUnits ? unitsAt(ym) * (uu.varNoAd + uu.ad) * part : variable * part;
       var fund = F.plan.reduce(function (a, p) { if (opt.noOwner && p.kind === F.OWNER) return a; return a + (p.date && p.date.slice(0, 7) === ym && p.date >= (i === 0 ? today : '') ? (+p.amount || 0) * F.planWeight(p, scen) : 0); }, 0);
-      var outM = fixed + variable * part + once;
+      var outM = fixed + varM + once;
       cash = cash + rev + fund - outM;
-      rows.push({ ym: ym, rev: rev, fund: fund, fixed: fixed, variable: variable * part, once: once, out: outM, end: cash });
+      rows.push({ ym: ym, rev: rev, fund: fund, fixed: fixed, variable: varM, once: once, out: outM, end: cash, units: byUnits ? Math.round(unitsAt(ym) * part) : null });
       if (zero == null && cash < 0) zero = i;
     }
     var netBurn = variable + fixedNow - revBase;
     var owner = F.plan.filter(function (p) { return p.kind === F.OWNER && p.status !== 'received' && p.status !== 'dropped'; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
-    return { bal: bal, rows: rows, zero: zero, netBurn: netBurn, owner: owner, variable: variable, fixed: fixedNow, rev: revBase, recent: rc,
+    return { bal: bal, rows: rows, zero: zero, netBurn: netBurn, owner: owner, byUnits: byUnits, variable: variable, fixed: fixedNow, rev: revBase, recent: rc,
       simple: netBurn > 0 ? bal.amount / netBurn : null };
   };
 

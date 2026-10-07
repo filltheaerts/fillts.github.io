@@ -115,3 +115,23 @@ a.map-card:hover { border-color: var(--black); }
 .fin-inputs tr.fin-result td { border-top: 2px solid var(--black); background: var(--gray-100); }
 .fin-inputs tr.fin-result .fin-in { font-size: 16px; }
 @media (max-width: 860px) { .fin-inputs .fin-guide { min-width: 200px; } }
+
+/* 지출 흐름 · 고정비 표 */
+.fin-fixed .fin-cell { width: 100%; min-width: 90px; padding: 5px 7px; font-size: 13px; border: 1px solid var(--gray-200); background: #fffdf2; }
+.fin-fixed .fin-cell-text { min-width: 170px; }
+.fin-fixed .fin-cell-sm { min-width: 56px; width: 64px; }
+.fin-fixed input.fin-cell[inputmode="numeric"] { text-align: right; font-variant-numeric: tabular-nums; }
+.fin-fixed tr.fin-off td { opacity: 0.45; }
+.fin-fixed .tag { margin-left: 6px; }
+.fin-guide-list li { align-items: flex-start; gap: 12px; }
+.fin-guide-k { min-width: 92px; }
+
+.fin-fixed .fin-name { min-width: 260px; }
+.fin-fixed .fin-name .fin-cell-text { min-width: 250px; }
+.fin-flags { display: flex; gap: 4px; margin-top: 4px; }
+.fin-flags:empty { display: none; }
+.fin-fixed .tag { margin-left: 0; }
+.fin-fixed input.fin-cell.fin-cell-text { text-align: left; }
+.fin-fixed input.fin-cell[inputmode="numeric"] { min-width: 118px; }
+.fin-fixed td:nth-child(8) .fin-cell-text { min-width: 120px; }
+.fin-fixed .fin-cell-sm { text-align: right; }
