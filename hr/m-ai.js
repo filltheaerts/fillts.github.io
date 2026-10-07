@@ -13,7 +13,8 @@
   function teamPrompts() { return HR.load('hr_prompts', function () { return db.collection('hr_prompts').get().then(HR.rows); }) || []; }
 
   function copy(text, el) {
-    var done = function () { ui.toast('복사했습니다. 붙여 넣고 [ ] 칸만 바꿔 쓰세요.'); if (el) { el.textContent = '✓ 복사됨'; el.classList.add('done'); setTimeout(function () { el.textContent = '복사'; el.classList.remove('done'); }, 1600); } };
+    var label = el ? el.textContent : '';
+    var done = function () { ui.toast('복사했습니다. 붙여 넣고 [ ] 칸만 바꿔 쓰세요.'); if (el) { el.textContent = '✓ 복사됨'; el.classList.add('done'); setTimeout(function () { el.textContent = label === '✓ 복사됨' ? '복사' : label; el.classList.remove('done'); }, 1600); } };
     if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
     fallback(text, done);
   }
@@ -150,19 +151,18 @@
       ['검증', g.rules.indexOf('review') >= 0 || g.rules.indexOf('nofake') >= 0]
     ];
   }
+  // 화면은 세 가지만: ① 무슨 일 ② 원하는 결과 한 문장 ③ 복사. 화자 · 형식 · 조건은 일에 맞춰 자동으로 채우고 「더 자세히」에 접어 둔다
+  var moreOpen = false;
   function maker(view, P) {
     if (!G) G = freshMaker('copy');
-    var g = G, out = h('div', { class: 'mk-out' }), meter = h('div', { class: 'mk-meter' }), spPrev = h('div', { class: 'mk-sp-prev' });
+    var g = G, out = h('div', { class: 'pm-out' }), copyBtn;
     function sync() {
-      var txt = buildPrompt(g), sc = scoreOf(g), ok = sc.filter(function (x) { return x[1]; }).length;
+      var txt = buildPrompt(g);
       ui.clear(out); out.appendChild(bodyView(txt));
-      ui.clear(spPrev); spPrev.appendChild(document.createTextNode(speakerText(g) || '화자를 고르거나 직접 적어 주세요.'));
-      ui.clear(meter);
-      meter.appendChild(h('div', { class: 'mk-score' }, h('b', { text: ok + ' / 7' }), h('span', { class: 'meta', text: !sc[0][1] ? '화자부터 정하세요 — 답의 질을 가장 크게 바꿉니다' : ok >= 6 ? '아주 좋아요' : ok >= 4 ? '좋아요 — 빈 칸을 채우면 더 좋아집니다' : '목표 · 상황을 채워 보세요' })));
-      meter.appendChild(h('div', { class: 'mk-checks' }, sc.map(function (x, i) { return h('span', { class: 'mk-chk' + (x[1] ? ' on' : '') + (i === 0 ? ' key' : ''), text: (x[1] ? '✓ ' : '· ') + x[0] }); })));
+      if (copyBtn) copyBtn.disabled = !g.goal.trim();
       return txt;
     }
-    var inp = function (key, attrs) { var el = h(attrs && attrs.rows ? 'textarea' : 'input', Object.assign({ type: 'text', oninput: function () { g[key] = this.value; if (['who', 'edge', 'study'].indexOf(key) >= 0) { g.pk = ''; markPersona(); } sync(); } }, attrs || {})); el.value = g[key] || ''; return el; };
+    var inp = function (key, attrs) { var el = h(attrs && attrs.rows ? 'textarea' : 'input', Object.assign({ type: 'text', oninput: function () { g[key] = this.value; if (['who', 'edge', 'study'].indexOf(key) >= 0) { g.pk = ''; personaSel.value = ''; } sync(); } }, attrs || {})); el.value = g[key] || ''; return el; };
     var chipSet = function (list, key, single) {
       return h('div', { class: 'mk-chips' }, list.map(function (v) {
         var on = single ? g[key] === v : g[key].indexOf(v) >= 0;
@@ -173,58 +173,57 @@
         } });
       }));
     };
-    var pBtns = [], spIn = {};
-    function markPersona() { pBtns.forEach(function (b) { b.classList.toggle('on', b._k === g.pk); }); }
-    var personaBox = h('div', { class: 'mk-personas' }, PERSONA_GROUPS.map(function (grp) {
-      return h('div', { class: 'mk-pgroup' }, h('span', { class: 'mk-pgname', text: grp[0] }), h('div', { class: 'mk-chips' }, grp[1].map(function (p) {
-        var b = h('button', { type: 'button', class: 'mk-chip mk-pchip' + (g.pk === p.k ? ' on' : ''), text: p.t, title: p.who, onclick: function () { g.pk = p.k; g.who = p.who; g.edge = p.edge; g.study = p.study; spIn.who.value = p.who; spIn.edge.value = p.edge; spIn.study.value = p.study; markPersona(); sync(); } });
-        b._k = p.k; pBtns.push(b); return b;
-      })));
-    }));
     var t = TASKS.filter(function (x) { return x.k === g.task; })[0];
-    var form = h('div', { class: 'panel mk-form' },
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '1' }), h('b', { text: '어떤 일을 시키나요?' })),
-      h('div', { class: 'mk-tasks' }, TASKS.map(function (x) {
-        return h('button', { type: 'button', class: 'mk-task' + (x.k === g.task ? ' on' : ''), text: x.t, onclick: function () { var keep = { goal: g.goal, ctx: g.ctx, example: g.example, audience: g.audience }; G = Object.assign(freshMaker(x.k), keep); HR.refresh(); } });
+    var spIn = {};
+    // 화자: 일에 맞춰 자동 — 바꾸고 싶을 때만 고른다
+    var personaSel = h('select', { class: 'pm-persona', 'aria-label': '대답할 화자', onchange: function () {
+      var p = personaOf(this.value); if (!p) return;
+      g.pk = p.k; g.who = p.who; g.edge = p.edge; g.study = p.study; spIn.who.value = p.who; spIn.edge.value = p.edge; spIn.study.value = p.study; sync();
+    } }, h('option', { value: '', text: '직접 적기' }), PERSONA_GROUPS.map(function (grp) {
+      return h('optgroup', { label: grp[0] }, grp[1].map(function (p) { return h('option', { value: p.k, text: p.t }); }));
+    }));
+    personaSel.value = g.pk || '';
+
+    var goal = inp('goal', { rows: '3', class: 'pm-goal', placeholder: t.goal, maxlength: '300' });
+    var more = h('details', { class: 'pm-more', ontoggle: function () { moreOpen = this.open; } },
+      h('summary', { text: '더 자세히 — 상황 · 형식 · 조건 · 화자 문장' }),
+      h('div', { class: 'pm-more-body' },
+        ui.field('상황 · 배경', inp('ctx', { rows: '2', placeholder: '예: 11/12 런칭, 지금은 자사몰 세팅 80%. 예산은 월 300만원.', maxlength: '1500' })),
+        ui.field('대상 — 누가 읽거나 보나요', inp('audience', { placeholder: '예: 시술 후 예민한 30대 여성', maxlength: '200' })),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.brand, onchange: function () { g.brand = this.checked; sync(); } }), ' 우리 브랜드 소개 넣기'),
+        ui.field('형식', chipSet(FORMATS, 'fmt', false)),
+        h('div', { class: 'form-grid' }, ui.field('개수', inp('n', { placeholder: '예: 10', maxlength: '10' })), ui.field('길이', inp('len', { placeholder: '예: 한 줄 25자 이내', maxlength: '60' }))),
+        ui.field('톤', chipSet(TONES, 'tone', true)),
+        h('div', { class: 'mk-rules' }, RULES.map(function (r) {
+          return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.rules.indexOf(r[0]) >= 0, onchange: function () { var i = g.rules.indexOf(r[0]); if (this.checked && i < 0) g.rules.push(r[0]); if (!this.checked && i >= 0) g.rules.splice(i, 1); sync(); } }), ' ' + r[1]);
+        })),
+        ui.field('참고 예시 — 이런 톤 · 수준으로', inp('example', { rows: '2', placeholder: '마음에 드는 문장 하나를 붙여 넣으면 결과가 정확해집니다.', maxlength: '2000' })),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.material, onchange: function () { g.material = this.checked; sync(); } }), ' 자료 붙여 넣을 칸 만들기'),
+        ui.field('화자 — 전문성', spIn.who = inp('who', { rows: '2', maxlength: '120' })),
+        ui.field('화자 — 태도', spIn.edge = inp('edge', { rows: '2', maxlength: '160' })),
+        ui.field('화자 — 끊임없이 공부하는 것', spIn.study = inp('study', { maxlength: '120' })),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.insight, onchange: function () { g.insight = this.checked; sync(); } }), ' 통찰가 문장 넣기'),
+        h('div', { class: 'pm-links' },
+          h('button', { type: 'button', class: 'x-del', text: '화자 문장만 복사', onclick: function () { copy(speakerText(g), this); } }),
+          h('button', { type: 'button', class: 'x-del', text: '주요 프롬프트에 저장', onclick: function () {
+            state.form = { title: (g.goal.trim() || t.t).slice(0, 60), cat: t.cat, body: buildPrompt(g), tags: t.t.split(' · ')[0] };
+            HR.go('ai/prompts');
+          } }),
+          h('button', { type: 'button', class: 'x-del', text: '처음부터', onclick: function () { G = freshMaker(g.task); HR.refresh(); } }))));
+    if (moreOpen) more.open = true;
+    copyBtn = h('button', { type: 'button', class: 'btn pm-copy', text: '프롬프트 복사', onclick: function () { if (!g.goal.trim()) { goal.focus(); return; } copy(buildPrompt(g), this); } });
+
+    ui.put(view, h('div', { class: 'pm' },
+      h('div', { class: 'pm-q', text: '무슨 일을 맡길까요?' }),
+      h('div', { class: 'pm-tasks' }, TASKS.map(function (x) {
+        return h('button', { type: 'button', class: 'pm-task' + (x.k === g.task ? ' on' : ''), text: x.t, onclick: function () { var keep = { goal: g.goal, ctx: g.ctx, example: g.example, audience: g.audience }; G = Object.assign(freshMaker(x.k), keep); HR.refresh(); } });
       })),
-      h('section', { class: 'mk-speaker' },
-        h('div', { class: 'mk-step' }, h('span', { class: 'mk-no key', text: '2' }), h('b', { text: '대답할 화자 — 가장 중요합니다' }),
-          h('span', { class: 'meta', text: '누구의 눈으로 보게 하느냐가 답의 깊이를 정합니다' })),
-        personaBox,
-        h('div', { class: 'mk-sp-fields' },
-          ui.field('전문성 — 세계 최고 수준 · 연차', spIn.who = inp('who', { rows: '2', placeholder: '예: 세계 최고의 20년차 뷰티 D2C 퍼포먼스 마케팅 베테랑', maxlength: '120' })),
-          ui.field('태도 — 날카로움 · 현실 감각', spIn.edge = inp('edge', { rows: '2', placeholder: '예: 숫자로 증명하고 현실 감각을 잃지 않는 승부사', maxlength: '160' }))),
-        ui.field('끊임없이 공부하는 것', spIn.study = inp('study', { placeholder: '예: 광고 플랫폼의 흐름과 소비자의 구매 심리', maxlength: '120' })),
-        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.insight, onchange: function () { g.insight = this.checked; sync(); } }), ' 통찰가 문장 넣기 — 「' + INSIGHT_LINE + '」'),
-        h('div', { class: 'mk-sp-box' }, h('span', { class: 'meta', text: '화자 문장 미리 보기' }), spPrev)),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '3' }), h('b', { text: '목표 · 상황' })),
-      ui.field('목표 — 얻고 싶은 결과물 한 문장 *', inp('goal', { placeholder: t.goal, maxlength: '300' })),
-      ui.field('상황 · 배경 — 왜 · 지금 어떤 상태인지', inp('ctx', { rows: '3', placeholder: '예: 11/12 런칭, 지금은 자사몰 세팅 80%. 예산은 월 300만원.', maxlength: '1500' })),
-      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.brand, onchange: function () { g.brand = this.checked; sync(); } }), ' 우리 브랜드 기본 소개 넣기 (바인그라피 · 가격대 · 고객 · 미션)'),
-      ui.field('대상 — 누가 읽거나 보나요', inp('audience', { placeholder: '예: 시술 후 예민한 30대 여성', maxlength: '200' })),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '4' }), h('b', { text: '결과의 모양' })),
-      ui.field('형식 (여러 개, 누른 순서대로)', chipSet(FORMATS, 'fmt', false)),
-      h('div', { class: 'form-grid' }, ui.field('개수', inp('n', { placeholder: '예: 10', maxlength: '10' })), ui.field('길이', inp('len', { placeholder: '예: 한 줄 25자 이내', maxlength: '60' }))),
-      ui.field('톤', chipSet(TONES, 'tone', true)),
-      h('div', { class: 'mk-step' }, h('span', { class: 'mk-no', text: '5' }), h('b', { text: '조건 · 검증' })),
-      h('div', { class: 'mk-rules' }, RULES.map(function (r) {
-        return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.rules.indexOf(r[0]) >= 0, onchange: function () { var i = g.rules.indexOf(r[0]); if (this.checked && i < 0) g.rules.push(r[0]); if (!this.checked && i >= 0) g.rules.splice(i, 1); sync(); } }), ' ' + r[1]);
-      })),
-      ui.field('참고 예시 — 이런 톤 · 수준이면 좋겠다 (선택)', inp('example', { rows: '3', placeholder: '마음에 드는 문장 하나를 붙여 넣으면 결과가 훨씬 정확해집니다.', maxlength: '2000' })),
-      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: g.material, onchange: function () { g.material = this.checked; sync(); } }), ' 자료 붙여 넣을 칸 만들기 (회의록 · 리뷰 · 데이터 등)'));
-    var side = h('div', { class: 'mk-side' },
-      h('div', { class: 'mk-side-head' }, h('b', { text: '완성된 프롬프트' }),
-        ui.btn('복사', function () { copy(buildPrompt(g), this); }, 'btn-sm ai-copy')),
-      meter, out,
-      h('div', { class: 'row' },
-        ui.btn('화자 문장만 복사', function () { copy(speakerText(g), this); }, 'btn-line btn-sm'),
-        ui.btn('주요 프롬프트에 저장', function () {
-          state.form = { title: (g.goal.trim() || t.t).slice(0, 60), cat: t.cat, body: buildPrompt(g), tags: t.t.split(' · ')[0] };
-          HR.go('ai/prompts');
-        }, 'btn-line btn-sm'),
-        ui.btn('처음부터', function () { G = freshMaker(g.task); HR.refresh(); }, 'btn-line btn-sm')));
-    ui.put(view, h('p', { class: 'muted small mk-lead', text: '화자를 고르고 목표를 적으면 오른쪽에 프롬프트가 바로 만들어집니다. 복사해서 Claude · ChatGPT · Gemini에 그대로 붙여 넣으세요.' }),
-      h('div', { class: 'mk-wrap' }, form, side));
+      h('div', { class: 'pm-q', text: '무엇을 얻고 싶나요?' }),
+      goal,
+      h('div', { class: 'pm-who' }, h('span', { text: '대답할 사람' }), personaSel),
+      h('div', { class: 'pm-result' }, out, copyBtn,
+        h('p', { class: 'pm-hint', text: 'Claude · ChatGPT · Gemini에 그대로 붙여 넣으세요.' })),
+      more));
     sync();
   }
 
@@ -323,14 +322,17 @@
       if (!P) { var c = HR.cache.hr_plan_ai; return ui.put(view, ui.head('+AI', 'AI 잘 쓰는 법'), ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다.' : '불러오는 중…')); }
       var all = allPrompts(P).all, cat = sub && parts[1] !== undefined ? P.cats[+parts[1]] || '' : '';
       var n = function (c) { return all.filter(function (p) { return (p.cat || '기타') === c; }).length; };
-      // AI 가이드 | 프롬프트 전체 | 분류별 바로가기
-      var items = [['', 'AI 잘 쓰는 법'], ['maker', '프롬프트 생성기'], ['edu', 'AI교육 게시판'], ['guide', 'AI 가이드'], ['prompts', '프롬프트 전체 ' + all.length]].concat(usedCats(P, all).map(function (c) { return ['prompts/' + P.cats.indexOf(c), c + ' ' + n(c)]; }));
-      var t = ui.tabs(items, sub === 'prompts' ? (cat ? 'prompts/' + P.cats.indexOf(cat) : 'prompts') : sub, 'ai');
+      // 1줄: 주요 메뉴 4개 · 2줄: 프롬프트 모음(전체 · 분류별) — 작은 칩으로 따로
+      var t = ui.tabs([['', 'AI 잘 쓰는 법'], ['maker', '프롬프트 생성기'], ['edu', 'AI교육 게시판'], ['guide', 'AI 가이드']], sub === 'prompts' ? null : sub, 'ai');
       t.classList.add('ai-tabs'); t.children[0].classList.add('ai-tab-red');
       t.children[1].classList.add('ai-tab-maker');
       t.children[2].classList.add('ai-tab-edu');
-      t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[5]); t.insertBefore(h('span', { class: 'ws-sub-sep', 'aria-hidden': 'true' }), t.children[4]);
-      ui.put(view, ui.head('+AI', 'AI 잘 쓰는 법'), t);
+      var curKey = sub === 'prompts' ? (cat ? 'prompts/' + P.cats.indexOf(cat) : 'prompts') : '';
+      var lib = h('nav', { class: 'ai-lib' + (sub === 'prompts' ? ' on' : ''), 'aria-label': '프롬프트 모음' }, h('span', { class: 'ai-lib-label', text: '프롬프트 모음' }),
+        [['prompts', '전체', all.length]].concat(usedCats(P, all).map(function (c) { return ['prompts/' + P.cats.indexOf(c), c, n(c)]; })).map(function (x) {
+          return h('a', { href: '#ai/' + x[0], class: 'ai-lib-chip' + (curKey === x[0] ? ' active' : '') }, x[1], h('span', { class: 'ai-lib-n', text: String(x[2]) }));
+        }));
+      ui.put(view, ui.head('+AI', 'AI 잘 쓰는 법'), t, lib);
       if (sub === 'prompts') prompts(view, P, cat); else if (sub === 'guide') guide(view, P); else if (sub === 'maker') maker(view, P); else if (sub === 'edu') HR.aiEdu.render(view, parts.slice(1)); else basics(view, P);
     }
   });

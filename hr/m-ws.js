@@ -794,7 +794,8 @@
         h('div', { class: 'ws-group ws-tools' },
           h('a', { href: '#', class: 'ws-add', text: '+ TF', onclick: function (e) { e.preventDefault(); tfForm = true; ordering = false; HR.refresh(); } }),
           h('a', { href: '#', class: 'ws-add', text: '⇅ 순서', onclick: function (e) { e.preventDefault(); ordering = !ordering; tfForm = false; HR.refresh(); } })));
-      ui.put(view, h('div', { class: 'ws-top' }, h('span', { class: 'ws-kicker', text: 'WORK · 팀 · TF 공간' }), tabs));
+      ui.put(view, h('div', { class: 'ws-top' }, h('div', { class: 'ws-top-row' }, h('span', { class: 'ws-kicker', text: 'WORK · 팀 · TF 공간' }),
+        h('a', { href: '/mkt/#project', class: 'ws-mkt-link', title: '마케팅 프로젝트 · 설계 맵 (fillts MKT)', text: 'MKT 마케팅 작업 →' })), tabs));
       if (tfForm) return newTf(view);
       if (ordering) return ui.put(view, orderPanel());
       if (key === EVERY) return everyProject(view);

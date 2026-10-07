@@ -1538,3 +1538,40 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 /* 상단 새로고침 버튼 (core.js) */
 .nav-reload { background: none; border: 1px solid var(--gray-200); padding: 6px 10px; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; white-space: nowrap; color: var(--black); }
 .nav-reload:hover { border-color: var(--black); }
+
+/* +AI 프롬프트 모음 — 탭 아래 둘째 줄 칩 (전체 · 분류별) */
+.ai-lib { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.ai-lib-label { font-size: 11px; letter-spacing: 0.06em; color: var(--gray-400); margin-right: 4px; }
+.ai-lib-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border: 1px solid var(--gray-200); background: var(--paper); color: var(--gray-600); }
+.ai-lib-chip:hover { border-color: var(--black); color: var(--black); }
+.ai-lib-chip.active { background: var(--black); border-color: var(--black); color: #fff; }
+.ai-lib-n { font-size: 10px; color: var(--gray-400); }
+.ai-lib-chip.active .ai-lib-n { color: var(--gray-400); }
+
+/* +AI 프롬프트 생성기 — 단순판: 무슨 일 · 원하는 결과 · 복사 */
+.pm { max-width: 760px; display: flex; flex-direction: column; gap: 14px; }
+.pm-q { font-size: 20px; font-weight: 500; letter-spacing: -0.02em; margin-top: 8px; }
+.pm-tasks { display: flex; flex-wrap: wrap; gap: 6px; }
+.pm-task { font: inherit; font-size: 13px; padding: 8px 14px; border: 1px solid var(--gray-200); background: var(--paper); cursor: pointer; color: var(--gray-800); }
+.pm-task:hover { border-color: var(--black); }
+.pm-task.on { background: var(--black); border-color: var(--black); color: #fff; }
+.pm-goal { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; line-height: 1.6; padding: 14px 16px; border: 1px solid var(--gray-200); background: var(--paper); resize: vertical; }
+.pm-goal:focus { outline: none; border-color: var(--black); }
+.pm-who { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--gray-600); }
+.pm-persona { font: inherit; font-size: 13px; padding: 5px 8px; border: 0; border-bottom: 1px solid var(--gray-400); background: none; color: var(--black); cursor: pointer; }
+.pm-result { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.pm-out .ai-body { max-height: 260px; overflow-y: auto; background: var(--gray-100); font-size: 13px; }
+.pm-copy { height: 52px; font-size: 14px; letter-spacing: 0.04em; width: 100%; }
+.pm-copy.done { background: var(--ok); border-color: var(--ok); }
+.pm-hint { font-size: 12px; color: var(--gray-400); text-align: center; }
+.pm-more { border-top: 1px solid var(--gray-200); padding-top: 12px; }
+.pm-more summary { cursor: pointer; font-size: 13px; color: var(--gray-600); list-style: none; }
+.pm-more summary::-webkit-details-marker { display: none; }
+.pm-more summary::before { content: "+ "; }
+.pm-more[open] summary::before { content: "− "; }
+.pm-more-body { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; }
+.pm-links { display: flex; gap: 16px; flex-wrap: wrap; }
+/* WORK 우상단 → MKT 바로가기 */
+.ws-top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ws-mkt-link { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 5px 12px; border: 1px solid var(--black); color: var(--black); white-space: nowrap; }
+.ws-mkt-link:hover { background: var(--black); color: #fff; }
