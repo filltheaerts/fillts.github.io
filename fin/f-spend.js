@@ -41,7 +41,17 @@
   }
 
   // 카드대금 거래 하나에 연결된 카드 명세 중 분류가 뚜렷한 것 (fin_card.payId === 거래 id, cat 있음)
-  function cardSplit(t) { return F.card.filter(function (x) { return x.payId === t.id && x.cat && x.cat !== '카드대금'; }); }
+  // 카드 명세 → 통장 카드대금 연결: 저장된 payId가 없으면 청구일(billDate) ±7일 안의 같은 카드사 카드대금 출금에 자동 연결
+  function payOf(x) {
+    if (x.payId) return x.payId;
+    if (!x.billDate) return '';
+    var key = (x.issuer || '').replace('카드', '');
+    var b = new Date(x.billDate).getTime();
+    var t = F.tx.filter(function (t) { return t.cat === '카드대금' && t.outAmt > 0 && (!key || ((t.desc || '') + (t.memo || '')).indexOf(key) >= 0) && Math.abs(new Date(t.date).getTime() - b) <= 7 * 864e5; })[0];
+    return t ? t.id : '';
+  }
+  function payDateOf(x) { if (x.payDate) return x.payDate; var id = payOf(x), t = id && F.tx.filter(function (t) { return t.id === id; })[0]; return t ? t.date : ''; }
+  function cardSplit(t) { return F.card.filter(function (x) { return payOf(x) === t.id && x.cat && x.cat !== '카드대금'; }); }
 
   // 대표 가수금 잔액 — 결산 마감(ownerBook)까지는 장부 금액, 이후 통장 입금 · 반환을 더한다
   function ownerBal() {
@@ -85,7 +95,7 @@
     F.tx.forEach(function (t) {
       var k = F.ym(t.date); if (!inK[k] || t.cat !== '카드대금' || !(t.outAmt > 0)) return;
       all[k] = (all[k] || 0) + t.outAmt;
-      var linked = F.card.filter(function (x) { return x.payId === t.id; }), rest = t.outAmt;
+      var linked = F.card.filter(function (x) { return payOf(x) === t.id; }), rest = t.outAmt;
       linked.forEach(function (x) { rest -= x.amount; if (x.cat && x.cat !== '카드대금') return; var lb = cardLabel(x); (L[lb] = L[lb] || {})[k] = (L[lb][k] || 0) + x.amount; });
       if (rest) { var g = linked.length ? 'fee' : 'none'; (gap[g] = gap[g] || {})[k] = ((gap[g] || {})[k] || 0) + rest; }
     });
@@ -117,7 +127,7 @@
     });
     if (c === '이자 · 수수료') F.tx.forEach(function (t) {
       var k = F.ym(t.date); if (!inK[k] || t.cat !== '카드대금' || !(t.outAmt > 0)) return;
-      var ln = F.card.filter(function (x) { return x.payId === t.id; }); if (!ln.length) return;
+      var ln = F.card.filter(function (x) { return payOf(x) === t.id; }); if (!ln.length) return;
       var r = t.outAmt - ln.reduce(function (a, x) { return a + x.amount; }, 0) - cardSplit(t).reduce(function () { return 0; }, 0);
       // 카드대금 − 명세 차액: 1만원 단위 = 연회비, 400원 = 문자 발송(SMS) 이용료 (대표 확인 261007), 나머지는 기타 차액
       if (r >= 10000) { put('카드 연회비 (국민카드)', k, 10000); r -= 10000; }
@@ -125,7 +135,7 @@
       if (r) put('카드 기타 차액', k, r);
     });
     F.card.forEach(function (x) {
-      if (x.cat !== c || !x.payDate) return; var k = F.ym(x.payDate); if (!inK[k]) return;
+      if (x.cat !== c || !payDateOf(x)) return; var k = F.ym(payDateOf(x)); if (!inK[k]) return;
       put((x.sub || x.note || x.merchant) + ' (카드)', k, x.amount);
     });
     var labs = Object.keys(L).sort(function (a, b) { return sumRow(L[b]) - sumRow(L[a]); });
@@ -162,7 +172,7 @@
         if (c === '카드대금') {
           cardSplit(t).forEach(function (x) { (M[x.cat] = M[x.cat] || {})[k] = (M[x.cat][k] || 0) + x.amount; amt -= x.amount; });
           // 명세가 연결된 카드대금의 남은 차액(연회비 · 수수료 등)은 카드가 아니라 「이자 · 수수료」로
-          if (amt && F.card.some(function (x) { return x.payId === t.id; })) { M['이자 · 수수료'] = M['이자 · 수수료'] || {}; M['이자 · 수수료'][k] = (M['이자 · 수수료'][k] || 0) + amt; amt = 0; }
+          if (amt && F.card.some(function (x) { return payOf(x) === t.id; })) { M['이자 · 수수료'] = M['이자 · 수수료'] || {}; M['이자 · 수수료'][k] = (M['이자 · 수수료'][k] || 0) + amt; amt = 0; }
         }
         if (amt) (M[c] = M[c] || {})[k] = (M[c][k] || 0) + amt;
       }
@@ -340,7 +350,7 @@
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['승인일', '가맹점', '사용내용', '통장 결제일', '금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
       h('tbody', null, list.map(function (x) {
         return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }), h('td', { text: x.merchant + (x.foreign ? ' · 해외' : '') }), h('td', { class: 'meta', text: x.note || '' }),
-          h('td', { class: 'meta', text: x.payDate ? fmt.dot(x.payDate).slice(2) : '결제 전' }), h('td', { class: 'num', text: F.won(x.amount) }));
+          h('td', { class: 'meta', text: payDateOf(x) ? fmt.dot(payDateOf(x)).slice(2) : x.billDate ? fmt.dot(x.billDate).slice(2) + ' 청구 예정' : '결제 전' }), h('td', { class: 'num', text: F.won(x.amount) }));
       })));
     return ui.panel('카드 상세 · ' + (sel.k ? F.ymLabel(sel.k) + ' ' : '기간 전체 ') + sb, h('button', { type: 'button', class: 'btn btn-line btn-sm', text: '닫기', onclick: function () { V.sel = null; HR.refresh(); } }),
       h('p', { class: 'meta', text: list.length + '건 · ' + F.won(sum) + '원' }), h('div', { class: 'table-wrap flat' }, tb));
@@ -349,13 +359,13 @@
   function cardDetail(sel, keys) {
     var lb = sel.c.slice(3), inK = {}; keys.forEach(function (k) { inK[k] = 1; });
     var list = F.card.filter(function (x) {
-      if ((x.cat && x.cat !== '카드대금') || cardLabel(x) !== lb || !x.payDate) return false;
-      var k = F.ym(x.payDate); return inK[k] && (!sel.k || k === sel.k);
+      if ((x.cat && x.cat !== '카드대금') || cardLabel(x) !== lb || !payDateOf(x)) return false;
+      var k = F.ym(payDateOf(x)); return inK[k] && (!sel.k || k === sel.k);
     }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var sum = list.reduce(function (a, x) { return a + x.amount; }, 0);
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['승인일', '가맹점', '통장 결제일', '카드', '금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
       h('tbody', null, list.map(function (x) {
-        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }), h('td', { text: x.merchant }), h('td', { class: 'meta', text: fmt.dot(x.payDate).slice(2) }),
+        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }), h('td', { text: x.merchant }), h('td', { class: 'meta', text: fmt.dot(payDateOf(x)).slice(2) }),
           h('td', { class: 'meta', text: (x.issuer || '법인카드') + (x.foreign ? ' · 해외' : '') }), h('td', { class: 'num', text: F.won(x.amount) }));
       })));
     return ui.panel('거래 상세 · ' + (sel.k ? F.ymLabel(sel.k) + ' ' : '기간 전체 ') + lb, h('button', { type: 'button', class: 'btn btn-line btn-sm', text: '닫기', onclick: function () { V.sel = null; HR.refresh(); } }),
