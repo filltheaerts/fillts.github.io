@@ -66,6 +66,40 @@
     return out;
   }
 
+  // 법인카드 — 카드사 이름 · 끝번호 (fin_card.issuer · cardNo, 없으면 통장 메모)
+  function cardName() {
+    var x = F.card.filter(function (c) { return c.issuer; })[0];
+    return x ? x.issuer + (x.cardNo ? ' (…' + x.cardNo + ')' : '') : '법인카드';
+  }
+  function cardLabel(x) {
+    var m = x.merchant || '';
+    if (/NICE/.test(m)) return 'NICE 결제대행 — 매월 9,900 자동결제';
+    if (/KCP/.test(m)) return 'KCP 결제대행';
+    if (/이니시스/.test(m)) return '이니시스 결제대행';
+    return m;
+  }
+  // 카드대금 아래 세부: 명세 중 사용처로 못 옮긴 것(가맹점별) + 명세가 없는 차액, 그리고 참고로 카드 전체 결제액
+  function cardRows(body, keys, inK, active, sumRow, cell) {
+    var L = {}, gap = {}, all = {};
+    F.tx.forEach(function (t) {
+      var k = F.ym(t.date); if (!inK[k] || t.cat !== '카드대금' || !(t.outAmt > 0)) return;
+      all[k] = (all[k] || 0) + t.outAmt;
+      var linked = F.card.filter(function (x) { return x.payId === t.id; }), rest = t.outAmt;
+      linked.forEach(function (x) { rest -= x.amount; if (x.cat && x.cat !== '카드대금') return; var lb = cardLabel(x); (L[lb] = L[lb] || {})[k] = (L[lb][k] || 0) + x.amount; });
+      if (rest) gap[k] = (gap[k] || 0) + rest;
+    });
+    Object.keys(L).sort(function (a, b) { return sumRow(L[b]) - sumRow(L[a]); }).forEach(function (lb) {
+      var ts = sumRow(L[lb]);
+      body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: lb }), keys.map(function (k) { return cell('cm:' + lb, k, (L[lb] || {})[k] || 0); }), cell('cm:' + lb, '', ts), h('td', { class: 'num meta', text: F.man(ts / active) }), h('td')));
+    });
+    var gs = sumRow(gap);
+    if (gs) body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: '명세 없는 금액 — 해외 수수료 · 카드 명세 미수령분', title: '카드사 명세 파일을 올리면 이 금액이 사용처로 나뉩니다' }),
+      keys.map(function (k) { return h('td', { class: 'num', text: man(gap[k]) }); }), h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num meta', text: F.man(gs / active) }), h('td')));
+    var as = sumRow(all);
+    if (as) body.appendChild(h('tr', { class: 'sp-sub sp-ref' }, h('td', { text: '참고 · ' + cardName() + ' 전체 결제액 (합계 제외)' }),
+      keys.map(function (k) { return h('td', { class: 'num', text: man(all[k]) }); }), h('td', { class: 'num', text: F.man(as) }), h('td'), h('td')));
+  }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -119,8 +153,9 @@
         h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num', text: F.man(gs / active) }), h('td', { class: 'num', text: share(gs) })));
       cats.forEach(function (c) {
         var s = sumRow(M[c]);
-        body.appendChild(h('tr', { class: 'sp-cat' }, h('td', { text: c, title: c === '카드대금' ? CARD_NOTE : '' }), keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
+        body.appendChild(h('tr', { class: 'sp-cat' }, h('td', { text: c === '카드대금' ? cardName() + ' — 사용처로 옮기고 남은 것' : c, title: c === '카드대금' ? CARD_NOTE : '' }), keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
           cell(c, '', s, 'strong'), h('td', { class: 'num meta', text: F.man(s / active) }), h('td', { class: 'num meta', text: share(s) })));
+        if (c === '카드대금') cardRows(body, keys, inK, active, sumRow, cell);
         if (c === '세금 · 공과금') {
           var T = {};
           F.tx.forEach(function (t) { var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return; var ty = taxType(t); (T[ty] = T[ty] || {})[k] = (T[ty][k] || 0) + t.outAmt; });
@@ -206,7 +241,24 @@
       h('p', { class: 'meta', text: '거래내역에서 「대표 가수금」으로 분류된 입금 · 출금만 모읍니다. 25년 마감까지는 결산 재무제표(단기차입금)가 정답이라 마감 월에 차이를 한 줄로 맞추고, 이후는 통장 실데이터로 누적합니다. 출자전환을 실행하면 그 금액을 반환(법인 → 대표)과 같은 방식으로 빼야 잔액이 맞습니다.' }));
   }
 
+  function cardDetail(sel, keys) {
+    var lb = sel.c.slice(3), inK = {}; keys.forEach(function (k) { inK[k] = 1; });
+    var list = F.card.filter(function (x) {
+      if ((x.cat && x.cat !== '카드대금') || cardLabel(x) !== lb || !x.payDate) return false;
+      var k = F.ym(x.payDate); return inK[k] && (!sel.k || k === sel.k);
+    }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var sum = list.reduce(function (a, x) { return a + x.amount; }, 0);
+    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['승인일', '가맹점', '통장 결제일', '카드', '금액'].map(function (x, i) { return h('th', { class: i === 4 ? 'num' : '', text: x }); }))),
+      h('tbody', null, list.map(function (x) {
+        return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }), h('td', { text: x.merchant }), h('td', { class: 'meta', text: fmt.dot(x.payDate).slice(2) }),
+          h('td', { class: 'meta', text: (x.issuer || '법인카드') + (x.foreign ? ' · 해외' : '') }), h('td', { class: 'num', text: F.won(x.amount) }));
+      })));
+    return ui.panel('거래 상세 · ' + (sel.k ? F.ymLabel(sel.k) + ' ' : '기간 전체 ') + lb, h('button', { type: 'button', class: 'btn btn-line btn-sm', text: '닫기', onclick: function () { V.sel = null; HR.refresh(); } }),
+      h('p', { class: 'meta', text: list.length + '건 · ' + F.won(sum) + '원 · 카드 명세서 기준, 통장에서 빠진 달로 묶음' }), h('div', { class: 'table-wrap flat' }, tb));
+  }
+
   function detail(sel, keys) {
+    if (sel.c.indexOf('cm:') === 0) return cardDetail(sel, keys);
     var isIn = sel.c.indexOf('in:') === 0, isTax = sel.c.indexOf('tax:') === 0, cat = isIn ? sel.c.slice(3) : isTax ? sel.c.slice(4) : sel.c;
     var inK = {}; keys.forEach(function (k) { inK[k] = 1; });
     var list = F.tx.filter(function (t) {
