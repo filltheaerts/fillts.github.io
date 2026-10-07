@@ -576,6 +576,7 @@
       panel.appendChild(h('div', { class: 'field' }, h('label', { text: '프로젝트 설명' }), body));
       panel.appendChild(h('div', { class: 'mx-sec' },
         h('div', { class: 'mx-sec-head' }, h('span', { class: 'label', text: '서브 프로젝트 — 이름 · 기간 · 설명' }), subCount,
+          h('button', { type: 'button', class: 'x-del', text: '날짜 모두 비우기', title: '서브 날짜만 비웁니다 (저장해야 반영)', onclick: function () { it.subs.forEach(function (x) { x.start = ''; x.due = ''; }); drawSubs(); } }),
           h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '+ 간단 서브', onclick: openQuick })),
         quickArea, subBox,
         h('button', { type: 'button', class: 'mx-subadd', text: '+ 서브 추가', onclick: addSub })));
@@ -614,7 +615,16 @@
         })) : null) : null,
       h('div', { class: 'mx-pjb-act' },
         h('button', { type: 'button', class: 'mx-pjb-quick', text: '+ 간단 서브', title: '서브 이름만 여러 개 한 번에', onclick: function () { pjQuickSub(x); } }),
-        h('button', { type: 'button', class: 'mx-pjb-nosub', text: subs.length ? '기간 · 설명 채우기' : '열어서 자세히', onclick: openIt })));
+        h('button', { type: 'button', class: 'mx-pjb-nosub', text: subs.length ? '기간 · 설명 채우기' : '열어서 자세히', onclick: openIt }),
+        subs.some(function (s) { return s.start || s.due; }) ? confirmBtn('서브 날짜 모두 지우기', function () { clearSubDates(x, false); }) : null,
+        x.start || x.due ? confirmBtn('프로젝트 기간도 지우기', function () { clearSubDates(x, true); }) : null));
+  }
+  // 서브 날짜 일괄 비우기 (이름 · 설명 · 완료는 그대로). withProject면 프로젝트 기간도 비운다
+  function clearSubDates(x, withProject) {
+    var subs = (x.subs || []).map(function (s) { return { t: s.t, done: !!s.done, start: '', due: '', body: s.body || '' }; });
+    var data = { subs: subs, updatedAt: FV.serverTimestamp(), updatedBy: S.mid };
+    if (withProject) { data.start = ''; data.due = ''; }
+    db.doc('mkt_items/' + x.id).update(data).then(function () { toast(withProject ? '프로젝트 기간과 서브 날짜를 모두 지웠습니다.' : '서브 날짜를 모두 지웠습니다. 프로젝트 기간은 그대로입니다.'); }).catch(function (e) { fail(e); });
   }
   // 목록에서 바로: 서브 이름만 칸마다 → 한 번에 추가 (WORK 간단 서브와 같은 방식)
   function pjQuickSub(x) {

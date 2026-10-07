@@ -239,3 +239,7 @@ button.mx-chip { cursor: pointer; }
 .mx-pjb-quick:hover { background: var(--black); border-color: var(--black); }
 .mx-pjb-act .mx-pjb-nosub { border-style: solid; border-color: var(--gray-200); padding: 6px 12px; }
 .nav-links a.nav-strong { font-weight: 700; }
+/* MAP — 보드 묶음의 대표: 빨강 없이 굵게 + 검은 강조점 */
+.nav-links a.nav-map { font-weight: 700; padding-left: 11px; }
+.nav-links a.nav-map::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: var(--black); transform: translateY(-50%); }
+@media (max-width: 900px) { .nav-links a.nav-map::before { top: 50%; } }
