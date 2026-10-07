@@ -102,6 +102,30 @@
       keys.map(function (k) { return h('td', { class: 'num', text: man(all[k]) }); }), h('td', { class: 'num', text: F.man(as) }), h('td'), h('td')));
   }
 
+  // 거래처 이름 정리 — 회사 표기 · 은행 접두어 · 앞 숫자(２６０６ 등) 제거
+  function clean(d) {
+    return (d || '').replace(/^[0-9０-９]+/, '').replace(/주식회사|\(주\)|㈜|（주）|기업주식회사/g, '').replace(/^(우리|신한|농협|기업|하나)\s*/, '').replace(/당행급여\d*건|당타행\d*건|당행\d*건/, '').trim() || '(내용 없음)';
+  }
+  // 분류 아래 세부: 통장 거래는 거래처, 카드 명세는 세부 항목(sub) — 어디에 썼는지
+  function subRows(body, c, keys, inK, active, sumRow) {
+    var L = {};
+    var put = function (lb, k, v) { (L[lb] = L[lb] || {})[k] = (L[lb][k] || 0) + v; };
+    F.tx.forEach(function (t) {
+      var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return;
+      put(c === '급여' ? '급여 이체' : c === '4대보험' ? (t.desc || '').replace(/^[0-9０-９]+/, '') : clean(t.desc), k, t.outAmt);
+    });
+    F.card.forEach(function (x) {
+      if (x.cat !== c || !x.payDate) return; var k = F.ym(x.payDate); if (!inK[k]) return;
+      put((x.sub || x.note || x.merchant) + ' (카드)', k, x.amount);
+    });
+    var labs = Object.keys(L).sort(function (a, b) { return sumRow(L[b]) - sumRow(L[a]); });
+    labs.forEach(function (lb) {
+      var ts = sumRow(L[lb]);
+      body.appendChild(h('tr', { class: 'sp-sub' }, h('td', { text: lb, title: lb }), keys.map(function (k) { return h('td', { class: 'num', text: man((L[lb] || {})[k]) }); }),
+        h('td', { class: 'num', text: F.man(ts) }), h('td', { class: 'num meta', text: F.man(ts / active) }), h('td')));
+    });
+  }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -155,12 +179,13 @@
         h('td', { class: 'num', text: F.man(gs) }), h('td', { class: 'num', text: F.man(gs / active) }), h('td', { class: 'num', text: share(gs) })));
       cats.forEach(function (c) {
         var s = sumRow(M[c]);
-        var tg = c === '카드대금' ? 'card' : c === '세금 · 공과금' ? 'tax' : '';
+        var tg = c === '카드대금' ? 'card' : c === '세금 · 공과금' ? 'tax' : 'c:' + c;
         var lab = h('td', { title: c === '카드대금' ? CARD_NOTE : '' }, c === '카드대금' ? cardName() : c,
           tg ? h('button', { type: 'button', class: 'sp-tog', 'aria-expanded': String(!!V.open[tg]), text: V.open[tg] ? '▾ 접기' : '▸ 세부', onclick: function () { V.open[tg] = !V.open[tg]; HR.refresh(); } }) : null);
         body.appendChild(h('tr', { class: 'sp-cat' }, lab, keys.map(function (k) { return cell(c, k, (M[c] || {})[k] || 0); }),
           cell(c, '', s, 'strong'), h('td', { class: 'num meta', text: F.man(s / active) }), h('td', { class: 'num meta', text: share(s) })));
         if (c === '카드대금' && V.open.card) cardRows(body, keys, inK, active, sumRow, cell);
+        if (tg.indexOf('c:') === 0 && V.open[tg]) subRows(body, c, keys, inK, active, sumRow);
         if (c === '세금 · 공과금' && V.open.tax) {
           var T = {};
           F.tx.forEach(function (t) { var k = F.ym(t.date); if (!inK[k] || t.cat !== c || !(t.outAmt > 0)) return; var ty = taxType(t); (T[ty] = T[ty] || {})[k] = (T[ty][k] || 0) + t.outAmt; });
