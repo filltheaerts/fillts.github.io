@@ -33,8 +33,15 @@
       hints: ['이번 주 실행 항목과 담당', '결과 — 숫자와 고객 반응', '잘된 것 · 안된 것 · 배운 점', '다음 액션 — 계속 · 수정 · 중단', '자료 링크 — 시트 · 슬라이드 · 콘텐츠'] }
   ];
   var BMAP = {}; BOARDS.forEach(function (b, i) { b.no = ('0' + (i + 1)).slice(-2); BMAP[b.id] = b; });
+  // 프로젝트: 해야 할 과업을 쭉 적고, 그중 몇 개를 골라 「디벨롭」으로 키운다 (설계 보드 6개와 별개 — 진행도에 안 들어감)
+  var PROJECT = { id: 'project', no: '00', name: '프로젝트', en: 'Projects', q: '해야 할 과업을 쭉 적고, 몇 개를 골라 키운다', ph: '예) 런칭 체험단 30명 운영' };
+  BMAP.project = PROJECT;
+  var ALLB = [PROJECT].concat(BOARDS);
   var STATUS = [['idea', '아이디어'], ['review', '검토 중'], ['pick', '확정'], ['hold', '보류']];
+  var PSTATUS = [['idea', '과업'], ['review', '디벨롭'], ['pick', '확정'], ['hold', '보류']];
   var STNAME = {}; STATUS.forEach(function (s) { STNAME[s[0]] = s[1]; });
+  var PSTNAME = {}; PSTATUS.forEach(function (s) { PSTNAME[s[0]] = s[1]; });
+  function stName(st, board) { return (board === 'project' ? PSTNAME : STNAME)[st || 'idea']; }
   var STORD = { pick: 0, review: 1, idea: 2, hold: 3 };
   var MAX_SUBS = 30, MAX_LINKS = 20;
 
@@ -165,9 +172,9 @@
   function route() {
     if (!S.mid) return;
     var parts = (location.hash || '#map').slice(1).split('/').filter(Boolean);
-    var menu = parts[0] === 'b' && BMAP[parts[1]] ? parts[1] : 'map';
+    var menu = parts[0] === 'project' ? 'project' : parts[0] === 'b' && BMAP[parts[1]] && parts[1] !== 'project' ? parts[1] : 'map';
     var moved = current.menu !== menu;
-    current = { menu: menu, board: menu === 'map' ? null : BMAP[menu] };
+    current = { menu: menu, board: menu === 'map' || menu === 'project' ? null : BMAP[menu] };
     document.querySelectorAll('[data-menu]').forEach(function (a) { a.classList.toggle('active', a.dataset.menu === menu); });
     $('navLinks').classList.remove('open'); $('navToggle').classList.remove('open'); $('navToggle').setAttribute('aria-expanded', 'false');
     render(true);
@@ -193,7 +200,7 @@
     if (!force && typing()) { deferred = true; return; }
     var old = $('view'), y = window.scrollY, key = current.menu;
     var view = old.cloneNode(false);   // 새 화면을 따로 그려 보고, 바뀐 게 있을 때만 갈아 끼운다 (화면 튐 방지)
-    try { if (current.board) renderBoard(view, current.board); else renderMap(view); }
+    try { if (current.menu === 'project') renderProject(view); else if (current.board) renderBoard(view, current.board); else renderMap(view); }
     catch (e) { console.error(e); view.appendChild(h('p', { class: 'empty', text: '화면을 그리지 못했습니다. 새로고침 해 주세요.' })); }
     var html = view.innerHTML;
     if (!force && key === lastView.key && html === lastView.html) return;
@@ -242,7 +249,7 @@
     if (c.review) return ['검토 중', 'warn'];
     return ['구상 중', ''];
   }
-  function stTag(st) { return h('span', { class: 'tag mx-st st-' + (st || 'idea'), text: STNAME[st || 'idea'] }); }
+  function stTag(st, board) { return h('span', { class: 'tag mx-st st-' + (st || 'idea'), text: stName(st, board) }); }
 
   /* ============================================
      MAP — 전체 설계 맵
@@ -290,7 +297,7 @@
     var ul = h('ul', { class: 'list' });
     recent.forEach(function (x) {
       ul.appendChild(h('li', { class: 'mx-recent', tabindex: '0', onclick: function () { detailModal(x.id); }, onkeydown: function (e) { if (e.key === 'Enter') detailModal(x.id); } },
-        h('span', { class: 'mx-chip b-' + x.board, text: (BMAP[x.board] || {}).name || x.board }), stTag(x.status),
+        h('span', { class: 'mx-chip b-' + x.board, text: (BMAP[x.board] || {}).name || x.board }), stTag(x.status, x.board),
         h('span', { class: 'grow', text: x.title }), h('span', { class: 'meta', text: name(x.updatedBy || x.by) + ' · ' + when(x.updatedAt || x.at) })));
     });
     tab.appendChild(h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('div', { class: 'label', text: '최근 업데이트' })),
@@ -327,6 +334,11 @@
   function copySummary() {
     var out = ['# fillts 마케팅 설계 맵 (' + kstDate(new Date()) + ')'];
     if ((S.boards.map || {}).summary) out.push('', '북극성: ' + S.boards.map.summary);
+    var dev = itemsOf('project').filter(function (x) { return x.status === 'pick' || x.status === 'review'; });
+    if (dev.length) {
+      out.push('', '## 프로젝트 — 디벨롭 · 확정');
+      dev.forEach(function (x) { out.push('- [' + stName(x.status, 'project') + '] ' + x.title); (x.subs || []).forEach(function (s) { out.push('  - ' + (s.done ? '✔ ' : '') + s.t); }); });
+    }
     BOARDS.forEach(function (b) {
       var list = itemsOf(b.id).filter(function (x) { return x.status === 'pick' || x.status === 'review'; });
       out.push('', '## ' + b.no + ' ' + b.name + ' — ' + b.q);
@@ -340,6 +352,70 @@
     var text = out.join('\n');
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast('확정 · 검토 항목을 복사했습니다. Slack · 문서에 붙여 넣으세요.'); },
       function () { toast('복사하지 못했습니다. 브라우저 권한을 확인하세요.'); });
+  }
+
+  /* ============================================
+     프로젝트 — 과업을 쭉 적고(리스트) → 몇 개를 골라 디벨롭(카드)
+     ============================================ */
+  var showHold = false;
+  function setStatus(x, st) {
+    db.doc('mkt_items/' + x.id).update({ status: st, updatedAt: FV.serverTimestamp(), updatedBy: S.mid })
+      .then(function () { toast(st === 'review' ? '「' + x.title + '」을 디벨롭으로 올렸습니다. 카드를 눌러 세부항목을 채우세요.' : '옮겼습니다.'); }).catch(function (e) { fail(e); });
+  }
+  function addTask(inp, m) {
+    var t = inp.value.replace(/^\s*[-·•*\d.)]+\s*/, '').trim();
+    if (!t) return;
+    db.collection('mkt_items').add({ board: 'project', title: t.slice(0, 120), body: '', status: 'idea', subs: [], links: [], likes: [],
+      by: S.mid, at: FV.serverTimestamp(), updatedAt: FV.serverTimestamp(), updatedBy: S.mid }).catch(function (e) { fail(e, m); });
+    inp.value = '';
+    setTimeout(function () { render(true); var n = $('mxTaskAdd'); if (n) n.focus(); }, 80);   // 이어서 적을 수 있게 입력칸으로 돌아온다
+  }
+  function taskRow(x) {
+    var subs = x.subs || [], liked = (x.likes || []).indexOf(S.mid) >= 0, hold = x.status === 'hold';
+    return h('li', { class: 'mx-task' + (hold ? ' is-hold' : '') },
+      h('button', { type: 'button', class: 'mx-task-t', text: x.title, onclick: function () { detailModal(x.id); } }),
+      h('span', { class: 'meta mx-task-meta', text: (subs.length ? '세부 ' + subs.length + ' · ' : '') + name(x.by) + ' · ' + when(x.at) }),
+      h('button', { type: 'button', class: 'mx-like' + (liked ? ' on' : ''), 'aria-pressed': String(liked), title: liked ? '좋아요 취소' : '좋아요 — 키워 보고 싶은 과업에',
+        onclick: function () { like(x, !liked); } }, (liked ? '♥ ' : '♡ ') + ((x.likes || []).length || '')),
+      hold ? btn('되살리기', function () { setStatus(x, 'idea'); }, 'btn-line btn-xs')
+        : h('div', { class: 'mx-task-act' }, btn('보류', function () { setStatus(x, 'hold'); }, 'btn-line btn-xs'), btn('디벨롭 →', function () { setStatus(x, 'review'); }, 'btn-xs mx-primary')));
+  }
+  function renderProject(view) {
+    var tab = h('section', { class: 'tab mk b-project' }), all = itemsOf('project');
+    var dev = all.filter(function (x) { return x.status === 'review' || x.status === 'pick'; });
+    var tasks = all.filter(function (x) { return (x.status || 'idea') === 'idea'; });
+    var held = all.filter(function (x) { return x.status === 'hold'; });
+    tab.appendChild(h('header', { class: 'tab-head mx-head' },
+      h('div', null, h('div', { class: 'label', text: 'Projects' }), h('h1', { class: 'tab-title' }, '프로젝트', h('span', { class: 'mx-title-q', text: ' — ' + PROJECT.q }))),
+      h('div', { class: 'mx-head-right' }, btn('+ 과업 여러 개 적기', function () { quickModal(PROJECT); }, 'btn-sm mx-primary'), btn('+ 자세히 쓰기', function () { detailModal(null, 'project'); }, 'btn-line btn-sm'))));
+
+    tab.appendChild(h('ol', { class: 'mx-howto' },
+      h('li', null, h('b', { text: '① 쭉 적기' }), h('span', { text: '떠오르는 과업을 판단 없이 전부 적습니다.' })),
+      h('li', null, h('b', { text: '② 고르기' }), h('span', { text: '키우고 싶은 과업에 ♥, 정했으면 「디벨롭 →」.' })),
+      h('li', null, h('b', { text: '③ 키우기' }), h('span', { text: '카드를 열어 내용 · 세부항목 · 보드 연결로 발전시키고, 정리되면 「확정」.' }))));
+
+    // 디벨롭 중 — 카드
+    var grid = h('div', { class: 'mx-grid' });
+    dev.forEach(function (x) { grid.appendChild(card(x)); });
+    tab.appendChild(h('section', { class: 'panel mx-dev' },
+      h('div', { class: 'panel-head' }, h('div', { class: 'label', text: '디벨롭 중 · ' + dev.length }), h('span', { class: 'meta', text: '확정 ' + dev.filter(function (x) { return x.status === 'pick'; }).length })),
+      dev.length ? grid : h('p', { class: 'empty', text: S.gotItems ? '아래 과업 리스트에서 「디벨롭 →」을 눌러 키울 과업을 고르세요.' : (S.denied ? '권한이 없습니다. 관리자에게 문의하세요.' : '불러오는 중…') })));
+
+    // 과업 리스트 — 한 줄씩
+    var m = msg();
+    var inp = h('input', { type: 'text', id: 'mxTaskAdd', maxlength: '120', placeholder: '과업을 적고 Enter — 이어서 계속 적을 수 있습니다', onkeydown: function (e) {
+      if (e.key !== 'Enter' || e.isComposing) return; e.preventDefault(); addTask(this, m);
+    } });
+    var ul = h('ul', { class: 'mx-tasks' });
+    tasks.forEach(function (x) { ul.appendChild(taskRow(x)); });
+    tab.appendChild(h('section', { class: 'panel' },
+      h('div', { class: 'panel-head' }, h('div', { class: 'label', text: '과업 리스트 · ' + tasks.length }), h('span', { class: 'meta', text: '♥ 많은 순' })),
+      h('div', { class: 'mx-task-add' }, inp, btn('추가', function () { addTask(inp, m); }, 'btn-sm')), m,
+      tasks.length ? ul : h('p', { class: 'empty', text: '아직 과업이 없습니다. 위 칸에 하나씩 적거나 「+ 과업 여러 개 적기」로 한꺼번에 올리세요.' }),
+      held.length ? h('div', { class: 'mx-held' },
+        h('button', { type: 'button', class: 'x-del', text: showHold ? '보류 접기' : '보류 ' + held.length + '개 보기', onclick: function () { showHold = !showHold; render(true); } }),
+        showHold ? h('ul', { class: 'mx-tasks' }, held.map(taskRow)) : null) : null));
+    view.appendChild(tab);
   }
 
   /* ============================================
@@ -387,7 +463,7 @@
     var subs = x.subs || [], doneN = subs.filter(function (s) { return s.done; }).length, links = linksOf(x), liked = (x.likes || []).indexOf(S.mid) >= 0;
     var open = function () { detailModal(x.id); };
     return h('article', { class: 'mx-card st-' + (x.status || 'idea'), tabindex: '0', onclick: open, onkeydown: function (e) { if (e.key === 'Enter' && e.target === this) open(); } },
-      h('div', { class: 'mx-card-top' }, stTag(x.status),
+      h('div', { class: 'mx-card-top' }, stTag(x.status, x.board),
         h('button', { type: 'button', class: 'mx-like' + (liked ? ' on' : ''), 'aria-pressed': String(liked), title: liked ? '좋아요 취소' : '좋아요',
           onclick: function (e) { e.stopPropagation(); like(x, !liked); } }, (liked ? '♥ ' : '♡ ') + ((x.likes || []).length || ''))),
       h('h3', { class: 'mx-card-title', text: x.title }),
@@ -395,7 +471,7 @@
       subs.length ? h('div', { class: 'mx-card-subs' },
         h('div', { class: 'mx-bar' }, h('span', { class: 'mx-bar-fill', 'data-w': String(Math.round(doneN / subs.length * 100)) })),
         h('span', { class: 'meta', text: '세부항목 ' + doneN + ' / ' + subs.length })) : null,
-      links.length ? h('div', { class: 'mx-card-links' }, links.slice(0, 4).map(function (l) { return h('span', { class: 'mx-chip b-' + l.board, text: (BMAP[l.board] || {}).name + ' · ' + l.title }); }),
+      links.length ? h('div', { class: 'mx-card-links' }, links.slice(0, 4).map(function (l) { return h('span', { class: 'mx-chip b-' + l.board, text: ((BMAP[l.board] || {}).name || '') + ' · ' + l.title }); }),
         links.length > 4 ? h('span', { class: 'meta', text: '+' + (links.length - 4) }) : null) : null,
       h('div', { class: 'mx-card-foot meta', text: name(x.by) + ' · ' + when(x.at) }));
   }
@@ -457,10 +533,10 @@
 
   // 간단 입력: 제목만 칸마다 → 한 번에 카드로
   function quickModal(b, prompt) {
-    modal('간단 입력 · ' + b.no + ' ' + b.name, 'b-' + b.id, function (panel, close) {
+    modal(b.id === 'project' ? '과업 여러 개 적기 · 프로젝트' : '간단 입력 · ' + b.no + ' ' + b.name, 'b-' + b.id, function (panel, close) {
       var m = msg(), count = h('span', { class: 'meta' });
       var q = quickRows(b.ph, 20, function (n) { count.textContent = n ? n + '개 추가 예정' : ''; });
-      var st = 'idea', seg = statusSeg(st, function (v) { st = v; });
+      var st = 'idea', seg = statusSeg(st, function (v) { st = v; }, b.id);
       var add = function () {
         var names = q.values();
         if (!names.length) return err(m, '아이디어를 칸마다 하나씩 적어 주세요.');
@@ -481,9 +557,9 @@
       setTimeout(function () { q.first().focus(); }, 0);
     });
   }
-  function statusSeg(val, onchange) {
+  function statusSeg(val, onchange, board) {
     var box = h('div', { class: 'mx-seg', role: 'radiogroup' });
-    STATUS.forEach(function (s) {
+    (board === 'project' ? PSTATUS : STATUS).forEach(function (s) {
       box.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': String(s[0] === val), class: 'mx-seg-b st-' + s[0] + (s[0] === val ? ' on' : ''), text: s[1], onclick: function () {
         box.querySelectorAll('.mx-seg-b').forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-checked', 'false'); });
         this.classList.add('on'); this.setAttribute('aria-checked', 'true'); onchange(s[0]);
@@ -499,11 +575,11 @@
     var b = BMAP[src ? src.board : boardId];
     var it = src ? JSON.parse(JSON.stringify({ title: src.title, body: src.body || '', status: src.status || 'idea', subs: src.subs || [], links: src.links || [] }))
       : { title: '', body: '', status: 'idea', subs: [], links: [] };
-    modal((src ? '' : '새 아이디어 · ') + b.no + ' ' + b.name, 'b-' + b.id + ' mx-detail', function (panel, close) {
+    modal((src ? '' : b.id === 'project' ? '새 과업 · ' : '새 아이디어 · ') + (b.id === 'project' ? b.name : b.no + ' ' + b.name), 'b-' + b.id + ' mx-detail', function (panel, close) {
       var m = msg();
       var title = h('input', { type: 'text', class: 'sm-title', maxlength: '120', placeholder: b.ph, value: it.title });
       var body = h('textarea', { rows: '5', maxlength: '8000', placeholder: '왜 이 생각인지, 근거 · 사례 · 링크 (URL은 자동 링크)', value: it.body });
-      var seg = statusSeg(it.status, function (v) { it.status = v; });
+      var seg = statusSeg(it.status, function (v) { it.status = v; }, b.id);
 
       // 세부항목
       var subBox = h('ul', { class: 'mx-subs' }), subCount = h('span', { class: 'meta' });
@@ -537,14 +613,14 @@
 
       // 연결: 다른 보드 항목 고르기
       var linkBox = h('div', { class: 'mx-linkpick' });
-      BOARDS.forEach(function (ob) {
+      ALLB.forEach(function (ob) {
         if (ob.id === b.id) return;
         var others = itemsOf(ob.id).filter(function (x) { return x.status !== 'hold' || it.links.indexOf(x.id) >= 0; });
         if (!others.length) return;
         var row = h('div', { class: 'mx-linkrow' }, h('span', { class: 'mx-chip b-' + ob.id, text: ob.name }));
         others.forEach(function (x) {
           var on = it.links.indexOf(x.id) >= 0;
-          row.appendChild(h('button', { type: 'button', class: 'mx-pick' + (on ? ' on' : '') + (x.status === 'pick' ? ' is-pick' : ''), 'aria-pressed': String(on), text: x.title, title: STNAME[x.status || 'idea'], onclick: function () {
+          row.appendChild(h('button', { type: 'button', class: 'mx-pick' + (on ? ' on' : '') + (x.status === 'pick' ? ' is-pick' : ''), 'aria-pressed': String(on), text: x.title, title: stName(x.status, x.board), onclick: function () {
             var k = it.links.indexOf(x.id);
             if (k >= 0) it.links.splice(k, 1); else { if (it.links.length >= MAX_LINKS) return err(m, '연결은 최대 ' + MAX_LINKS + '개입니다.'); it.links.push(x.id); }
             this.classList.toggle('on', k < 0); this.setAttribute('aria-pressed', String(k < 0));

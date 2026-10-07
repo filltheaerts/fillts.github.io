@@ -155,3 +155,26 @@ button.mx-chip { cursor: pointer; }
 /* .meta는 HR에서 목록 안에서만 정의돼 있어 MKT 전역에 준다 */
 .mx .meta, .mx-panel .meta { font-size: 11px; color: var(--gray-400); letter-spacing: 0.02em; }
 .mx-card-subs .meta { color: var(--gray-600); }
+
+/* 프로젝트 — 과업 리스트 → 디벨롭 */
+.b-project { --bc: var(--red); }
+.mx-howto { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--gray-200); border: 1px solid var(--gray-200); margin-bottom: 16px; }
+.mx-howto li { background: var(--paper, #fff); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.6; }
+.mx-howto b { font-size: 13px; color: var(--red); }
+.mx-dev { border-top: 2px solid var(--red); }
+.mx-task-add { display: flex; gap: 8px; margin-bottom: 6px; }
+.mx-task-add input { flex: 1; min-width: 0; }
+.mx-tasks { list-style: none; display: flex; flex-direction: column; }
+.mx-task { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--gray-100); }
+.mx-task-t { background: none; border: 0; padding: 0; text-align: left; font: inherit; font-size: 14px; color: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.mx-task-t:hover { color: var(--red); }
+.mx-task.is-hold .mx-task-t { color: var(--gray-400); }
+.mx-task-meta { white-space: nowrap; }
+.mx-task-act { display: flex; gap: 6px; }
+.mx-held { margin-top: 10px; }
+@media (max-width: 640px) {
+  .mx-howto { grid-template-columns: 1fr; }
+  .mx-task { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .mx-task-meta { grid-column: 1; }
+  .mx-task-act { grid-column: 1 / -1; justify-content: flex-end; }
+}
