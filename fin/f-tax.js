@@ -80,6 +80,7 @@
     }));
     if (!F.mail.length) hist.appendChild(h('li', { class: 'empty', text: '아직 보낸 기록이 없습니다.' }));
     ui.put(view, ui.head('Tax accountant', '세무사 전달', pick),
+      h('div', { class: 'fin-quicklinks' }, h('span', { class: 'meta', text: '바로가기' }), LINKS.map(function (l) { return h('a', { href: l[1], target: '_blank', rel: 'noopener', class: 'fin-qlink', text: l[0] + ' ↗' }); })),
       F.kpi([['통장 입금', F.man(P.M.inSum), '', P.inN + '건'], ['통장 출금', F.man(P.M.outSum), '', P.outN + '건'], ['개인 지급 (3.3%)', P.person.length + '건', '', '원천세 ' + F.man(P.person.reduce(function (a, r) { return a + (r.wht || 0); }, 0))],
         ['입금요청 지급', P.pr.length + '건'], ['증빙 확인 필요', P.noEv.length + '건', P.noEv.length ? 'red' : ''], ['발송', sent.length ? fmt.ts(sent[0].at) : '안 보냄', sent.length ? '' : 'red']]),
       P.noEv.length ? h('p', { class: 'note' }, '증빙 표시가 없는 출금이 ' + P.noEv.length + '건 있습니다. ', h('a', { href: '#tx/list/noevid', text: '거래내역 › 증빙 확인' }), '에서 먼저 표시하면 세무사 문의가 줄어듭니다. 그대로 보내도 「증빙 확인」 시트로 함께 전달됩니다.') : null,
@@ -89,21 +90,10 @@
       ui.panel('Mail · 세무사에게 바로 보내기', null, ed ? h('div', { class: 'stack fin-form' },
         h('div', { class: 'row' }, ui.field('받는 사람', to, 'grow'), ui.field('참조', cc, 'grow')), ui.field('제목', subj), ui.field('본문', body), msg,
         h('div', { class: 'row' }, ui.btn('엑셀 첨부해서 보내기', send), h('span', { class: 'meta', text: '회사 메일(' + 'HR 알림 연동 계정' + ')로 발송 · 회신은 내 이메일로 옵니다' }))) : F.readOnlyNote()),
-      ui.panel('Sent · 보낸 기록', null, hist),
-      ui.panel('결산 바로가기', null, h('div', { class: 'fin-links' }, LINKS.map(function (g) {
-        return h('div', { class: 'fin-lgrp' }, h('div', { class: 'label', text: g[0] }), g[1].map(function (l) {
-          return h('a', { href: l[1], target: '_blank', rel: 'noopener', class: 'fin-link' }, h('span', { class: 'strong', text: l[0] + ' ↗' }), h('span', { class: 'meta', text: l[2] }));
-        }));
-      }))));
+      ui.panel('Sent · 보낸 기록', null, hist));
   }
-  // 결산 · 신고 때 여는 사이트
-  var LINKS = [
-    ['세금 · 신고', [['홈택스', 'https://www.hometax.go.kr', '부가세 · 원천세 · 법인세 신고, 표준재무제표증명 발급'], ['위택스', 'https://www.wetax.go.kr', '지방소득세 · 주민세 · 등록면허세']]],
-    ['4대보험', [['4대사회보험 정보연계센터', 'https://www.4insure.or.kr', '취득 · 상실 신고, 보수총액 신고']]],
-    ['통장 · 카드 내역', [['KB국민은행 기업뱅킹', 'https://obiz.kbstar.com', '법인 통장 …5744 거래내역 엑셀'], ['IBK기업은행', 'https://www.ibk.co.kr', '중진공 대출통장 …1021 · 일반통장'],
-      ['KB국민카드', 'https://card.kbcard.com', '법인카드 …9859 승인 · 해외매입 내역'], ['신한카드', 'https://www.shinhancard.com', '법인카드 …4136 청구 내역']]],
-    ['정책자금 · 등기', [['중소벤처기업진흥공단', 'https://www.kosmes.or.kr', '정책자금 대출 · 상환'], ['대법원 인터넷등기소', 'https://www.iros.go.kr', '법인 등기부등본']]]
-  ];
+  // 결산 때 여는 사이트 — 대표 도메인 바로가기
+  var LINKS = [['국민은행', 'https://obiz.kbstar.com'], ['IBK기업은행', 'https://www.ibk.co.kr'], ['국민카드', 'https://card.kbcard.com'], ['고위드', 'https://www.gowid.com']];
 
   /* ============ 설정 ============ */
   function settings(view, parts) {

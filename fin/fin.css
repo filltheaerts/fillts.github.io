@@ -306,3 +306,6 @@ a.map-card:hover { border-color: var(--black); }
 .fin-link { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--gray-200); color: inherit; text-decoration: none; }
 .fin-link:hover { border-color: var(--black, #111); }
 .fin-link .strong { color: var(--black, #111); }
+.fin-quicklinks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; }
+.fin-qlink { padding: 4px 12px; border: 1px solid var(--gray-200); color: var(--black, #111); text-decoration: none; font-size: 13px; }
+.fin-qlink:hover { border-color: var(--black, #111); }
