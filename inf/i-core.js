@@ -42,6 +42,12 @@
     if (n >= 1e4) return (n / 1e4).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + '만';
     return n.toLocaleString('ko-KR');
   };
+  // 업로드 평균 주기 — 「N일마다」 (gapDays 없으면 주당 업로드 수로 계산)
+  I.gap = function (c) {
+    var g = c && c.gapDays ? c.gapDays : c && c.perWeek ? 7 / c.perWeek : 0;
+    if (!g) return '—';
+    return g < 1.5 ? '매일' : (g < 10 ? Math.round(g * 10) / 10 : Math.round(g)) + '일마다';
+  };
   I.pct = function (x) { return (Math.round((+x || 0) * 1000) / 10) + '%'; };
   I.won = function (n) { return n ? Math.round(n).toLocaleString('ko-KR') + '원' : ''; };
   I.ms = function (ts) { return ts && ts.toMillis ? ts.toMillis() : (typeof ts === 'number' ? ts : 0); };
@@ -120,7 +126,7 @@
   // 채널 스냅샷 — 탐색 결과에서 필요한 것만 (문서 1MB 한도 · 화면 속도)
   I.snap = function (c) {
     var o = {};
-    ['id', 'title', 'handle', 'thumb', 'country', 'desc', 'email', 'insta', 'subs', 'views', 'videos', 'since', 'topics', 'median', 'avg', 'engage', 'cat', 'shorts', 'last', 'tone', 'sample', 'recent']
+    ['id', 'title', 'handle', 'thumb', 'country', 'desc', 'email', 'insta', 'subs', 'views', 'videos', 'since', 'topics', 'median', 'avg', 'engage', 'cat', 'shorts', 'last', 'tone', 'sample', 'recent', 'reason', 'growth', 'recentMed', 'prevMed', 'cmtMed', 'cmtAvg', 'gapDays', 'cpk', 'perWeek', 'fit']
       .forEach(function (k) { if (c[k] != null) o[k] = c[k]; });
     o.keywords = (c.keywords || []).slice(0, 15);
     o.at = Date.now();

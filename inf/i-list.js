@@ -1,10 +1,12 @@
-/* fillts Influencer — 리스트: 디벨롭 이후 쌓인 모든 유튜버 데이터베이스 (엑셀처럼 한 줄씩)
-   · 직접 추가(채널 주소 · @핸들) · 한 명 / 전체 최신화 · CSV 내보내기
-   · 여기 있는 채널은 이후 탐색에서 자동 제외 (서버 infYt scan) */
+/* fillts Influencer — 리스트: 디벨롭 이후 쌓인 모든 유튜버 데이터베이스
+   · 탐색 결과처럼 한 줄 카드 · 머리줄을 누르면 그 기준으로 정렬(▼ 내림 · ▲ 오름)
+   · 직접 추가(채널 주소 · @핸들) · 한 명 / 전체 최신화 · 삭제 · CSV 내보내기
+   · 여기 있는 채널은 이후 탐색에서 자동 제외 (서버 infYt scan)
+   I.dbTable은 셀럽 화면도 같이 쓴다 */
 (function () {
   'use strict';
-  var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt;
-  var V = I.V.list = { q: '', st: '', ag: '', sort: 'at', add: '', busy: '', msg: '', err: false, prog: null, one: {} };
+  var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
+  var V = I.V.list = { q: '', st: '', ag: '', sort: 'at', dir: -1, add: '', busy: '', msg: '', err: false, prog: null, one: {} };
 
   function setMsg(t, err) { V.msg = t; V.err = !!err; HR.refresh(); }
   function addOne() {
@@ -21,46 +23,96 @@
     return I.call('infYt', { action: 'refresh', id: c.id }).then(function () { V.one[c.id] = false; HR.refresh(); })
       .catch(function (e) { V.one[c.id] = false; ui.toast(c.ch.title + ' — ' + e.message); });
   }
-  // 전체 최신화: 한 명씩 차례로 (채널당 ≈ 5 units — 100명이면 할당량의 5%)
+  // 전체 최신화: 한 명씩 차례로 (채널당 ≈ 5 units)
   function refreshAll(list) {
     if (V.prog) return;
     V.prog = { i: 0, n: list.length, fail: 0 }; HR.refresh();
     var next = function () {
       if (!V.prog) return;
       if (V.prog.i >= list.length) { var f = V.prog.fail; V.prog = null; setMsg('전체 최신화를 마쳤습니다.' + (f ? ' (실패 ' + f + '명)' : '')); return; }
-      var c = list[V.prog.i];
-      I.call('infYt', { action: 'refresh', id: c.id }).catch(function () { V.prog.fail++; }).then(function () { if (V.prog) { V.prog.i++; HR.refresh(); next(); } });
+      I.call('infYt', { action: 'refresh', id: list[V.prog.i].id }).catch(function () { V.prog.fail++; }).then(function () { if (V.prog) { V.prog.i++; HR.refresh(); next(); } });
     };
     next();
   }
+
+  /* ---------- 공용: 정렬되는 한 줄 카드 표 ---------- */
+  var SORTS = {
+    title: function (c) { return (c.ch.title || '').toLowerCase(); }, subs: function (c) { return c.ch.subs || 0; }, median: function (c) { return c.ch.median || 0; },
+    cmt: function (c) { return c.ch.cmtAvg != null ? c.ch.cmtAvg : c.ch.cmtMed || 0; }, gap: function (c) { return c.ch.gapDays || (c.ch.perWeek ? 7 / c.ch.perWeek : 9999); },
+    growth: function (c) { return c.ch.growth || 0; }, at: function (c) { return I.ms(c.at); }, upd: function (c) { return c.ch.at || 0; },
+    stage: function (c) { return (I.ST[c.stage || 'review'] || {}).no || 0; }, prio: function (c) { return c.prio || 9; }
+  };
+  I.sortRows = function (list, st) {
+    var k = SORTS[st.sort] || SORTS.at, d = st.dir || -1;
+    return list.slice().sort(function (a, b) { var x = k(a), y = k(b); return (x > y ? 1 : x < y ? -1 : 0) * d; });
+  };
+  function stat(k, v, cls) { return h('div', { class: 'in-stat' + (cls ? ' ' + cls : '') }, h('span', { class: 'in-stat-k', text: k }), h('b', { text: v })); }
+  // opt: { st: 정렬 상태, cols: [[키, 이름]], tags(c), side(c), acts(c), onRow(c) }
+  I.dbTable = function (list, opt) {
+    var st = opt.st;
+    var hcell = function (key, label, cls) {
+      var on = st.sort === key;
+      return h('button', { type: 'button', class: 'in-sorth ' + (cls || '') + (on ? ' on' : ''), title: '눌러서 정렬 — 한 번 더 누르면 반대로',
+        text: label + (on ? (st.dir < 0 ? ' ▼' : ' ▲') : ''), onclick: function () {
+          if (st.sort === key) st.dir = -st.dir; else { st.sort = key; st.dir = key === 'title' || key === 'gap' || key === 'prio' ? 1 : -1; }
+          HR.refresh();
+        } });
+    };
+    var head = h('div', { class: 'in-row in-row-head in-dbrow' },
+      h('div', { class: 'in-r-cb' }, hcell('at', '#')),
+      h('div', { class: 'in-r-ch' }, hcell('title', '채널'), opt.sideHead ? hcell(opt.sideHead[0], opt.sideHead[1]) : null),
+      h('div', { class: 'in-r-stats' }, hcell('subs', '구독'), hcell('median', '조회'), hcell('cmt', '댓글수'), hcell('gap', '주기'), hcell('growth', '상승')),
+      h('div', { class: 'in-r-side' }, opt.metaHead ? hcell(opt.metaHead[0], opt.metaHead[1]) : null, hcell('upd', '최신화')));
+    var rows = I.sortRows(list, st).map(function (c, i) {
+      var ch = c.ch || {};
+      return h('div', { class: 'in-row in-dbrow clickable', tabindex: '0', onclick: function () { opt.onRow(c); }, onkeydown: function (e) { if (e.key === 'Enter') opt.onRow(c); } },
+        h('div', { class: 'in-r-cb meta', text: String(i + 1) }),
+        h('div', { class: 'in-r-ch' }, I.thumb(ch, 'sm'), h('div', { class: 'in-r-t' },
+          h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: ch.title + ' ' + (ch.handle || ''), text: ch.title }), I.ytBtn(ch)),
+          h('div', { class: 'in-r-tags' }, opt.tags(c)))),
+        h('div', { class: 'in-r-stats' }, stat('구독', I.cnt(ch.subs)), stat('조회', ch.median != null ? I.cnt(ch.median) : '—'),
+          stat('댓글수', ch.cmtAvg != null ? I.cnt(ch.cmtAvg) : ch.cmtMed != null ? I.cnt(ch.cmtMed) : '—'), stat('주기', I.gap(ch)),
+          stat('상승', ch.growth ? ch.growth + '배' : '—', ch.growth >= 1.2 ? 'red' : '')),
+        h('div', { class: 'in-r-side' }, opt.side(c), h('div', { class: 'in-r-acts' }, opt.acts(c))));
+    });
+    return h('div', { class: 'in-rows' }, head, rows.length ? rows : h('p', { class: 'empty', text: opt.empty || '비어 있습니다.' }));
+  };
+  I.updBtn = function (busy, onclick) { return h('button', { type: 'button', class: 'in-mv', title: '지표 최신화', text: busy ? '…' : '↻', onclick: function (e) { e.stopPropagation(); if (!busy) onclick(); } }); };
+  I.delBtn = function (onDel) {
+    var b = h('button', { type: 'button', class: 'in-mv in-del', title: '삭제 — 한 번 더 누르면 삭제', text: '삭제' });
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (b.dataset.armed) { onDel(); return; }
+      b.dataset.armed = '1'; b.textContent = '정말?';
+      setTimeout(function () { if (b.isConnected) { delete b.dataset.armed; b.textContent = '삭제'; } }, 3000);
+    });
+    return b;
+  };
+  function dayOf(ms) { return ms ? new Date(ms + 9 * 3600000).toISOString().slice(2, 10).replace(/-/g, '.') : '—'; }
+  I.dayOf = dayOf;
+
   function filtered() {
     var q = V.q.trim().toLowerCase();
-    var list = I.creators.filter(function (c) {
+    return I.creators.filter(function (c) {
       var ch = c.ch || {};
       if (V.st && (c.stage || 'review') !== V.st) return false;
       if (V.ag) { var p = I.agency(Object.assign({}, ch, { email: c.email || ch.email })).p; if ((V.ag === 'agency' && !p) || (V.ag === 'solo' && p)) return false; }
       if (q && ((ch.title || '') + ' ' + (ch.handle || '') + ' ' + (c.email || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.seedTitle || '')).toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
-    var key = {
-      at: function (c) { return I.ms(c.at); }, subs: function (c) { return c.ch.subs || 0; }, growth: function (c) { return c.ch.growth || 0; },
-      cmt: function (c) { return c.ch.cmtMed || 0; }, score: function (c) { return c.score || 0; }, upd: function (c) { return c.ch.at || 0; }
-    }[V.sort] || function (c) { return I.ms(c.at); };
-    return list.sort(function (a, b) { return key(b) - key(a); });
   }
   function csv(list) {
     var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
-    var rows = [['채널', '핸들', '채널 주소', '구독자', '중앙 조회', '조회 상승(배)', '영상당 댓글', '1천회당 댓글', '소속', '메일', '단계', '담당', '출처', '추가일', '최신화']];
-    list.forEach(function (c) {
+    var rows = [['채널', '핸들', '채널 주소', '구독자', '중앙 조회', '평균 댓글', '업로드 주기', '조회 상승(배)', '소속', '메일', '단계', '담당', '출처', '추가일', '최신화']];
+    I.sortRows(list, V).forEach(function (c) {
       var ch = c.ch || {}, ag = I.agency(Object.assign({}, ch, { email: c.email || ch.email }));
-      rows.push([ch.title, ch.handle, I.chUrl(ch), ch.subs, ch.median, ch.growth, ch.cmtMed, ch.cpk, ag.p ? '소속 ' + ag.p + '%' : '개인', c.email || ch.email || '',
-        I.stName(c.stage), c.owner ? HR.name(c.owner) : '', c.seedTitle || '', c.at && c.at.toDate ? fmt.dot(HR.L.kstDate(c.at.toDate())) : '', ch.at ? fmt.dot(new Date(ch.at + 9 * 3600000).toISOString().slice(0, 10)) : '']);
+      rows.push([ch.title, ch.handle, I.chUrl(ch), ch.subs, ch.median, ch.cmtAvg != null ? ch.cmtAvg : ch.cmtMed, I.gap(ch), ch.growth, ag.p ? '소속 ' + ag.p + '%' : '개인', c.email || ch.email || '',
+        I.stName(c.stage), c.owner ? HR.name(c.owner) : '', c.seedTitle || '', c.at && c.at.toDate ? dayOf(c.at.toDate().getTime()) : '', dayOf(ch.at)]);
     });
     var blob = new Blob(['﻿' + rows.map(function (r) { return r.map(q).join(','); }).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = h('a', { href: URL.createObjectURL(blob), download: 'fillts_influencer_list_' + fmt.today() + '.csv' });
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
-  function dayOf(ms) { return ms ? new Date(ms + 9 * 3600000).toISOString().slice(2, 10).replace(/-/g, '.') : '—'; }
 
   function render(view) {
     var list = filtered();
@@ -72,36 +124,30 @@
     if (V.prog || !list.length) allBtn.disabled = true;
     var stSel = ui.select([['', '모든 단계']].concat(I.STAGES.map(function (s) { return [s.id, s.name + ' (' + I.byStage(s.id).length + ')']; })), V.st, { onchange: function () { V.st = this.value; HR.refresh(); } });
     var agSel = ui.select([['', '소속 · 개인 전체'], ['agency', '소속 유튜버 (50% 이상)'], ['solo', '개인 유튜버']], V.ag, { onchange: function () { V.ag = this.value; HR.refresh(); } });
-    var sortSel = ui.select([['at', '최근 추가순'], ['subs', '구독자순'], ['growth', '조회 상승순'], ['cmt', '댓글순'], ['score', '점수순'], ['upd', '최신화 순']], V.sort, { onchange: function () { V.sort = this.value; HR.refresh(); } });
     var q = ui.input({ value: V.q, placeholder: '채널 · 메일 · 태그 · 출처 검색 (Enter)', onchange: function () { V.q = this.value; HR.refresh(); } });
 
-    var head = ['#', '채널', '구독', '조회 상승', '댓글/편', '소속', '메일', '단계', '출처', '최신화'];
-    var body = list.map(function (c, i) {
-      var ch = c.ch || {}, ag = I.agency(Object.assign({}, ch, { email: c.email || ch.email }));
-      var re = h('button', { type: 'button', class: 'in-mv', title: '이 채널 지표 최신화', text: V.one[c.id] ? '…' : '↻', onclick: function (e) { e.stopPropagation(); if (!V.one[c.id]) refreshOne(c); } });
-      return h('tr', { class: 'clickable', onclick: function () { HR.go('c/' + c.id); } },
-        h('td', { class: 'num meta', text: String(i + 1) }),
-        h('td', null, h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: ch.title + ' ' + (ch.handle || ''), text: ch.title }), I.ytBtn(ch))),
-        h('td', { class: 'num', text: I.cnt(ch.subs) }),
-        h('td', { class: 'num' + (ch.growth >= 1.2 ? ' red' : ''), text: ch.growth ? ch.growth + '배' : '—' }),
-        h('td', { class: 'num', text: ch.cmtMed != null ? ch.cmtMed + '개' : '—' }),
-        h('td', null, I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }), true)),
-        h('td', { class: 'in-ell', title: c.email || ch.email || '', text: c.email || ch.email ? '있음' : '—' }),
-        h('td', null, I.stTag(c.stage)),
-        h('td', { class: 'in-ell meta', title: c.seedTitle || '', text: c.seedTitle || '—' }),
-        h('td', { class: 'in-upd' }, h('span', { class: 'meta', text: dayOf(ch.at) }), re));
+    var table = I.dbTable(list, {
+      st: V, sideHead: ['stage', '단계'], metaHead: ['at', '추가일'],
+      tags: function (c) {
+        var ch = c.ch || {};
+        return [I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }), true), c.email || ch.email ? h('span', { class: 'tag', text: '메일' }) : null, I.stTag(c.stage)];
+      },
+      side: function (c) { return h('div', { class: 'in-r-src' }, h('div', { class: 'meta in-ell', title: c.seedTitle || '', text: c.seedTitle || '—' }), h('div', { class: 'meta', text: '추가 ' + (c.at && c.at.toDate ? dayOf(c.at.toDate().getTime()) : '—') + ' · 최신 ' + dayOf((c.ch || {}).at) })); },
+      acts: function (c) {
+        return [I.updBtn(V.one[c.id], function () { refreshOne(c); }),
+          (c.by === S.mid || S.isAdmin) ? I.delBtn(function () { db.doc('inf_creators/' + c.id).delete().then(function () { ui.toast('「' + c.ch.title + '」을(를) 리스트에서 삭제했습니다.'); }).catch(ui.fail); }) : null];
+      },
+      onRow: function (c) { HR.go('c/' + c.id); },
+      empty: I.creators.length ? '조건에 맞는 유튜버가 없습니다.' : '아직 리스트가 비어 있습니다. 탐색 결과에서 체크해 「디벨롭으로 추가」하거나 위에서 직접 추가하세요.'
     });
     ui.put(view,
       ui.head('List', '리스트', h('div', { class: 'row' }, allBtn, ui.btn('CSV 내보내기', function () { csv(list); }, 'btn-line btn-sm'))),
       ui.panel(null, null,
         h('div', { class: 'row in-seed-form' }, addIn, addBtn),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
-        h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트에 있는 채널은 다음 탐색부터 자동으로 빠져 중복되지 않습니다. 줄을 누르면 채널 데이터베이스(연락 · 메일 · 계약 · 시딩 · 기록)가 열리고, ↻ 로 구독 · 조회 · 댓글 지표를 최신으로 다시 읽습니다.' })),
-      h('div', { class: 'toolbar in-toolbar' }, q, stSel, agSel, sortSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명' })),
-      h('div', { class: 'in-xls-wrap' }, h('table', { class: 'table in-xls' },
-        h('colgroup', null, [36, 0, 64, 70, 66, 92, 52, 84, 0, 92].map(function (w) { var c = h('col'); if (w) c.style.width = w + 'px'; return c; })),
-        h('thead', null, h('tr', null, head.map(function (x, i) { return h('th', { class: i === 0 || (i >= 2 && i <= 4) ? 'num' : '', text: x }); }))),
-        h('tbody', null, body.length ? body : h('tr', null, h('td', { colspan: String(head.length), class: 'empty', text: I.creators.length ? '조건에 맞는 유튜버가 없습니다.' : '아직 리스트가 비어 있습니다. 탐색 결과에서 체크해 「디벨롭으로 추가」하거나 위에서 직접 추가하세요.' }))))));
+        h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트의 채널은 다음 탐색부터 자동으로 빠집니다. 머리줄(구독 · 조회 · 댓글수 · 주기 · 상승 …)을 누르면 그 기준으로 정렬되고, 한 번 더 누르면 반대로 정렬됩니다. 줄을 누르면 채널 데이터베이스가 열립니다.' })),
+      h('div', { class: 'toolbar in-toolbar' }, q, stSel, agSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명' })),
+      table);
   }
   HR.register('list', { render: function (view) { render(view); } });
 })();

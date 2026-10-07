@@ -187,7 +187,7 @@ button.in-chip:hover { border-color: var(--black); }
 
 /* 탐색 결과 — 가로 스크롤 없는 한 줄 카드 */
 .in-rows { border: 1px solid var(--gray-200); background: var(--paper); }
-.in-row { display: grid; grid-template-columns: 40px 52px minmax(210px, 1.1fr) minmax(200px, 1fr) minmax(0, 1.4fr); gap: 14px; align-items: center;
+.in-row { display: grid; grid-template-columns: 40px 52px minmax(190px, 1fr) minmax(300px, 1.3fr) minmax(0, 1.1fr); gap: 14px; align-items: center;
   padding: 10px 16px; border-top: 1px solid var(--gray-200); }
 .in-row:first-child { border-top: 0; }
 .in-row.clickable { cursor: pointer; }
@@ -207,7 +207,7 @@ button.in-chip:hover { border-color: var(--black); }
 .in-r-nm .in-yt { margin-left: 0; padding: 1px 6px; font-size: 10px; }
 .in-r-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
 .in-r-tags .tag { font-size: 10px; }
-.in-r-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.in-r-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .in-row-head .in-r-stats { display: block; }
 .in-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .in-stat-k { font-size: 10px; color: var(--gray-400); white-space: nowrap; }
@@ -219,7 +219,7 @@ button.in-chip:hover { border-color: var(--black); }
 .in-row-detail .in-cand { border-bottom: 0; }
 .in-r-agwhy { padding: 12px 24px 0; }
 @media (max-width: 1100px) {
-  .in-row { grid-template-columns: 40px 48px minmax(0, 1fr) minmax(180px, 0.9fr); }
+  .in-row { grid-template-columns: 40px 48px minmax(0, 1fr) minmax(280px, 1.2fr); }
   .in-row .in-r-why { grid-column: 3 / -1; }
   .in-row-head .in-r-why { display: none; }
 }
@@ -274,4 +274,33 @@ td.in-ell { display: table-cell; }
   .nav-links a { font-size: 10px; letter-spacing: 0.06em; }
   .nav-links .nav-ext-hide { display: none; }
   .nav-user span { display: none; }
+}
+
+/* 셀럽 메뉴 — 대표님 지정: 초록 글자 */
+.nav-links a.nav-celeb { color: #1f7a4d; font-weight: 600; }
+.nav-links a.nav-celeb::after { background: #1f7a4d; }
+
+/* 리스트 · 셀럽 — 정렬되는 카드 줄 */
+.in-dbrow { grid-template-columns: 34px minmax(220px, 1.2fr) minmax(320px, 1.5fr) minmax(170px, 0.9fr); }
+.in-row-head.in-dbrow { text-transform: none; letter-spacing: 0; }
+.in-row-head.in-dbrow .in-r-stats { display: grid; }
+.in-row-head .in-r-ch, .in-row-head .in-r-side { display: flex; gap: 10px; align-items: center; }
+.in-sorth { border: 0; background: none; padding: 2px 0; font: inherit; font-size: 10px; letter-spacing: 0.08em; color: var(--gray-400); cursor: pointer; text-align: left; white-space: nowrap; }
+.in-sorth:hover { color: var(--black); }
+.in-sorth.on { color: var(--red); font-weight: 600; }
+.in-r-side { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.in-r-src { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.in-r-acts { display: flex; gap: 4px; flex: none; }
+.in-mv.in-del { color: var(--red); border-color: var(--gray-200); }
+.in-mv.in-del:hover { border-color: var(--red); }
+.tag.in-prio.p1 { color: var(--white); background: var(--black); border-color: var(--black); }
+@media (max-width: 1100px) {
+  .in-dbrow { grid-template-columns: 30px minmax(0, 1fr) minmax(280px, 1.3fr); }
+  .in-dbrow .in-r-side { grid-column: 2 / -1; }
+  .in-row-head.in-dbrow .in-r-side { display: none; }
+}
+@media (max-width: 640px) {
+  .in-dbrow { grid-template-columns: 24px minmax(0, 1fr); }
+  .in-dbrow .in-r-stats, .in-dbrow .in-r-side { grid-column: 2 / -1; }
+  .in-row-head.in-dbrow { display: none; }
 }

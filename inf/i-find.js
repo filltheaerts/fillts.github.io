@@ -4,17 +4,31 @@
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
   var V = I.V.find = { input: '', seed: null, kw: [], custom: '', range: 'wide', n: '30', mode: 'similar', maxSubs: '100000', preset: '', busy: '', msg: '', err: false,
     sel: {}, sort: 'score', onlyMail: false, onlyNew: false, ag: '', q: '', open: {}, skipSeen: false,
-    cond: { kw: [], custom: '', minSubs: '1000', maxSubs: '100000', days: '90', minGrowth: '0', minCmt: '0', mailOnly: false, n: '30', preset: '' },
-    rnd: { src: { preset: true, past: true, list: true }, last: [] } };
+    cond: { kw: [], custom: '', minSubs: '3000', maxSubs: '100000', days: '90', minGrowth: '0', minCmt: '3', minMedian: '2000', mailOnly: false, n: '40', preset: '', fitOn: true },
+    rnd: { cats: ['cleanse', 'skin3040', 'clean', 'premium', 'selfcare'], src: { past: false, list: false }, last: [] } };
   var TABS = [['', '① 비슷한 유튜버 찾기'], ['cond', '② 조건 탐색'], ['random', '③ 랜덤 탐색']];
   var RANGES = [['near', '비슷하게 — 구독자 1/3 ~ 3배'], ['wide', '넓게 — 1/10 ~ 10배'], ['all', '구독자 상관없이']];
   var MODES = [['similar', '비슷한 채널 — 키워드 · 구독자 규모 · 댓글 톤'], ['rising', '라이징 — 구독 상한 아래 · 조회수 상승 · 댓글 활발']];
   var MAXSUBS = [['10000', '1만 미만'], ['30000', '3만 미만'], ['50000', '5만 미만'], ['100000', '10만 미만'], ['300000', '30만 미만']];
-  // 카테고리 프리셋: 알고리즘 + 컨셉 키워드 묶음 (씨드 채널 키워드는 따로 더 고를 수 있다)
+  // 카테고리 프리셋 — 바인그라피 기준 (포도 클린뷰티 클렌징 젤 · 오일, 3~5만원 프리미엄, 30~55세 「뷰티를 알고 좋은 걸 사는」 여성, 자기 돌봄)
+  // 알고리즘 메뉴에서 팀 공용으로 고치면 그 목록이 우선한다
   var PRESETS = [
-    { id: 'baby', name: '임신 · 육아', mode: 'rising', maxSubs: '100000', keywords: ['육아 브이로그', '임신 브이로그', '신생아', '아기랑 여행', '육아'],
-      desc: '구독 10만 미만 · 최근 90일 영상 · 조회수 상승 · 댓글 활발 — 엄마 시청자 · 공감 댓글이 많은 육아 채널' }
+    { id: 'cleanse', name: '클렌징 · 세안', mode: 'rising', maxSubs: '100000', keywords: ['클렌징 루틴', '약산성 클렌저', '세안법', '클렌징젤 추천', '이중세안'],
+      extra: ['클렌징 오일', '모공 클렌징', '저자극 클렌저'], desc: '바인그라피 본품 카테고리 — 세안 · 클렌저 리뷰 · 세안 루틴을 다루는 채널' },
+    { id: 'skin3040', name: '3040 스킨케어', mode: 'rising', maxSubs: '100000', keywords: ['30대 스킨케어', '40대 피부관리', '스킨케어 루틴', '피부 장벽', '민감성 피부'],
+      extra: ['안티에이징', '기초 화장품 추천', '피부과 루틴'], desc: '핵심 타깃 30~55세 여성 — 피부 고민 · 루틴을 말하는 채널' },
+    { id: 'clean', name: '클린뷰티 · 성분', mode: 'rising', maxSubs: '100000', keywords: ['클린뷰티', '화장품 성분', '전성분 분석', '성분 리뷰', '순한 화장품'],
+      extra: ['비건 화장품', '화장품 처방'], desc: '「전성분 1번이 포도」 증명형 — 성분 · 처방을 따지는 채널' },
+    { id: 'premium', name: '프리미엄 · 내돈내산', mode: 'rising', maxSubs: '100000', keywords: ['내돈내산 화장품', '인생템 스킨케어', '프리미엄 스킨케어', '화장대 소개', '스킨케어 하울'],
+      extra: ['백화점 화장품', '선물하기 좋은 화장품'], desc: '3~5만원 프리미엄 — 좋은 걸 골라 사는 소비자에게 닿는 채널' },
+    { id: 'selfcare', name: '자기 돌봄 · 루틴', mode: 'rising', maxSubs: '100000', keywords: ['모닝루틴', '나이트루틴', '셀프케어', '자기관리 브이로그', '30대 일상 브이로그'],
+      extra: ['미니멀 라이프', '오늘의 루틴'], desc: '「내 피부에 매일 좋은 걸」 — 자기 돌봄 · 감도 있는 일상 채널' },
+    { id: 'baby', name: '임신 · 육아', mode: 'rising', maxSubs: '100000', fit: false, keywords: ['육아 브이로그', '임신 브이로그', '신생아', '아기랑 여행', '육아'],
+      desc: '엄마 시청자 · 공감 댓글이 많은 육아 채널 (브랜드 적합 조건 없이)' }
   ];
+  // 브랜드 적합 단어 — 채널에 하나라도 있어야 「브랜드 적합」 (알고리즘 메뉴 cfg.brandFit으로 덮어쓰기 가능)
+  var BRAND_FIT = ['클렌징', '클렌저', '세안', '스킨케어', '피부', '화장품', '성분', '뷰티', '루틴', '피부관리', '기초', '민감성', '약산성', '모공', '각질', '보습', '셀프케어', '자기관리'];
+  I.brandFit = function () { return (I.cfg.brandFit && I.cfg.brandFit.length ? I.cfg.brandFit : BRAND_FIT).slice(0, 30); };
   I.PRESETS = PRESETS;
   I.presetList = function () { return I.cfg.presets && I.cfg.presets.length ? I.cfg.presets : PRESETS; };
 
@@ -110,47 +124,63 @@
     ui.put(view, parts);
   }
 
-  /* ---------- ② 조건 탐색: 씨드 없이 키워드 + 조건 ---------- */
+  /* ---------- ② 조건 탐색: 씨드 없이 키워드 + 조건 (기본값 = 바인그라피 브랜드 기준) ---------- */
+  function condParams(C) {
+    return { action: 'scan', mode: 'cond', minSubs: +C.minSubs, maxSubs: +C.maxSubs, days: +C.days, minGrowth: +C.minGrowth, minCmt: +C.minCmt,
+      minMedian: +C.minMedian, minVideos: 10, mailOnly: C.mailOnly, n: +C.n, skipSeen: V.skipSeen,
+      fit: C.fitOn ? I.brandFit() : [], fitRequired: !!C.fitOn };
+  }
   function condRun(kw, opt, label) {
     var C = V.cond;
     V.busy = 'cond'; setMsg('「' + kw.join(' · ') + '」 조건으로 찾는 중입니다… (20 ~ 60초)');
-    return I.call('infYt', Object.assign({ action: 'scan', mode: 'cond', keywords: kw, minSubs: +C.minSubs, maxSubs: +C.maxSubs, days: +C.days,
-      minGrowth: +C.minGrowth, minCmt: +C.minCmt, mailOnly: C.mailOnly, n: +C.n, preset: label || C.preset, skipSeen: V.skipSeen }, opt || {}))
+    return I.call('infYt', Object.assign(condParams(C), { keywords: kw, preset: label || C.preset }, opt || {}))
       .then(function (r) { V.busy = ''; V.msg = ''; ui.toast(doneText(r)); HR.go('find/' + r.id); })
       .catch(function (e) { V.busy = ''; setMsg(e.message, true); });
   }
   function kwPicker(list, max, onChange) {
-    var custom = ui.input({ maxlength: '30', placeholder: '키워드 입력 후 Enter — 예: 육아 브이로그, 민감성 피부',
+    var custom = ui.input({ maxlength: '30', placeholder: '키워드 입력 후 Enter — 예: 약산성 클렌저, 30대 스킨케어',
       onkeydown: function (e) { if (e.key === 'Enter' && this.value.trim()) { var k = this.value.trim(); if (list.indexOf(k) < 0 && list.length < max) list.push(k); this.value = ''; onChange(); } } });
     return h('div', { class: 'stack sm' },
       h('div', { class: 'in-chips' }, list.length ? list.map(function (k, i) {
         return h('button', { type: 'button', class: 'in-chip on', text: k + ' ×', onclick: function () { list.splice(i, 1); onChange(); } });
       }) : h('span', { class: 'meta', text: '1 ~ ' + max + '개' })), custom);
   }
-  function sel(opts, val, set) { return ui.select(opts, val, { onchange: function () { set(this.value); } }); }
+  function sel(opts, val, set) { return ui.select(opts, val, { onchange: function () { set(this.value); HR.refresh(); } }); }
+  // 조건 입력 — 조건 탐색 · 랜덤 탐색이 같이 쓴다
+  function condFields() {
+    var C = V.cond;
+    return [
+      h('div', { class: 'row in-opts' },
+        ui.field('최소 구독', sel([['0', '제한 없음'], ['1000', '1천'], ['3000', '3천'], ['5000', '5천'], ['10000', '1만'], ['30000', '3만'], ['50000', '5만']], C.minSubs, function (v) { C.minSubs = v; })),
+        ui.field('구독 상한 (미만)', sel([['30000', '3만'], ['50000', '5만'], ['100000', '10만'], ['300000', '30만'], ['1000000', '100만'], ['0', '제한 없음']], C.maxSubs, function (v) { C.maxSubs = v; })),
+        ui.field('최근 영상 기간', sel([['30', '30일'], ['60', '60일'], ['90', '90일'], ['180', '180일'], ['365', '1년']], C.days, function (v) { C.days = v; })),
+        ui.field('중앙 조회 (쓸만한 바닥선)', sel([['0', '상관없음'], ['500', '500회 이상'], ['1000', '1천 이상'], ['2000', '2천 이상'], ['5000', '5천 이상'], ['10000', '1만 이상']], C.minMedian, function (v) { C.minMedian = v; }))),
+      h('div', { class: 'row in-opts' },
+        ui.field('조회 상승 (최근 5편 ÷ 이전)', sel([['0', '상관없음'], ['1', '1배 이상 (유지 · 상승)'], ['1.2', '1.2배 이상'], ['1.5', '1.5배 이상'], ['2', '2배 이상']], C.minGrowth, function (v) { C.minGrowth = v; })),
+        ui.field('영상당 댓글 (중앙)', sel([['0', '상관없음'], ['3', '3개 이상'], ['5', '5개 이상'], ['10', '10개 이상'], ['30', '30개 이상'], ['50', '50개 이상']], C.minCmt, function (v) { C.minCmt = v; })),
+        ui.field('깊게 볼 후보 수', sel([['30', '30명'], ['40', '40명']], C.n, function (v) { C.n = v; }))),
+      h('div', { class: 'row in-opts' },
+        h('label', { class: 'check', title: '채널 제목 · 설명 · 최근 영상에 브랜드 관련 단어가 하나도 없으면 뺍니다. 점수의 20%가 브랜드 적합도입니다.' },
+          h('input', { type: 'checkbox', checked: C.fitOn, onchange: function () { C.fitOn = this.checked; HR.refresh(); } }), ' 바인그라피 브랜드 적합 채널만 (클렌징 · 스킨케어 · 성분 · 루틴 …)'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: C.mailOnly, onchange: function () { C.mailOnly = this.checked; } }), ' 메일 공개한 채널만'),
+        dedupBox())
+    ];
+  }
   function condTab(view) {
     var C = V.cond;
     var presets = h('div', { class: 'in-chips' }, I.presetList().map(function (pr) {
-      return h('button', { type: 'button', class: 'in-chip' + (C.preset === pr.id ? ' on' : ''), title: pr.desc, text: '카테고리 · ' + pr.name, onclick: function () {
-        C.preset = pr.id; C.kw = pr.keywords.slice(0, 5); if (pr.maxSubs) C.maxSubs = String(pr.maxSubs); HR.refresh();
+      return h('button', { type: 'button', class: 'in-chip' + (C.preset === pr.id ? ' on' : ''), title: pr.desc, text: pr.name, onclick: function () {
+        C.preset = pr.id; C.kw = pr.keywords.slice(0, 5); if (pr.maxSubs) C.maxSubs = String(pr.maxSubs); C.fitOn = pr.fit !== false; HR.refresh();
       } });
     }));
     var go = ui.btn(V.busy === 'cond' ? '찾는 중…' : '조건으로 찾기', function () { if (!C.kw.length) return setMsg('키워드를 하나 이상 넣으세요.', true); condRun(C.kw.slice()); });
     if (V.busy) go.disabled = true;
     ui.put(view, ui.head('Discover', '탐색'), ui.tabs(TABS, 'cond', 'find'),
       ui.panel('조건 탐색 — 씨드 없이 키워드와 조건으로', h('span', { class: 'meta', text: I.quotaText() }),
-        h('p', { class: 'note', text: '기준 유튜버 없이, 주제 키워드로 최근 영상을 검색한 뒤 구독자 · 조회 상승 · 댓글 조건에 맞는 채널만 남깁니다. 점수 = ' + condW() + '.' }),
-        h('div', { class: 'label in-sub', text: '카테고리 프리셋' }), presets,
+        h('p', { class: 'note', text: '기준 유튜버 없이, 주제 키워드로 최근 영상을 검색한 뒤 조건에 맞는 채널만 남깁니다. 기본값은 바인그라피 기준(구독 3천 ~ 10만 · 중앙 조회 2천 이상 · 브랜드 적합)입니다. 점수 = ' + condW() + (C.fitOn ? ' → 여기에 브랜드 적합도 20%' : '') + '.' }),
+        h('div', { class: 'label in-sub', text: '카테고리 (바인그라피 기준)' }), presets,
         h('div', { class: 'label in-sub', text: '키워드 (1 ~ 5개)' }), kwPicker(C.kw, 5, HR.refresh),
-        h('div', { class: 'row in-opts' },
-          ui.field('최소 구독', sel([['0', '제한 없음'], ['1000', '1천'], ['5000', '5천'], ['10000', '1만'], ['30000', '3만'], ['50000', '5만'], ['100000', '10만']], C.minSubs, function (v) { C.minSubs = v; })),
-          ui.field('구독 상한 (미만)', sel([['10000', '1만'], ['30000', '3만'], ['50000', '5만'], ['100000', '10만'], ['300000', '30만'], ['1000000', '100만'], ['0', '제한 없음']], C.maxSubs, function (v) { C.maxSubs = v; })),
-          ui.field('최근 영상 기간', sel([['30', '30일'], ['60', '60일'], ['90', '90일'], ['180', '180일'], ['365', '1년']], C.days, function (v) { C.days = v; }))),
-        h('div', { class: 'row in-opts' },
-          ui.field('조회 상승 (최근 5편 ÷ 이전)', sel([['0', '상관없음'], ['1', '1배 이상 (유지 · 상승)'], ['1.2', '1.2배 이상'], ['1.5', '1.5배 이상'], ['2', '2배 이상']], C.minGrowth, function (v) { C.minGrowth = v; })),
-          ui.field('영상당 댓글', sel([['0', '상관없음'], ['5', '5개 이상'], ['10', '10개 이상'], ['30', '30개 이상'], ['50', '50개 이상'], ['100', '100개 이상']], C.minCmt, function (v) { C.minCmt = v; })),
-          ui.field('깊게 볼 후보 수', sel([['20', '20명'], ['30', '30명'], ['40', '40명']], C.n, function (v) { C.n = v; }))),
-        h('div', { class: 'row in-opts' }, h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: C.mailOnly, onchange: function () { C.mailOnly = this.checked; } }), ' 메일 공개한 채널만'), dedupBox()),
+        condFields(),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
         h('div', { class: 'row' }, go, h('span', { class: 'meta', text: '조건이 엄격하면 결과가 적게 나옵니다 — 기간을 늘리거나 조건을 풀어 보세요.' }))),
       pastPanel(''));
@@ -161,40 +191,73 @@
     return Object.keys(w).filter(function (k) { return +w[k]; }).map(function (k) { return nm[k] + ' ' + w[k] + '%'; }).join(' · ');
   }
 
-  /* ---------- ③ 랜덤 탐색: 키워드 풀에서 무작위로 골라 지난 탐색과 겹치지 않는 20명씩 ---------- */
+  /* ---------- ③ 랜덤 탐색: 고른 카테고리에서 키워드 3개를 무작위로 → 겹치지 않는 20명씩 ---------- */
   function rndPool() {
-    var R = V.rnd.src, pool = {};
+    var R = V.rnd, pool = {};
     var add = function (k, src) { k = String(k || '').trim(); if (k && k.length >= 2 && k.length <= 20) (pool[k] = pool[k] || []).push(src); };
-    if (R.preset) I.presetList().forEach(function (p) { (p.keywords || []).forEach(function (k) { add(k, '프리셋'); }); });
-    if (R.past) I.scans.forEach(function (s) { (s.concept || []).forEach(function (k) { add(k, '지난 탐색'); }); });
-    if (R.list) I.creators.forEach(function (c) { ((c.ch && c.ch.keywords) || []).slice(0, 3).concat(c.tags || []).forEach(function (k) { add(k, '리스트'); }); });
+    I.presetList().forEach(function (p) { if (R.cats.indexOf(p.id) >= 0) (p.keywords || []).concat(p.extra || []).forEach(function (k) { add(k, p.name); }); });
+    if (R.src.past) I.scans.forEach(function (s) { (s.concept || []).forEach(function (k) { add(k, '지난 탐색'); }); });
+    if (R.src.list) I.creators.forEach(function (c) { (c.tags || []).forEach(function (k) { add(k, '리스트'); }); });
     return Object.keys(pool);
   }
   function pick(arr, n) { var a = arr.slice(), out = []; while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]); return out; }
   function randomRun() {
     var pool = rndPool();
-    if (!pool.length) return setMsg('키워드 풀이 비었습니다. 프리셋을 만들거나 탐색 · 리스트를 먼저 쌓아 주세요.', true);
+    if (!pool.length) return setMsg('카테고리를 하나 이상 고르세요.', true);
     var kw = pick(pool, 3);
     V.rnd.last = kw; V.skipSeen = true;
-    condRun(kw, { n: 30, skipSeen: true }, 'random');
+    condRun(kw, { n: 40, skipSeen: true }, 'random');
   }
   I.randomRun = randomRun;
   function randomTab(view) {
-    var R = V.rnd, pool = rndPool(), C = V.cond;
+    var R = V.rnd, pool = rndPool();
+    var cats = h('div', { class: 'in-chips' }, I.presetList().map(function (p) {
+      var on = R.cats.indexOf(p.id) >= 0;
+      return h('button', { type: 'button', class: 'in-chip' + (on ? ' on' : ''), title: (p.keywords || []).join(' · '), text: (on ? '✓ ' : '+ ') + p.name, onclick: function () {
+        if (on) R.cats.splice(R.cats.indexOf(p.id), 1); else R.cats.push(p.id); HR.refresh();
+      } });
+    }));
     var src = function (k, label) { return h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: R.src[k], onchange: function () { R.src[k] = this.checked; HR.refresh(); } }), ' ' + label); };
-    var go = ui.btn(V.busy === 'cond' ? '찾는 중…' : '랜덤 20명 탐색', randomRun);
+    var go = ui.btn(V.busy === 'cond' ? '찾는 중…' : '🎲 랜덤 20명 탐색', randomRun);
     if (V.busy) go.disabled = true;
     ui.put(view, ui.head('Discover', '탐색'), ui.tabs(TABS, 'random', 'find'),
       ui.panel('랜덤 탐색 — 누를 때마다 다른 키워드 · 새로운 20명', h('span', { class: 'meta', text: I.quotaText() }),
-        h('p', { class: 'note', text: '키워드 풀에서 3개를 무작위로 골라 조건 탐색을 돌립니다. 리스트에 있는 채널과 지난 탐색에 나왔던 채널은 빼고, 점수 상위 20명만 보여 줍니다. 조건(구독 · 기간 · 조회 상승 · 댓글)은 「② 조건 탐색」 탭의 설정을 그대로 씁니다.' }),
-        h('div', { class: 'row in-opts' }, h('span', { class: 'label', text: '키워드 풀' }), src('preset', '카테고리 프리셋'), src('past', '지난 탐색 키워드'), src('list', '리스트 채널 키워드')),
-        h('div', { class: 'in-chips in-pool' }, pool.slice(0, 60).map(function (k) { return h('span', { class: 'in-chip light' + (R.last.indexOf(k) >= 0 ? ' on' : ''), text: k }); })),
-        h('p', { class: 'meta', text: '풀 ' + pool.length + '개 · 지금 조건: 구독 ' + I.cnt(+C.minSubs) + ' ~ ' + (+C.maxSubs ? I.cnt(+C.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + C.days + '일 · 조회 상승 ' + (+C.minGrowth ? C.minGrowth + '배↑' : '무관') + ' · 댓글 ' + (+C.minCmt ? C.minCmt + '개↑' : '무관') }),
+        h('p', { class: 'note', text: '고른 카테고리의 키워드 중 3개를 무작위로 골라 탐색합니다. 리스트에 있거나 지난 탐색에 나왔던 채널은 빼고, 바인그라피와 맞는 쓸만한 채널(구독 10만 미만 · 조회 바닥선 · 브랜드 적합) 상위 20명만 보여 줍니다.' }),
+        h('div', { class: 'label in-sub', text: '1 · 카테고리 (여러 개 선택)' }), cats,
+        h('div', { class: 'row in-opts' }, src('past', '지난 탐색 키워드도 섞기'), src('list', '리스트 태그도 섞기')),
+        h('div', { class: 'in-chips in-pool' }, pool.map(function (k) { return h('span', { class: 'in-chip light' + (R.last.indexOf(k) >= 0 ? ' on' : ''), text: k }); })),
+        h('p', { class: 'meta', text: '키워드 풀 ' + pool.length + '개' + (R.last.length ? ' · 지난번 고른 키워드: ' + R.last.join(' · ') : '') }),
+        h('div', { class: 'label in-sub', text: '2 · 조건 (조건 탐색 탭과 같이 바뀝니다)' }),
+        condFields(),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
-        h('div', { class: 'row' }, go, R.last.length ? h('span', { class: 'meta', text: '지난번: ' + R.last.join(' · ') }) : null)),
+        h('div', { class: 'row' }, go, h('span', { class: 'meta', text: '1회 ≈ 20 ~ 60초 · 결과 화면에서 「다음 20명」으로 계속 돌릴 수 있습니다.' }))),
       pastPanel(''));
   }
 
+  // 결과 화면에서 바로 고쳐 다시 찾기 — 씨드 유튜버 · 키워드를 바꾸면 그 값으로 새 탐색 (원래 결과는 그대로 남는다)
+  V.re = {};
+  function reSearch(s) {
+    var R = V.re[s.id] || (V.re[s.id] = { kw: (s.concept || []).slice(), seed: s.seed ? ((s.opts || {}).input || s.seed.handle || s.seed.id) : '' });
+    var seedIn = s.seed ? ui.input({ value: R.seed, maxlength: '300', placeholder: '씨드 유튜버 — 채널 주소 · @핸들 · 이름', class: 'grow', oninput: function () { R.seed = this.value; } }) : null;
+    var sugg = s.seed ? ((s.seed.phrases || []).concat(s.seed.keywords || [])).filter(function (k) { return R.kw.indexOf(k) < 0; }).slice(0, 16) : [];
+    var go = ui.btn(V.busy ? '찾는 중…' : '이 씨드 · 키워드로 다시 찾기', function () {
+      if (!R.kw.length) return setMsg('키워드를 하나 이상 넣으세요.', true);
+      if (!s.seed) return condRun(R.kw.slice(), null, (s.opts || {}).preset === 'random' ? 'random' : '');
+      var o = s.opts || {};
+      V.busy = 'scan'; setMsg('「' + R.seed + '」 · 「' + R.kw.join(' · ') + '」로 다시 찾는 중입니다… (20 ~ 60초)');
+      I.call('infYt', { action: 'scan', mode: s.mode || 'similar', seed: R.seed.trim(), keywords: R.kw, range: o.range || 'wide', n: o.n || 30, maxSubs: o.maxSubs || 0, preset: o.preset || '', skipSeen: V.skipSeen })
+        .then(function (r) { V.busy = ''; V.msg = ''; ui.toast(doneText(r)); HR.go('find/' + r.id); })
+        .catch(function (e) { V.busy = ''; setMsg(e.message, true); });
+    }, 'btn-sm');
+    if (V.busy) go.disabled = true;
+    return h('div', { class: 'in-research' },
+      h('div', { class: 'label in-sub', text: '컨셉 키워드 — 고쳐서 다시 찾기 (× 빼기 · 입력 후 Enter 더하기)' }),
+      kwPicker(R.kw, 5, HR.refresh),
+      sugg.length ? h('div', { class: 'in-chips' }, sugg.map(function (k) { return h('button', { type: 'button', class: 'in-chip light', text: '+ ' + k, onclick: function () { if (R.kw.length < 5) { R.kw.push(k); HR.refresh(); } else ui.toast('키워드는 5개까지입니다.'); } }); })) : null,
+      seedIn ? h('div', { class: 'row in-opts in-seed-form' }, h('span', { class: 'label', text: '씨드 유튜버' }), seedIn) : null,
+      h('div', { class: 'row in-opts' }, go, dedupBox()),
+      V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null);
+  }
   function condCard(s) {
     var c = s.cond || {};
     return h('p', { class: 'meta', text: '구독 ' + I.cnt(c.minSubs || 0) + ' ~ ' + (c.maxSubs ? I.cnt(c.maxSubs) + ' 미만' : '제한 없음') + ' · 최근 ' + (c.days || 90) + '일 영상 · 조회 상승 ' + (c.minGrowth ? c.minGrowth + '배 이상' : '무관')
@@ -261,8 +324,12 @@
       var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP, 'aria-label': c.title + ' 선택',
         onclick: function (e) { e.stopPropagation(); }, onchange: function () { sel[c.id] = this.checked; HR.refresh(); } });
       var kws = (c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 5);
-      var stats = rising ? [stat('구독', I.cnt(c.subs)), stat('조회 상승', c.growth ? c.growth + '배' : '—', c.growth >= 1.2 ? 'red' : ''), stat('댓글/편', (c.cmtMed || 0) + '개')]
-        : [stat('구독', I.cnt(c.subs)), stat('중앙 조회', I.cnt(c.median)), stat('톤 일치', Math.round(((c.parts || {}).tone || 0) * 100) + '%')];
+      // 구독 / 조회 / 댓글수 / 톤 일치 / 주기
+      var stats = [stat('구독', I.cnt(c.subs)),
+        stat('조회' + (c.growth >= 1.2 ? ' ↑' + c.growth + '배' : ''), I.cnt(c.median), c.growth >= 1.2 ? 'red' : ''),
+        stat('댓글수', c.cmtAvg != null ? I.cnt(c.cmtAvg) : c.cmtMed != null ? I.cnt(c.cmtMed) : '—'),
+        stat('톤 일치', s.seed && c.tone ? Math.round(((c.parts || {}).tone || 0) * 100) + '%' : '—'),
+        stat('주기', I.gap(c))];
       rows.push(h('div', { class: 'in-row clickable' + (open ? ' in-open' : '') + (sel[c.id] ? ' in-sel' : ''), tabindex: '0',
         onclick: function () { V.open[c.id] = !V.open[c.id]; HR.refresh(); }, onkeydown: function (e) { if (e.key === 'Enter') { V.open[c.id] = !V.open[c.id]; HR.refresh(); } } },
         h('div', { class: 'in-r-cb' }, cb),
@@ -281,7 +348,7 @@
       onchange: function () { var on = this.checked; avail.forEach(function (c) { sel[c.id] = on; }); HR.refresh(); } });
     var table = h('div', { class: 'in-rows' },
       h('div', { class: 'in-row in-row-head' }, h('label', { class: 'in-r-cb in-all' }, all, h('span', { text: '전체' })), h('div', { class: 'in-r-score', text: '점수' }), h('div', { class: 'in-r-ch', text: '채널 · 소속' }),
-        h('div', { class: 'in-r-stats', text: rising ? '구독 · 조회 상승 · 댓글' : '구독 · 조회 · 톤' }), h('div', { class: 'in-r-why', text: '찾은 이유 · 일치 키워드 (행을 누르면 전체)' })),
+        h('div', { class: 'in-r-stats', text: '구독 · 조회 · 댓글수 · 톤 · 주기' }), h('div', { class: 'in-r-why', text: '찾은 이유 · 일치 키워드 (행을 누르면 전체)' })),
       rows.length ? rows : h('p', { class: 'empty', text: '조건에 맞는 후보가 없습니다.' }));
 
     var bar = h('div', { class: 'in-actionbar' + (nSel ? ' show' : '') },
@@ -298,9 +365,8 @@
       ui.head('Discover · ' + fmt.ts(s.at), I.scanTitle(s), h('div', { class: 'row' },
         isRandom ? ui.btn(V.busy ? '찾는 중…' : '다음 20명 (다른 키워드)', function () { if (!V.busy) randomRun(); }, 'btn-sm') : null,
         ui.btn('← 탐색', function () { HR.go(isRandom ? 'find/random' : s.mode === 'cond' ? 'find/cond' : 'find'); }, 'btn-line btn-sm'))),
-      V.msg && isRandom ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), text: V.msg }) : null,
       ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
-        s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, I.chips(s.concept, 'on')),
+        s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회수 상승 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
       agBar(s),
       h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
