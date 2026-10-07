@@ -118,6 +118,31 @@
     if ((m = desc.match(WEAK))) return { p: 50, why: '설명란 「' + m[1] + '」 — 담당자를 따로 두는 표현' };
     return { p: 0, none: !emails.length, why: emails.length ? '개인 메일: ' + emails[0] : '설명란에 연락처 · 회사 정보 없음 (유튜브 정보 탭의 비공개 메일은 직접 확인)' };
   };
+  /* ---------- 뷰티 이력 (파란 테두리) · 메일 종류 ----------
+     서버 deep()의 beauty = { n: 뷰티 영상 수, of: 본 영상 수, ad: 협찬 수, adBeauty: 뷰티 협찬 수, ex: 예시 제목 }
+     예전 데이터(beauty 없음)는 키워드 · 최근 제목 · 설명으로 추정 */
+  var BEAUTY_RE = /(화장품|스킨케어|메이크업|뷰티|클렌징|클렌저|세안|선크림|파운데이션|쿠션|립스틱|틴트|토너|세럼|앰플|에센스|수분크림|로션|마스크팩|올리브영|모공|각질|여드름|피부관리|화장대|향수|grwm|makeup|skincare|beauty|cosmetic)/i;
+  I.beauty = function (ch) {
+    ch = ch || {};
+    var b = ch.beauty;
+    if (b && b.of) {
+      var on = b.n >= 2 || b.adBeauty >= 1;
+      return { on: on, ad: b.adBeauty, text: on ? '뷰티' + (b.adBeauty ? ' · 협찬 ' + b.adBeauty : '') : '', why: '최근 ' + b.of + '편 중 뷰티 ' + b.n + '편 · 협찬 ' + b.ad + '편 (뷰티 협찬 ' + b.adBeauty + ')' + (b.ex && b.ex.length ? ' — 예: ' + b.ex.join(' / ') : '') };
+    }
+    var txt = (ch.keywords || []).join(' ') + ' ' + (ch.recent || []).map(function (v) { return v.title; }).join(' ') + ' ' + (ch.desc || '');
+    var hits = (txt.match(new RegExp(BEAUTY_RE.source, 'gi')) || []).length;
+    return { on: hits >= 2, guess: true, text: hits >= 2 ? '뷰티 추정' : '', why: '예전 탐색 데이터 — 키워드 · 최근 제목에서 뷰티 단어 ' + hits + '개 (↻ 새로고침하면 정확히 다시 셉니다)' };
+  };
+  I.beautyTag = function (ch) {
+    var b = I.beauty(ch);
+    return b.on ? h('span', { class: 'tag in-beauty' + (b.guess ? ' guess' : ''), title: b.why, text: b.text }) : null;
+  };
+  var FREE_RE = /@(gmail|googlemail|naver|daum|hanmail|kakao|nate|hotmail|outlook|live|icloud|me|yahoo)\./i;
+  I.mailTag = function (email) {
+    if (!email) return null;
+    var free = FREE_RE.test(email);
+    return h('span', { class: 'tag ' + (free ? 'in-mail-p' : 'in-mail-c'), title: email, text: free ? '개인 메일' : '회사 메일' });
+  };
   I.agencyTag = function (c, short) {
     var a = I.agency(c);
     return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none && !short ? '개인 · 정보 없음' : '개인' });
@@ -137,7 +162,7 @@
   // 채널 스냅샷 — 탐색 결과에서 필요한 것만 (문서 1MB 한도 · 화면 속도)
   I.snap = function (c) {
     var o = {};
-    ['id', 'title', 'handle', 'thumb', 'country', 'desc', 'email', 'insta', 'subs', 'views', 'videos', 'since', 'topics', 'median', 'avg', 'engage', 'cat', 'shorts', 'last', 'tone', 'sample', 'recent', 'reason', 'growth', 'recentMed', 'prevMed', 'cmtMed', 'cmtAvg', 'gapDays', 'cpk', 'perWeek', 'fit']
+    ['id', 'title', 'handle', 'thumb', 'country', 'desc', 'email', 'insta', 'subs', 'views', 'videos', 'since', 'topics', 'median', 'avg', 'engage', 'cat', 'shorts', 'last', 'tone', 'sample', 'recent', 'reason', 'growth', 'recentMed', 'prevMed', 'cmtMed', 'cmtAvg', 'gapDays', 'cpk', 'perWeek', 'fit', 'beauty']
       .forEach(function (k) { if (c[k] != null) o[k] = c[k]; });
     o.keywords = (c.keywords || []).slice(0, 15);
     o.at = Date.now();

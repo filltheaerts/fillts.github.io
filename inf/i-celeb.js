@@ -73,7 +73,7 @@
     if (V.busy) addBtn.disabled = true;
     var table = I.dbTable(list, {
       st: V, sideHead: ['prio', '우선순위'], metaHead: ['at', '추가일'],
-      tags: function (c) { return [h('span', { class: 'tag in-prio p' + (c.prio || 2), text: (PRIO[(c.prio || 2) - 1] || PRIO[1])[1] }), c.cat ? h('span', { class: 'tag', text: c.cat }) : null, I.agencyTag(c.ch, true), c.ch.email ? h('span', { class: 'tag', text: '메일' }) : null, c.moved ? ui.tag('리스트로 보냄', 'mute') : null]; },
+      tags: function (c) { return [h('span', { class: 'tag in-prio p' + (c.prio || 2), text: (PRIO[(c.prio || 2) - 1] || PRIO[1])[1] }), c.cat ? h('span', { class: 'tag', text: c.cat }) : null, I.agencyTag(c.ch, true), I.beautyTag(c.ch), I.mailTag(c.ch.email), c.moved ? ui.tag('리스트로 보냄', 'mute') : null]; },
       side: function (c) { return h('div', { class: 'in-r-src' }, h('div', { class: 'meta in-ell', title: c.memo || '', text: c.memo || '메모 없음 — 줄을 눌러 적기' }), h('div', { class: 'meta', text: '추가 ' + (c.at && c.at.toDate ? I.dayOf(c.at.toDate().getTime()) : '—') + ' · 최신 ' + I.dayOf(c.ch.at) })); },
       acts: function (c) { return [I.updBtn(V.one[c.id], function () { refreshOne(c); }), (c.by === S.mid || S.isAdmin) ? I.delBtn(function () { db.doc('inf_celebs/' + c.id).delete().then(function () { ui.toast('삭제했습니다.'); }).catch(ui.fail); }) : null]; },
       onRow: function (c) { V.open[c.id] = !V.open[c.id]; HR.refresh(); },

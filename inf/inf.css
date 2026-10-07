@@ -319,3 +319,9 @@ td.in-ell { display: table-cell; }
 .in-chip.in-cust { border-color: var(--black); }
 .in-gen { align-items: center; }
 .in-seed-form .check { white-space: nowrap; flex: none; } .in-seed-form .check input { width: auto; }
+
+/* 뷰티 이력 — 파란 테두리 (대표님 지정) · 메일 종류 */
+.tag.in-beauty { color: #1d4ed8; border: 1px solid #1d4ed8; font-weight: 600; background: var(--paper); }
+.tag.in-beauty.guess { border-style: dashed; font-weight: 500; }
+.tag.in-mail-p { color: var(--gray-800); }
+.tag.in-mail-c { color: var(--gray-800); border-color: var(--gray-800); }

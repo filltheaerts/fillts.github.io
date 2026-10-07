@@ -128,7 +128,7 @@
   function condParams(C) {
     return { action: 'scan', mode: 'cond', minSubs: +C.minSubs, maxSubs: +C.maxSubs, days: +C.days, minGrowth: +C.minGrowth, minCmt: +C.minCmt,
       minMedian: +C.minMedian, minVideos: 10, mailOnly: C.mailOnly, n: +C.n, skipSeen: V.skipSeen,
-      fit: C.fitOn ? I.brandFit() : [], fitRequired: !!C.fitOn };
+      fit: C.fitOn ? I.brandFit() : [], fitRequired: !!C.fitOn, beautyOnly: C.beautyOnly !== false };
   }
   function condRun(kw, opt, label) {
     var C = V.cond;
@@ -162,6 +162,8 @@
       h('div', { class: 'row in-opts' },
         h('label', { class: 'check', title: '채널 제목 · 설명 · 최근 영상에 브랜드 관련 단어가 하나도 없으면 뺍니다. 점수의 20%가 브랜드 적합도입니다.' },
           h('input', { type: 'checkbox', checked: C.fitOn, onchange: function () { C.fitOn = this.checked; HR.refresh(); } }), ' 바인그라피 브랜드 적합 채널만 (클렌징 · 스킨케어 · 성분 · 루틴 …)'),
+        h('label', { class: 'check', title: '최근 영상 15편 중 뷰티 콘텐츠 2편 이상이거나 뷰티 협찬이 1편 이상인 채널만 남깁니다 (돈 아끼기 · 일상만 하는 채널 제외)' },
+          h('input', { type: 'checkbox', checked: C.beautyOnly !== false, onchange: function () { C.beautyOnly = this.checked; } }), ' 뷰티 콘텐츠 · 협찬 이력 있는 채널만'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: C.mailOnly, onchange: function () { C.mailOnly = this.checked; } }), ' 메일 공개한 채널만'),
         dedupBox())
     ];
@@ -330,6 +332,7 @@
     return list.filter(function (c) {
       if (V.onlyMail && !c.email) return false;
       if (V.onlyNew && I.creator(c.id)) return false;
+      if (V.onlyBeauty && !I.beauty(c).on) return false;
       if (V.ag) { var ap = I.agency(c).p; if (V.ag === 'agency' ? ap === 0 : V.ag === 'a100' ? ap !== 100 : V.ag === 'a50' ? ap !== 50 : ap !== 0) return false; }
       if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -384,7 +387,7 @@
         h('div', { class: 'in-r-score' }, h('b', { text: String(c.score || 0) }), h('span', { class: 'in-score-track' }, (function () { var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.min(100, c.score || 0) + '%'; return f; })())),
         h('div', { class: 'in-r-ch' }, I.thumb(c, 'sm'), h('div', { class: 'in-r-t' },
           h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: c.title + (c.handle ? ' ' + c.handle : ''), text: c.title.length > 14 ? c.title.slice(0, 13) + '…' : c.title }), I.ytBtn(c)),
-          h('div', { class: 'in-r-tags' }, I.agencyTag(c), c.email ? h('span', { class: 'tag', text: '메일' }) : null, inP ? I.stTag(inP.stage) : null,
+          h('div', { class: 'in-r-tags' }, I.beautyTag(c), I.agencyTag(c), I.mailTag(c.email), inP ? I.stTag(inP.stage) : null,
             h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })))),
         h('div', { class: 'in-r-stats' }, stats),
         h('div', { class: 'in-r-why' }, kws.length ? kws.map(function (k, i) { return h('span', { class: 'in-chip ' + (i < (c.matched || []).length ? 'on' : 'light'), text: k }); }) : h('span', { class: 'meta', text: '키워드 겹침 적음' }))));
@@ -416,7 +419,7 @@
       ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
         s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회 추세 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
       agBar(s),
-      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), q,
+      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), chk('뷰티 이력 있는 채널만', 'onlyBeauty'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
         ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),
       table,
