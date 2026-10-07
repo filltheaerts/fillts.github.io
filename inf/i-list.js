@@ -24,15 +24,17 @@
       .catch(function (e) { V.one[c.id] = false; ui.toast(c.ch.title + ' — ' + e.message); });
   }
   // 전체 최신화: 한 명씩 차례로 (채널당 ≈ 5 units)
+  // 전체 새로고침: 한 명씩 · 1.2초 간격 · 10명마다 6초 쉬기 · 실패는 2번 재시도 · 할당량 소진이면 멈춤 · 6시간 안에 받은 채널은 건너뜀
   function refreshAll(list) {
     if (V.prog) return;
-    V.prog = { i: 0, n: list.length, fail: 0 }; HR.refresh();
-    var next = function () {
-      if (!V.prog) return;
-      if (V.prog.i >= list.length) { var f = V.prog.fail; V.prog = null; setMsg('전체 최신화를 마쳤습니다.' + (f ? ' (실패 ' + f + '명)' : '')); return; }
-      I.call('infYt', { action: 'refresh', id: list[V.prog.i].id }).catch(function () { V.prog.fail++; }).then(function () { if (V.prog) { V.prog.i++; HR.refresh(); next(); } });
-    };
-    next();
+    var todo = list.filter(function (c) { return !(c.ch && c.ch.at && Date.now() - c.ch.at < I.FRESH_MS); });
+    if (!todo.length) return setMsg('모두 최근 6시간 안에 새로고침되어 있습니다.');
+    V.prog = I.runQueue(todo, function (c) { return I.call('infYt', { action: 'refresh', id: c.id }); }, {
+      onTick: function () { HR.refresh(); },
+      onDone: function (q) { V.prog = null; setMsg(I.queueMsg(q, '새로고침'), q.stopped && q.reason !== '중지했습니다'); }
+    });
+    if (todo.length < list.length) setMsg('최근 6시간 안에 받은 ' + (list.length - todo.length) + '명은 건너뛰고 ' + todo.length + '명을 새로고침합니다.');
+    HR.refresh();
   }
 
   /* ---------- 공용: 정렬되는 한 줄 카드 표 ---------- */
@@ -120,9 +122,10 @@
       oninput: function () { V.add = this.value; }, onkeydown: function (e) { if (e.key === 'Enter' && !V.busy) addOne(); } });
     var addBtn = ui.btn(V.busy === 'add' ? '읽는 중…' : '+ 추가', addOne, 'btn-sm');
     if (V.busy) addBtn.disabled = true;
-    var allBtn = ui.btn(V.prog ? '↻ 새로고침 중 ' + V.prog.i + ' / ' + V.prog.n : '↻ 전체 새로고침 (' + list.length + '명)', function () { refreshAll(list.slice()); }, 'btn-sm in-refall');
+    var allBtn = V.prog ? ui.btn('■ 중지 (' + V.prog.i + ' / ' + V.prog.n + ')', function () { V.prog.stop(); }, 'btn-line btn-sm in-refall')
+      : ui.btn('↻ 전체 새로고침 (' + list.length + '명)', function () { refreshAll(list.slice()); }, 'btn-sm in-refall');
     allBtn.title = '보이는 채널 전부의 구독 · 조회 · 댓글 · 주기 · 조회 추세를 유튜브에서 다시 읽습니다 — 1명당 약 5포인트(하루 한도 10,000), 1명당 3 ~ 8초';
-    if (V.prog || !list.length) allBtn.disabled = true;
+    if (!V.prog && !list.length) allBtn.disabled = true;
     var stSel = ui.select([['', '모든 단계']].concat(I.STAGES.map(function (s) { return [s.id, s.name + ' (' + I.byStage(s.id).length + ')']; })), V.st, { onchange: function () { V.st = this.value; HR.refresh(); } });
     var agSel = ui.select([['', '소속 · 개인 전체'], ['agency', '소속 유튜버 (50% 이상)'], ['solo', '개인 유튜버']], V.ag, { onchange: function () { V.ag = this.value; HR.refresh(); } });
     var q = ui.input({ value: V.q, placeholder: '채널 · 메일 · 태그 · 출처 검색 (Enter)', onchange: function () { V.q = this.value; HR.refresh(); } });

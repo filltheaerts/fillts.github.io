@@ -183,6 +183,42 @@
       return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || '서버 오류 (' + r.status + ')'); return j; });
     });
   };
+  /* ---------- 여러 건 서버 호출을 안전하게: 한 건씩 · 간격 · 묶음 휴식 · 재시도 · 할당량 소진 시 즉시 멈춤 · 중지 버튼 ----------
+     I.runQueue(items, function (item) { return Promise }, { gap: ms, every: n, rest: ms, onTick: fn, onDone: fn(result) }) → 큐 객체(q.stop()) */
+  I.runQueue = function (items, task, opt) {
+    opt = opt || {};
+    var q = { i: 0, n: items.length, ok: 0, fail: 0, retry: 0, stopped: false, reason: '' };
+    var gap = opt.gap || 1200, every = opt.every || 10, rest = opt.rest || 6000;
+    var wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    var finish = function () { q.done = true; if (opt.onDone) opt.onDone(q); };
+    var one = function (item, tries) {
+      return task(item).then(function () { q.ok++; }, function (e) {
+        var m = String((e && e.message) || '');
+        if (/할당량|한도|quota/i.test(m)) { q.stopped = true; q.reason = m; return; }          // 할당량 소진 → 나머지는 내일
+        if (/로그인|권한/.test(m)) { q.stopped = true; q.reason = m; return; }
+        if (tries < 2) { q.retry++; return wait(tries ? 8000 : 3000).then(function () { return one(item, tries + 1); }); }   // 끊김 · 서버 오류 → 3초 · 8초 뒤 다시
+        q.fail++;
+      });
+    };
+    var next = function () {
+      if (q.stopped || q.i >= items.length) return finish();
+      var item = items[q.i];
+      one(item, 0).then(function () {
+        q.i++; if (opt.onTick) opt.onTick(q);
+        if (q.stopped || q.i >= items.length) return finish();
+        return wait(q.i % every === 0 ? rest : gap).then(next);   // 10건마다 6초 쉬기
+      });
+    };
+    q.stop = function () { q.stopped = true; q.reason = q.reason || '중지했습니다'; };
+    next();
+    return q;
+  };
+  I.queueMsg = function (q, what) {
+    var t = what + ' ' + q.ok + '건 완료' + (q.fail ? ' · 실패 ' + q.fail + '건' : '') + (q.retry ? ' · 재시도 ' + q.retry + '번' : '');
+    if (q.stopped) t += ' — 멈춤: ' + q.reason + (q.n - q.i > 0 ? ' (남은 ' + (q.n - q.i) + '건은 다시 누르면 이어서 — 최근 6시간 안에 받은 채널은 건너뜀)' : '');
+    return t;
+  };
+  I.FRESH_MS = 6 * 3600000;   // 6시간 안에 새로고침한 채널은 전체 새로고침에서 건너뛴다 (할당량 아끼기 · 이어 하기)
   I.quotaText = function () {
     var q = I.quota || {}, used = q.day === fmt.today() ? q.scans || 0 : 0;
     return '오늘 탐색 ' + used + ' / ' + (q.limit || 12) + '회';
