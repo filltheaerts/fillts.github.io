@@ -5,7 +5,8 @@
 .in-sub { margin-top: 6px; }
 .in-right { text-align: right; }
 .in-toolbar { margin: 4px 0 16px; gap: 12px; }
-.in-toolbar input, .in-toolbar select { width: auto; min-width: 160px; }
+.in-toolbar input:not([type="checkbox"]), .in-toolbar select { width: auto; min-width: 160px; }
+.in-toolbar .check input, .in-table .in-cb input { width: auto; min-width: 0; }
 
 /* 세그먼트 버튼 */
 .in-seg { display: inline-flex; border: 1px solid var(--gray-200); background: var(--paper); }
@@ -113,6 +114,7 @@ button.in-chip:hover { border-color: var(--black); }
 
 /* 상세 */
 .in-hero { display: flex; gap: 20px; align-items: center; margin-bottom: 20px; }
+.in-hero > .grow, .in-seed > .grow { flex: 1; min-width: 0; }
 .in-hero .tab-title { margin: 2px 0 6px; }
 .in-hero-meta { align-items: center; gap: 12px; }
 .in-hero-meta a { color: inherit; }
@@ -151,7 +153,7 @@ button.in-chip:hover { border-color: var(--black); }
 }
 @media (max-width: 640px) {
   .in-seed { flex-direction: column; }
-  .in-toolbar input, .in-toolbar select { min-width: 0; flex: 1 1 140px; }
+  .in-toolbar input:not([type="checkbox"]), .in-toolbar select { min-width: 0; flex: 1 1 140px; }
   .in-board { grid-auto-columns: 82vw; }
   .in-steps li { flex: 1 1 33%; border-top: 1px solid var(--gray-200); }
   .in-tone-row { grid-template-columns: 88px minmax(0, 1fr) 36px; }
