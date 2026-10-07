@@ -318,3 +318,4 @@ td.in-ell { display: table-cell; }
 .in-chip.in-last { border-color: var(--red); }
 .in-chip.in-cust { border-color: var(--black); }
 .in-gen { align-items: center; }
+.in-seed-form .check { white-space: nowrap; flex: none; } .in-seed-form .check input { width: auto; }
