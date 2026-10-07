@@ -235,6 +235,13 @@
     });
     if (!list.length) ul.appendChild(h('li', { class: 'empty', text: S.isLead ? '첫 원온원을 만들어 보세요.' : '예정된 원온원이 없습니다.' }));
     side.appendChild(ul);
+    // 🔒 원온원 회의록 (회의미팅에서 올린 것) — 본인 · 리더 · 관리자만 (보안 규칙이 같은 조건으로 막는다)
+    var notes = HR.meetList ? (HR.meetList() || []).filter(function (x) { return x.published && x.type === 'one'; }) : [];
+    side.appendChild(h('div', { class: 'one-notes' }, h('div', { class: 'label', text: '🔒 원온원 회의록 ' + notes.length }),
+      notes.length ? h('ul', { class: 'one-list' }, notes.slice(0, 12).map(function (x) {
+        return h('li', null, h('a', { href: '#meet/' + x.id, class: 'grow' }, h('div', { class: 'who', text: x.title }),
+          h('div', { class: 'meta', text: fmt.dot(x.date || '') + (x.memberId && x.memberId !== S.mid ? ' · ' + HR.name(x.memberId) : '') })));
+      })) : h('p', { class: 'meta', text: '클로바노트로 기록한 원온원을 회의미팅에서 올리면 여기 모입니다.' })));
     var sel = list.filter(function (o) { return o.id === selId; })[0];
     ui.put(view, h('div', { class: 'one-grid' }, side, sel ? oneDetail(sel) : ui.panel('1:1', null, h('p', { class: 'muted', text: '원온원을 선택하세요. 아젠다와 액션 아이템은 리더와 구성원이 함께 쓰고, 비공개 메모는 리더만 봅니다.' }))));
   }

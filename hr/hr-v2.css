@@ -1611,3 +1611,19 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .meet-pre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 13px; line-height: 1.7; max-height: 480px; overflow-y: auto; background: var(--gray-100); padding: 12px 14px; width: 100%; box-sizing: border-box; }
 .meet-sec ul { padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .meet-who { margin-left: 8px; font-size: 12px; padding: 1px 6px; border: 1px solid var(--gray-200); }
+/* 회의미팅 — 종류 탭 · 프로젝트 폴더 */
+.meet-tabs { flex-wrap: wrap; }
+.meet-tabs button.rv:not(.on) { border-color: var(--warn); color: var(--warn); }
+.meet-n { font-size: 11px; color: var(--gray-400); margin-left: 2px; }
+.meet-tabs button.on .meet-n { color: var(--gray-400); }
+.meet-area { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.meet-folders { display: flex; flex-direction: column; gap: 6px; }
+.meet-folder { border: 1px solid var(--gray-200); background: var(--paper); }
+.meet-folder.empty .meet-folder-head b { color: var(--gray-600); font-weight: 400; }
+.meet-folder-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: none; border: 0; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.meet-folder-head:hover b { color: var(--red); }
+.meet-folder-head .meet-n { margin-left: auto; }
+.meet-fi { font-size: 11px; color: var(--gray-400); width: 10px; }
+.meet-folder .meet-list, .meet-folder .empty { padding: 0 14px 12px; }
+.meet-folder.open { border-color: var(--black); }
+.one-notes { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
