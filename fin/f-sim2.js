@@ -126,7 +126,13 @@
       return h('th', { class: 'num', text: F.ymLabel(ym) });
     }));
     var body = h('tbody');
-    var sec = function (title, note) { body.appendChild(h('tr', { class: 'sx-sec' }, h('td', { class: 'sx-k' }, h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null), cols.map(function () { return h('td'); }))); };
+    var fold = {}; try { fold = JSON.parse(localStorage.getItem('finSimFold') || '{}') || {}; } catch (e) { fold = {}; }
+    var secKey = function (title) { return title.slice(0, 1); };   // ⓪ ① ② …
+    var sec = function (title, note) {
+      var key = secKey(title), closed = !!fold[key];
+      body.appendChild(h('tr', { class: 'sx-sec sx-fold' + (closed ? ' closed' : ''), 'data-sec': key, tabindex: '0', role: 'button', 'aria-expanded': String(!closed), title: closed ? '눌러서 펼치기' : '눌러서 접기' },
+        h('td', { class: 'sx-k' }, h('span', { class: 'sx-caret', text: closed ? '▸' : '▾' }), h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null), cols.map(function () { return h('td'); })));
+    };
     var cell = function (ym, val, cls) { return h('td', { class: 'num' + '' + (cls ? ' ' + cls : ''), text: val }); };
     var row = function (label, f, cls, rowCls) { body.appendChild(h('tr', { class: rowCls || '' }, h('td', { class: 'sx-k', text: label }), R.map(function (r) { var v = f(r); return cell(r.ym, v.t != null ? v.t : v, v.c || cls); }))); };
     // scale: 화면 단위 (만원 입력이면 10000 — 저장은 늘 원 단위)
@@ -268,6 +274,23 @@
     row('월 현금흐름', function (r) { return { t: F.man(r.flow), c: r.flow < 0 ? 'red' : '' }; });
     row('월말 현금', function (r) { return { t: F.man(r.cash), c: r.cash < 0 ? 'red sx-neg' : r.cash < +c.minCash ? 'red' : '' }; }, 'strong', 'sx-sum sx-cash');
     row('누적 부족 (이 달까지 필요한 총 차입)', function (r) { return { t: r.need ? F.man(r.need) : '', c: r.need ? 'red strong' : '' }; }, '', 'sx-need');
+    // 각 줄을 위쪽 섹션에 묶고, 접힌 섹션은 숨긴다
+    var applyFold = function () {
+      var curKey = null;
+      Array.prototype.forEach.call(body.children, function (tr) {
+        if (tr.classList.contains('sx-sec')) { curKey = tr.getAttribute('data-sec'); var cl = !!fold[curKey]; tr.classList.toggle('closed', cl); tr.setAttribute('aria-expanded', String(!cl)); var cr = tr.querySelector('.sx-caret'); if (cr) cr.textContent = cl ? '▸' : '▾'; tr.title = cl ? '눌러서 펼치기' : '눌러서 접기'; return; }
+        tr.hidden = !!(curKey && fold[curKey]);
+      });
+    };
+    var saveFold = function () { try { localStorage.setItem('finSimFold', JSON.stringify(fold)); } catch (e) { /* 저장 불가 — 이번 화면만 */ } };
+    var toggleSec = function (key) { fold[key] = !fold[key]; saveFold(); applyFold(); };
+    Array.prototype.forEach.call(body.querySelectorAll('tr.sx-fold'), function (tr) {
+      tr.addEventListener('click', function (e) { if (e.target.closest('button, input, a')) return; toggleSec(tr.getAttribute('data-sec')); });
+      tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSec(tr.getAttribute('data-sec')); } });
+    });
+    applyFold();
+    var allKeys = Array.prototype.map.call(body.querySelectorAll('tr.sx-fold'), function (tr) { return tr.getAttribute('data-sec'); });
+    var foldAll = function (closed) { allKeys.forEach(function (k) { fold[k] = closed; }); saveFold(); applyFold(); };
     var grid = h('table', { class: 'table fin-table sx-grid' }, h('thead', null, head), body);
 
     // 채용 계획 (작게)
@@ -298,7 +321,8 @@
         ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', ownerLimit ? '한도 ' + F.man(ownerLimit) + ' (자금조달 계획)' : ''],
         ['월 순익 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '기간 누적 순익 ' + F.man(pSum) + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
       h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
-      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값' }),
+      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('div', { class: 'row sx-foldbar' }, h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값 · 섹션 제목을 누르면 접기/펼치기' }),
+        ui.btn('모두 펼치기', function () { foldAll(false); }, 'btn-line btn-xs'), ui.btn('모두 접기', function () { foldAll(true); }, 'btn-line btn-xs')),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
       h('div', { class: 'fin-sim-settings' },
         ui.panel('Settings · 기준값', null, h('div', { class: 'stack fin-form' },

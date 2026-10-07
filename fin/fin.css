@@ -238,3 +238,11 @@ a.map-card:hover { border-color: var(--black); }
 .sx-grid tr.sx-u-d td.sx-k { padding-left: 34px; }
 .sx-grid tr.sx-u-d td.num { color: var(--gray-600); }
 .sx-grid tr.sx-u td { border-top: 1px solid var(--gray-200); }
+
+/* 시트 섹션 접기 / 펼치기 */
+.sx-grid tr.sx-fold { cursor: pointer; user-select: none; }
+.sx-grid tr.sx-fold:hover td { background: var(--gray-100); }
+.sx-grid tr.sx-fold:focus-visible td { outline: 2px solid var(--black); outline-offset: -2px; }
+.sx-grid .sx-caret { display: inline-block; width: 16px; color: var(--gray-600); }
+.sx-grid tr.sx-fold.closed td { border-bottom: 1px solid var(--gray-200); }
+.sx-foldbar { gap: 6px; align-items: center; flex-wrap: wrap; }
