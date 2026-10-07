@@ -19,6 +19,14 @@
   var CARD_NOTE = '법인카드는 통장에서 「카드대금」 한 줄로 빠져 실제 사용처는 카드 명세서에 있습니다.';
   var man = function (v) { return v ? F.man(v) : ''; };
 
+  // 합계 열 시작(월 열 다음 칸)에 굵은 구분선
+  function markTot(table, n) {
+    [].forEach.call(table.querySelectorAll('tr'), function (tr) {
+      var cs = tr.children; if (cs.length > n + 1) cs[n + 1].classList.add('sp-tot');
+    });
+    return table;
+  }
+
   function months(per) {
     var ks = {}; F.tx.forEach(function (t) { var k = F.ym(t.date); if (k) ks[k] = 1; });
     var all = Object.keys(ks).sort();
@@ -97,10 +105,10 @@
         ['월평균 지출', F.man(total / active), '', active + '개월 기준'],
         ['가장 큰 사용처', top[0] ? top[0][0] : '—', '', top[0] ? F.man(top[0][1]) + ' · ' + share(top[0][1]) : ''],
         ['대표 가수금 입금', F.man(ownerIn), '', '같은 기간 · 대표 → 법인']], 'four'),
-      ui.panel('어디에 썼나 (월별)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, head), body)),
+      ui.panel('어디에 썼나 (월별)', null, h('div', { class: 'table-wrap flat' }, markTot(h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, head), body), keys.length)),
         h('p', { class: 'meta', text: '통장 출금 기준(현금주의) · 금액 칸을 누르면 그 달 그 분류의 거래가 아래에 표시됩니다. ' + CARD_NOTE + ' 분류는 거래내역에서 바꾸면 바로 반영됩니다.' })),
       V.sel ? detail(V.sel, keys) : null,
-      inCats.length ? ui.panel('돈이 들어온 곳 (월별)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, inHead), inBody))) : null,
+      inCats.length ? ui.panel('돈이 들어온 곳 (월별)', null, h('div', { class: 'table-wrap flat' }, markTot(h('table', { class: 'table fin-table fin-flow fin-spend' }, h('thead', null, inHead), inBody), keys.length))) : null,
       ownerPanel());
   }
 
