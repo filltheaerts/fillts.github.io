@@ -158,3 +158,8 @@ button.in-chip:hover { border-color: var(--black); }
   .in-steps li { flex: 1 1 33%; border-top: 1px solid var(--gray-200); }
   .in-tone-row { grid-template-columns: 88px minmax(0, 1fr) 36px; }
 }
+
+/* 찾은 이유 */
+.in-reason-cell { font-size: 11px; line-height: 1.55; color: var(--gray-600); min-width: 260px; max-width: 360px; }
+.in-reason-cell div + div { margin-top: 2px; }
+.in-reason { margin: 0 0 4px 16px; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.6; }
