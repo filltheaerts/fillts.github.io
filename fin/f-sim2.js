@@ -131,7 +131,8 @@
     var sec = function (title, note) {
       var key = secKey(title), closed = !!fold[key];
       body.appendChild(h('tr', { class: 'sx-sec sx-fold' + (closed ? ' closed' : ''), 'data-sec': key, tabindex: '0', role: 'button', 'aria-expanded': String(!closed), title: closed ? '눌러서 펼치기' : '눌러서 접기' },
-        h('td', { class: 'sx-k' }, h('span', { class: 'sx-caret', text: closed ? '▸' : '▾' }), h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null), cols.map(function () { return h('td'); })));
+        h('td', { class: 'sx-k' }, h('span', { class: 'sx-caret', text: closed ? '▸' : '▾' }), h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null),
+        h('td', { colspan: String(cols.length), class: 'sx-sectog' }, h('span', { class: 'sx-chip', text: closed ? '▾ 펼치기' : '▴ 접기' }))));
     };
     var cell = function (ym, val, cls) { return h('td', { class: 'num' + '' + (cls ? ' ' + cls : ''), text: val }); };
     var row = function (label, f, cls, rowCls) { body.appendChild(h('tr', { class: rowCls || '' }, h('td', { class: 'sx-k', text: label }), R.map(function (r) { var v = f(r); return cell(r.ym, v.t != null ? v.t : v, v.c || cls); }))); };
@@ -167,8 +168,8 @@
         ['결제수수료 (PG)', u.pg, '실결제 ' + F.won(Math.round(u.paid)) + ' × ' + e1.pgRate + '%'], ['반품 · 환불', u.ret, '순매출 × ' + e1.returnRate + '%'], ['리뷰 적립 · CS 사은', u.review, '개당 평균']],
       cogs: (u.parts || []).map(function (p) { return [p.it.name + (p.per !== 1 ? ' × ' + p.per + (p.it.unit || '') : ''), p.cost, '매입 단가 (공급가)']; })
     };
-    var dRow = function (label, amt, note) {
-      body.appendChild(h('tr', { class: 'sx-u-d' }, h('td', { class: 'sx-k', text: label }), h('td', { class: 'num', text: (amt < 0 ? '−' : '') + F.won(Math.abs(Math.round(amt))) }),
+    var dRow = function (label, amt, note, grp) {
+      body.appendChild(h('tr', { class: 'sx-u-d', 'data-grp': grp }, h('td', { class: 'sx-k', text: label }), h('td', { class: 'num', text: (amt < 0 ? '−' : '') + F.won(Math.abs(Math.round(amt))) }),
         h('td', { class: 'num sx-ratio', text: (Math.abs(amt) / pnet * 100).toFixed(1) + '%' }), h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote', text: note })));
     };
     UROWS.forEach(function (k) {
@@ -177,12 +178,14 @@
       i.addEventListener('focus', function () { i.select(); });
       i.addEventListener('change', function () { var o = Object.assign({}, c.unitOver || {}), n = F.parseWon(i.value); if (n === Math.round(X.base[k[0]])) delete o[k[0]]; else o[k[0]] = n; save({ unitOver: o }); });
       var ratio = k[0] === 'net' ? '100%' : (v / pnet * 100).toFixed(1) + '%';
-      body.appendChild(h('tr', { class: 'sx-input sx-u sx-u-' + k[0] }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: k[2] }), h('span', { class: 'strong', text: '1개당 ' + k[1] })),
+      var gOpen = !!fold['d:' + k[0]], nDet = (DETAIL[k[0]] || []).length;
+      body.appendChild(h('tr', { class: 'sx-input sx-u sx-u-' + k[0] }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: k[2] }), h('span', { class: 'strong', text: '1개당 ' + k[1] }),
+          nDet ? h('button', { type: 'button', class: 'sx-tog', 'data-grp': k[0], 'aria-expanded': String(gOpen), text: (gOpen ? '▴ 접기' : '▾ 내역 ' + nDet) }) : null),
         h('td', { class: 'num' }, i), h('td', { class: 'num sx-ratio', text: ratio }),
         h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote' }, own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) + ' ' : k[3] + ' ',
           own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null)));
-      (DETAIL[k[0]] || []).forEach(function (d) { dRow(d[0], d[1], d[2]); });
-      if (own) body.appendChild(h('tr', { class: 'sx-u-d' }, h('td', { class: 'sx-k meta', text: '↳ 위 세부는 가져온 값 기준 · 소계는 직접 입력값 사용' }), h('td', { colspan: String(cols.length) })));
+      (DETAIL[k[0]] || []).forEach(function (d) { dRow(d[0], d[1], d[2], k[0]); });
+      if (own) body.appendChild(h('tr', { class: 'sx-u-d', 'data-grp': k[0] }, h('td', { class: 'sx-k meta', text: '↳ 위 세부는 가져온 값 기준 · 소계는 직접 입력값 사용' }), h('td', { colspan: String(cols.length) })));
     });
     body.appendChild(h('tr', { class: 'sx-u sx-u-profit' }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: '=' }), h('span', { class: 'strong', text: '1개당 순익 (광고 전)' })),
       h('td', { class: 'num strong' + (unitProfit < 0 ? ' red' : '') }, F.won(Math.round(unitProfit))), h('td', { class: 'num sx-ratio strong', text: (unitProfit / pnet * 100).toFixed(1) + '%' }),
@@ -278,8 +281,9 @@
     var applyFold = function () {
       var curKey = null;
       Array.prototype.forEach.call(body.children, function (tr) {
-        if (tr.classList.contains('sx-sec')) { curKey = tr.getAttribute('data-sec'); var cl = !!fold[curKey]; tr.classList.toggle('closed', cl); tr.setAttribute('aria-expanded', String(!cl)); var cr = tr.querySelector('.sx-caret'); if (cr) cr.textContent = cl ? '▸' : '▾'; tr.title = cl ? '눌러서 펼치기' : '눌러서 접기'; return; }
-        tr.hidden = !!(curKey && fold[curKey]);
+        if (tr.classList.contains('sx-sec')) { curKey = tr.getAttribute('data-sec'); var cl = !!fold[curKey]; tr.classList.toggle('closed', cl); tr.setAttribute('aria-expanded', String(!cl)); var cr = tr.querySelector('.sx-caret'); if (cr) cr.textContent = cl ? '▸' : '▾'; var ch = tr.querySelector('.sx-chip'); if (ch) ch.textContent = cl ? '▾ 펼치기' : '▴ 접기'; tr.title = cl ? '눌러서 펼치기' : '눌러서 접기'; return; }
+        var g = tr.getAttribute('data-grp');
+        tr.hidden = !!(curKey && fold[curKey]) || !!(g && !fold['d:' + g]);   // 섹션이 접혔거나, 세부 묶음이 닫혀 있으면 숨김 (세부는 기본 닫힘)
       });
     };
     var saveFold = function () { try { localStorage.setItem('finSimFold', JSON.stringify(fold)); } catch (e) { /* 저장 불가 — 이번 화면만 */ } };
@@ -287,6 +291,12 @@
     Array.prototype.forEach.call(body.querySelectorAll('tr.sx-fold'), function (tr) {
       tr.addEventListener('click', function (e) { if (e.target.closest('button, input, a')) return; toggleSec(tr.getAttribute('data-sec')); });
       tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSec(tr.getAttribute('data-sec')); } });
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('button.sx-tog'), function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation(); var g = b.getAttribute('data-grp'), k = 'd:' + g; fold[k] = !fold[k]; saveFold(); applyFold();
+        b.setAttribute('aria-expanded', String(!!fold[k])); b.textContent = fold[k] ? '▴ 접기' : '▾ 내역 ' + body.querySelectorAll('tr.sx-u-d[data-grp="' + g + '"]').length;
+      });
     });
     applyFold();
     var allKeys = Array.prototype.map.call(body.querySelectorAll('tr.sx-fold'), function (tr) { return tr.getAttribute('data-sec'); });
@@ -321,8 +331,7 @@
         ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', ownerLimit ? '한도 ' + F.man(ownerLimit) + ' (자금조달 계획)' : ''],
         ['월 순익 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '기간 누적 순익 ' + F.man(pSum) + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
       h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
-      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('div', { class: 'row sx-foldbar' }, h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값 · 섹션 제목을 누르면 접기/펼치기' }),
-        ui.btn('모두 펼치기', function () { foldAll(false); }, 'btn-line btn-xs'), ui.btn('모두 접기', function () { foldAll(true); }, 'btn-line btn-xs')),
+      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값 · ▾ 누르면 펼치기 / ▴ 접기' }),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
       h('div', { class: 'fin-sim-settings' },
         ui.panel('Settings · 기준값', null, h('div', { class: 'stack fin-form' },
