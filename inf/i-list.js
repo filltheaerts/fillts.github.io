@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   var HR = window.HR, I = HR.I, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db;
-  var V = I.V.list = { q: '', st: '', ag: '', maxS: '', sort: 'at', dir: -1, add: '', busy: '', msg: '', err: false, prog: null, one: {} };
+  var V = I.V.list = { q: '', st: '', ag: '', maxS: '', who: [], sort: 'at', dir: -1, add: '', busy: '', msg: '', err: false, prog: null, one: {} };
 
   function setMsg(t, err) { V.msg = t; V.err = !!err; HR.refresh(); }
   function addOne() {
@@ -99,6 +99,7 @@
       var ch = c.ch || {};
       if (V.st && (c.stage || 'review') !== V.st) return false;
       if (V.maxS && !((ch.subs || 0) < +V.maxS)) return false;   // 구독자 상한 (미만)
+      if (V.who.length && V.who.indexOf(c.by) < 0) return false;   // 찾은 사람(리스트에 넣은 담당자)
       if (V.ag) { var p = I.agency(Object.assign({}, ch, { email: c.email || ch.email })).p; if ((V.ag === 'agency' && !p) || (V.ag === 'solo' && p)) return false; }
       if (q && ((ch.title || '') + ' ' + (ch.handle || '') + ' ' + (c.email || '') + ' ' + (c.tags || []).join(' ') + ' ' + (c.seedTitle || '')).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -117,6 +118,19 @@
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
+  // 찾은 사람별 보기 — 기본은 전체, 이름을 누르면 그 사람이 넣은 유튜버만 (여러 명 선택 가능)
+  function whoBar() {
+    var cnt = {};
+    I.creators.forEach(function (c) { if (c.by) cnt[c.by] = (cnt[c.by] || 0) + 1; });
+    var ids = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
+    return h('div', { class: 'row in-whobar' }, h('span', { class: 'label', text: '찾은 사람' }),
+      h('button', { type: 'button', class: 'in-chip' + (V.who.length ? '' : ' on'), text: '전체 보기 (' + I.creators.length + ')', onclick: function () { V.who = []; HR.refresh(); } }),
+      ids.map(function (id) {
+        var on = V.who.indexOf(id) >= 0;
+        return h('button', { type: 'button', class: 'in-chip' + (on ? ' on' : ''), title: '누르면 이 사람이 찾은 유튜버만 — 여러 명 같이 고를 수 있음',
+          text: (on ? '✓ ' : '') + HR.name(id) + ' (' + cnt[id] + ')', onclick: function () { if (on) V.who.splice(V.who.indexOf(id), 1); else V.who.push(id); HR.refresh(); } });
+      }));
+  }
   function render(view) {
     var list = filtered();
     var addIn = ui.input({ value: V.add, maxlength: '300', placeholder: '유튜버 직접 추가 — 채널 주소 · @핸들 · 영상 주소 · 채널 이름', class: 'grow',
@@ -155,6 +169,7 @@
         h('div', { class: 'row in-seed-form' }, addIn, addBtn),
         V.msg ? h('p', { class: 'form-msg' + (V.err ? '' : ' ok'), role: 'alert', text: V.msg }) : null,
         h('p', { class: 'note', text: '탐색에서 「디벨롭으로 추가」했거나 여기서 직접 넣은 모든 유튜버입니다. 이 리스트의 채널은 다음 탐색부터 자동으로 빠집니다. 머리줄(구독 · 조회 · 댓글수 · 주기 · 조회 추세 …)을 누르면 그 기준으로 정렬되고, 한 번 더 누르면 반대로 정렬됩니다. 줄을 누르면 채널 데이터베이스가 열립니다.' })),
+      whoBar(),
       h('div', { class: 'toolbar in-toolbar' }, subsSel, q, stSel, agSel, h('span', { class: 'meta grow in-right', text: list.length + ' / ' + I.creators.length + '명 · 약 ' + list.length * 5 + '포인트' }), allBtn),
       table);
   }
