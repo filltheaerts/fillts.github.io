@@ -135,3 +135,29 @@ a.map-card:hover { border-color: var(--black); }
 .fin-fixed input.fin-cell[inputmode="numeric"] { min-width: 118px; }
 .fin-fixed td:nth-child(8) .fin-cell-text { min-width: 120px; }
 .fin-fixed .fin-cell-sm { text-align: right; }
+
+/* 시뮬레이션 — 엑셀형 월별 시트 */
+.sx-wrap { overflow-x: auto; }
+.sx-grid { min-width: 0; width: max-content; font-size: 12px; }
+.sx-grid th, .sx-grid td { padding: 6px 8px; white-space: nowrap; }
+.sx-grid .sx-k { position: sticky; left: 0; z-index: 2; background: var(--paper); min-width: 220px; max-width: 260px; white-space: normal; border-right: 1px solid var(--gray-200); }
+.sx-grid thead .sx-k { z-index: 3; }
+.sx-grid th.sx-late, .sx-grid td.sx-late { color: var(--gray-400); }
+.sx-grid .sx-check { background: rgba(200, 16, 46, 0.05); border-left: 1px solid var(--red); border-right: 1px solid var(--red); }
+.sx-grid thead th.sx-check { color: var(--red); font-weight: 600; }
+.sx-grid tr.sx-sec td { padding-top: 16px; border-top: 2px solid var(--black); font-size: 11px; letter-spacing: 0.06em; font-weight: 600; background: var(--paper); }
+.sx-grid tr.sx-sec td.sx-k { color: var(--black); }
+.sx-grid tr.sx-input td { background: #fffdf2; }
+.sx-grid tr.sx-input td.sx-k { background: #fff8d6; }
+.sx-grid input.sx-cell { width: 76px; padding: 4px 6px; font-size: 12px; text-align: right; border: 1px solid var(--gray-200); background: #fff; font-variant-numeric: tabular-nums; }
+.sx-grid input.sx-cell:focus { outline: 2px solid var(--black); outline-offset: -1px; }
+.sx-grid tr.sx-sum td { border-top: 1px solid var(--gray-400); font-weight: 500; }
+.sx-grid tr.sx-cash td { font-size: 13px; font-weight: 600; background: var(--gray-100); }
+.sx-grid tr.sx-cash td.sx-k { background: var(--gray-100); }
+.sx-grid td.sx-neg { background: rgba(200, 16, 46, 0.12) !important; }
+.sx-grid tr.sx-need td { font-size: 12px; }
+.sx-how { margin: 0 0 16px; }
+/* HR 공통 표 입력 스타일(.table td input[type=text])보다 우선 */
+.sx-grid td input.sx-cell[type="text"] { width: 72px; min-width: 72px; padding: 4px 6px; border: 1px solid var(--gray-200); background: #fff; text-align: right; }
+.sx-grid td.num { min-width: 78px; }
+.sx-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }

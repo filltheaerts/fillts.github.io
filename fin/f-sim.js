@@ -121,7 +121,7 @@
   }
 
   function unit(view) {
-    var u = F.unitPnl(), ed = F.canEdit(), e = u.e, c = simCfg(), fx = simFixedAt(c, F.thisYm());
+    var u = F.unitPnl(), ed = F.canEdit(), e = u.e, fx = F.fixedAt(F.thisYm());
     // 입력: 세로 한 표 — 값 · 단위 · 1개당 영향 · 가이드
     var effect = {
       price: ['실결제 ' + won(u.paid), ''], discount: ['−' + won(u.disc), 'minus'], upo: ['주문당 비용 ÷ ' + e.upo, ''], returnRate: ['−' + won(u.ret), 'minus'],
@@ -199,7 +199,7 @@
     ui.put(view, ui.head('Unit economics', '개당 손익 (D2C)'),
       F.kpi([['실결제 (1개)', won(u.paid), '', '정가 ' + F.won(u.price) + ' − 할인 ' + e.discount + '%'], ['제품 원가', won(u.cogs), '', '순매출의 ' + pct(u.cogs, u.net)],
         ['광고 전 이익', won(u.pre), '', '실결제의 ' + pct(u.pre, u.paid)], ['개당 남는 돈', won(u.contrib), u.contrib < 0 ? 'red' : '', '광고 ' + e.adRate + '% 기준 · 실결제의 ' + pct(u.contrib, u.paid)],
-        ['월 고정비', F.man(fx.total), '', fx.rows.length + '개 항목 · 시뮬레이션과 공유'], ['손익분기', bepNow ? bepNow.toLocaleString('ko-KR') + '개/월' : '불가', bepNow ? '' : 'red', bepNow ? '월 실결제 ' + F.man(bepNow * u.paid) : '광고비를 낮춰야 함']]),
+        ['월 고정비', F.man(fx.total), '', fx.rows.length + '개 항목 · 지출 흐름 고정비'], ['손익분기', bepNow ? bepNow.toLocaleString('ko-KR') + '개/월' : '불가', bepNow ? '' : 'red', bepNow ? '월 실결제 ' + F.man(bepNow * u.paid) : '광고비를 낮춰야 함']]),
       ui.panel('Inputs · 입력 세트', h('span', { class: 'meta', text: '자사몰 단품 기준 가정값 — 실제 계약 조건으로 고쳐 주세요 · 값을 바꾸면 바로 저장 · 다시 계산' }),
         h('div', { class: 'table-wrap flat' }, inputs)),
       actualPanel(u, e, fx),
@@ -210,7 +210,7 @@
             var bar = h('span', { class: 'fw-fill' + (m[0] === '남는 돈' ? ' red' : '') }); bar.style.width = Math.max(1, Math.round(Math.abs(m[1]) / u.paid * 100)) + '%';
             return h('li', null, h('span', { class: 'grow', text: m[0] }), h('span', { class: 'fw-track fin-mixbar' }, bar), h('span', { class: 'num', text: won(m[1]) + ' · ' + pct(m[1], u.paid) }));
           }))),
-          ui.panel('Fixed · 월 고정비', h('a', { href: '#sim', class: 'meta', text: '시뮬레이션에서 수정 →' }), fxList))),
+          ui.panel('Fixed · 월 고정비', h('a', { href: '#cost', class: 'meta', text: '지출 흐름에서 수정 →' }), fxList))),
       ui.panel('Marketing · 광고비 비중별로 어떻게 굴러가나', null, h('div', { class: 'table-wrap flat' }, mk),
         h('p', { class: 'meta', text: '필요 ROAS = 광고비 1원으로 만들어야 하는 매출(실결제). 손익분기 판매량 = 월 고정비 ÷ 개당 남는 돈.' })),
       ui.panel('Matrix · 월 영업이익 (광고비 비중 × 월 판매량)', null, h('div', { class: 'table-wrap flat' }, mx),
