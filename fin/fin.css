@@ -290,3 +290,13 @@ a.map-card:hover { border-color: var(--black); }
 .fin-qbtn { background: var(--paper, #fff); border: 1px solid var(--gray-200); padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--gray-800, #333); }
 .fin-qbtn:hover { border-color: var(--black, #111); }
 .fin-qbtn.on { border-color: var(--red); color: var(--red); }
+/* 자산관리 */
+.nav-links li.nav-grp-asset { color: var(--black); }
+.fin-inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.fin-inline-form .field { min-width: 140px; flex: 1 1 140px; margin: 0; }
+.fin-table tr.muted td { color: var(--gray-400); }
+.inv-bar { display: flex; height: 18px; border: 1px solid var(--gray-200); margin: 4px 0 10px; }
+.inv-seg { display: block; height: 100%; }
+.inv-seg0 { background: var(--gray-400); } .inv-seg1 { background: var(--black, #111); } .inv-seg2 { background: var(--red); } .inv-seg3 { background: var(--gray-600, #555); } .inv-seg4 { background: var(--gray-200); } .inv-seg5 { background: #c9a0a0; }
+.inv-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--gray-600, #555); }
+.inv-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }

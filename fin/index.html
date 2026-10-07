@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../hr/hr.css?v=2610072130">
-  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610072130">
-  <link rel="stylesheet" href="fin.css?v=2610072130">
+  <link rel="stylesheet" href="../hr/hr.css?v=2610072200">
+  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610072200">
+  <link rel="stylesheet" href="fin.css?v=2610072200">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -99,13 +99,15 @@
         <li><a href="#sim" data-menu="sim">시뮬레이션</a></li>
         <li class="nav-sep nav-grp nav-grp-real" aria-hidden="true">[실제]</li>
         <li><a href="#home" data-menu="home">Overview</a></li>
-        <li><a href="#plan" data-menu="plan">자금조달</a></li>
-        <li><a href="#inv" data-menu="inv">재고</a></li>
         <li><a href="#tx" data-menu="tx">거래내역</a></li>
         <li><a href="#spend" data-menu="spend">사용분석</a></li>
         <li><a href="#finance" data-menu="finance">입금분석</a></li>
         <li><a href="#tax" data-menu="tax">세무사</a></li>
-        <li><a href="#set" data-menu="set">설정</a></li>
+        <li class="nav-sep nav-grp nav-grp-asset" aria-hidden="true">[자산관리]</li>
+        <li><a href="#inv" data-menu="inv">재고</a></li>
+        <li><a href="#asset" data-menu="asset">자산</a></li>
+        <li><a href="#plan" data-menu="plan">자금조달</a></li>
+        <li class="nav-sep"><a href="#set" data-menu="set">설정</a></li>
         <li class="nav-sep"><a href="/hr/" target="_blank" rel="opener" class="nav-ext">HR ↗</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
       </ul>
@@ -118,22 +120,23 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=2610072130"></script>
-  <script src="../hr/firebase-config.js?v=2610072130"></script>
-  <script src="../hr/labor.js?v=2610072130"></script>
-  <script src="../hr/core.js?v=2610072130"></script>
-  <script src="vendor/xlsx.full.min.js?v=2610072130"></script>
-  <script src="bankparse.js?v=2610072130"></script>
-  <script src="f-core.js?v=2610072130"></script>
-  <script src="f-money.js?v=2610072130"></script>
-  <script src="f-plan.js?v=2610072130"></script>
-  <script src="f-tx.js?v=2610072130"></script>
-  <script src="f-tax.js?v=2610072130"></script>
-  <script src="f-inv.js?v=2610072130"></script>
-  <script src="f-sim.js?v=2610072130"></script>
-  <script src="f-cost.js?v=2610072130"></script>
-  <script src="f-spend.js?v=2610072130"></script>
-  <script src="f-sim2.js?v=2610072130"></script>
-  <script src="../hr/m-finance.js?v=2610072130"></script>
+  <script src="app.js?v=2610072200"></script>
+  <script src="../hr/firebase-config.js?v=2610072200"></script>
+  <script src="../hr/labor.js?v=2610072200"></script>
+  <script src="../hr/core.js?v=2610072200"></script>
+  <script src="vendor/xlsx.full.min.js?v=2610072200"></script>
+  <script src="bankparse.js?v=2610072200"></script>
+  <script src="f-core.js?v=2610072200"></script>
+  <script src="f-money.js?v=2610072200"></script>
+  <script src="f-plan.js?v=2610072200"></script>
+  <script src="f-tx.js?v=2610072200"></script>
+  <script src="f-tax.js?v=2610072200"></script>
+  <script src="f-inv.js?v=2610072200"></script>
+  <script src="f-sim.js?v=2610072200"></script>
+  <script src="f-cost.js?v=2610072200"></script>
+  <script src="f-spend.js?v=2610072200"></script>
+  <script src="f-asset.js?v=2610072200"></script>
+  <script src="f-sim2.js?v=2610072200"></script>
+  <script src="../hr/m-finance.js?v=2610072200"></script>
 </body>
 </html>
