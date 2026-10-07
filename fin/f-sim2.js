@@ -97,7 +97,7 @@
 
     // 엑셀형 표: 행 = 항목, 열 = 월
     var cols = R.map(function (r) { return r.ym; });
-    var head = h('tr', null, h('th', { class: 'sx-k', text: '' }), cols.map(function (ym) {
+    var head = h('tr', null, h('th', { class: 'sx-k', text: '항목 / 월' }), cols.map(function (ym) {
       return h('th', { class: 'num', text: F.ymLabel(ym) });
     }));
     var body = h('tbody');

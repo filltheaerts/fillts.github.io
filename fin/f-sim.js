@@ -34,7 +34,9 @@
     var price = +e.price || 0, paid = price * (1 - (+e.discount || 0) / 100), disc = price - paid;
     var vat = paid / 11, net = paid - vat;
     var ret = net * (+e.returnRate || 0) / 100;
-    var cogs = uc.total, gross = net - ret - cogs;
+    var cogs = uc.total;
+    if (+e.cogsOverride > 0) { cogs = +e.cogsOverride; uc = { parts: [{ it: { name: '제품 원가 (단가 계산기 적용값)', unit: '' }, per: 1, cost: cogs }], total: cogs }; }
+    var gross = net - ret - cogs;
     var upo = Math.max(1, +e.upo || 1);
     var ship = (+e.ship || 0) / upo, pick = (+e.pick || 0) / upo, box = (+e.box || 0) / upo, storage = +e.storage || 0;
     var logi = ship + pick + box + storage;
@@ -52,6 +54,71 @@
   var pct = function (v, base) { return base ? (v / base * 100).toFixed(1) + '%' : ''; };
   var won = function (v) { return F.won(Math.round(v)); };
 
+
+
+  /* ---------- 단가 계산기: 견적서 · 실제 결제 금액 → 개당 단가 → 제품 1개 원가 ---------- */
+  // 행: { name, qty, amount, vat: 'incl'|'excl', per, kind: 'unit'|'setup' } — fin_config/main.costCalc
+  // kind 'setup'(동판 · 목형 등 초도비)은 「이번 생산 수량」으로 나눠 제품 1개에 얹는다.
+  function calcSeed() {
+    var rows = [];
+    (F.inv.items || []).forEach(function (it) {
+      F.inv.moves.filter(function (m) { return m.kind === 'in' && m.itemId === it.id && m.reason !== 'adjust'; }).forEach(function (m) {
+        rows.push({ name: it.name, qty: +m.qty || 0, amount: (+m.amount || 0) + (+m.vat || 0), vat: 'incl', per: it.type === 'setup' ? 1 : (+it.perProduct || 0), kind: it.type === 'setup' ? 'setup' : 'unit' });
+      });
+    });
+    return rows;
+  }
+  function calcPanel(u) {
+    var ed = F.canEdit(), saved = F.cfg.costCalc, rows = saved && saved.rows ? saved.rows : calcSeed(), batch = saved && +saved.batch ? +saved.batch : 5000;
+    var put = function (list, b) { return F.cfgSet({ costCalc: { rows: list, batch: b != null ? b : batch } }).catch(ui.fail); };
+    var calc = function (r) {
+      var amt = +r.amount || 0, qty = +r.qty || 0, sup = r.vat === 'incl' ? amt / 1.1 : amt;
+      var unitSup = r.kind === 'setup' ? (batch ? sup / batch : 0) : (qty ? sup / qty : 0);
+      var per = r.kind === 'setup' ? 1 : (+r.per || 0);
+      return { sup: sup, unitSup: unitSup, unitVat: unitSup * 1.1, cost: unitSup * per };
+    };
+    var total = 0, totalPay = 0;
+    var body = h('tbody');
+    rows.forEach(function (r, idx) {
+      var x = calc(r); total += x.cost; totalPay += r.vat === 'incl' ? +r.amount || 0 : (+r.amount || 0) * 1.1;
+      var set = function (patch) { var list = rows.slice(); list[idx] = Object.assign({}, list[idx], patch); put(list); };
+      var cell = function (val, key, cls, money) {
+        var i = h('input', { type: 'text', inputmode: money ? 'numeric' : null, class: 'fin-cell ' + (cls || ''), value: val == null ? '' : (money && val !== '' ? Number(val).toLocaleString('ko-KR') : String(val)), disabled: ed ? null : true });
+        i.addEventListener('focus', function () { i.select(); });
+        i.addEventListener('change', function () { var p = {}; p[key] = money ? F.parseWon(i.value) : (key === 'per' ? +i.value || 0 : i.value.trim()); set(p); });
+        return i;
+      };
+      var vat = ui.select([['incl', '포함'], ['excl', '별도']], r.vat || 'incl', { class: 'fin-cell', disabled: ed ? null : true, onchange: function () { set({ vat: this.value }); } });
+      var kind = ui.select([['unit', '개당'], ['setup', '초도비']], r.kind || 'unit', { class: 'fin-cell', disabled: ed ? null : true, onchange: function () { set({ kind: this.value }); } });
+      body.appendChild(h('tr', null,
+        h('td', null, cell(r.name, 'name', 'fin-cell-text')), h('td', null, kind),
+        h('td', { class: 'fin-in' }, r.kind === 'setup' ? h('span', { class: 'meta', text: '÷ ' + batch.toLocaleString('ko-KR') + '개' }) : cell(r.qty, 'qty', '', true)),
+        h('td', { class: 'fin-in' }, cell(r.amount, 'amount', '', true)), h('td', null, vat),
+        h('td', { class: 'num' }, F.won(Math.round(x.unitSup))), h('td', { class: 'num meta' }, F.won(Math.round(x.unitVat))),
+        h('td', { class: 'fin-in' }, r.kind === 'setup' ? h('span', { class: 'meta', text: '1' }) : cell(r.per, 'per', 'fin-cell-sm')),
+        h('td', { class: 'num strong' }, F.won(Math.round(x.cost))),
+        ed ? h('td', null, ui.btn('×', function () { var list = rows.slice(); list.splice(idx, 1); put(list); }, 'btn-line btn-xs')) : h('td')));
+    });
+    var auto = F.invUnitCost ? F.invUnitCost(false).total : 0, applied = +F.econ().cogsOverride || 0;
+    var foot = h('tr', { class: 'fin-result' }, h('td', { colspan: '8', class: 'strong', text: '제품 1개 원가 (공급가)' }), h('td', { class: 'num strong', text: F.won(Math.round(total)) }), h('td'));
+    var foot2 = h('tr', { class: 'fin-auto' }, h('td', { colspan: '8', text: '부가세 포함으로 보면 · 결제 금액 합계 ' + F.man(totalPay) }), h('td', { class: 'num', text: F.won(Math.round(total * 1.1)) }), h('td'));
+    body.appendChild(foot); body.appendChild(foot2);
+    var tb = h('table', { class: 'table fin-table fin-inputs fin-calc' }, h('thead', null, h('tr', null,
+      ['품목', '구분', '수량', '결제 금액 (원)', '부가세', '개당 단가 (공급가)', '부가세 포함', '제품 1개당 사용량', '제품 1개 원가에 들어가는 돈', ''].map(function (t, i) { return h('th', { class: i >= 5 && i <= 8 && i !== 7 ? 'num' : '', text: t }); }))), body);
+    var batchIn = ui.input({ type: 'number', min: '1', value: String(batch), disabled: ed ? null : true });
+    batchIn.addEventListener('change', function () { put(rows, +batchIn.value || 1); });
+    var diff = total - auto;
+    return ui.panel('Calculator · 단가 계산기 (견적서 · 실제 결제 금액 → 제품 1개 원가)', ed ? h('div', { class: 'row' },
+        ui.btn('+ 품목 추가', function () { put(rows.concat([{ name: '', qty: 0, amount: 0, vat: 'incl', per: 1, kind: 'unit' }])); }, 'btn-line btn-sm'),
+        ui.confirmBtn('재고 매입 내역으로 다시 채우기', function () { put(calcSeed()); }, 'btn-line btn-sm')) : null,
+      h('p', { class: 'meta', text: '견적서나 거래명세서의 품목 · 수량 · 결제 금액을 그대로 적으면 개당 단가가 나오고, 「제품 1개당 사용량」(예: 튜브 1개, 포도수 0.12kg, 샘플 2개)을 곱해 제품 1개 원가가 됩니다. 동판 · 목형 같은 초도비는 「초도비」로 두면 이번 생산 수량으로 나눠 얹습니다. 칸을 고치면 바로 저장됩니다.' }),
+      h('div', { class: 'row fin-form' }, ui.field('이번 생산 수량 (초도비를 나눌 수량)', batchIn)),
+      h('div', { class: 'table-wrap flat' }, tb),
+      F.kpi([['계산기 원가', F.won(Math.round(total)), '', '공급가 · 초도비 포함'], ['재고 탭 자동 원가', F.won(Math.round(auto)), '', '초도비 제외 · 평균 매입 단가'],
+        ['차이', (diff >= 0 ? '+' : '−') + F.won(Math.abs(Math.round(diff))), Math.abs(diff) > 1 ? 'red' : ''], ['개당 손익에 쓰는 원가', applied ? F.won(applied) : '자동 (' + F.won(Math.round(auto)) + ')', '', applied ? '계산기 값 적용 중' : '재고 탭 값']], 'four'),
+      ed ? h('div', { class: 'row' }, ui.btn('이 원가(' + F.won(Math.round(total)) + ')를 개당 손익에 적용', function () { saveEcon({ cogsOverride: Math.round(total) }).then(function () { ui.toast('개당 손익 원가를 계산기 값으로 바꿨습니다.'); }); }, 'btn-sm'),
+        applied ? ui.btn('자동(재고 탭) 원가로 되돌리기', function () { saveEcon({ cogsOverride: 0 }).then(function () { ui.toast('재고 탭 원가로 되돌렸습니다.'); }); }, 'btn-line btn-sm') : null) : null);
+  }
 
   /* ---------- 실제 주문 값으로 계산 ---------- */
   // [키, 항목, 단위, 가이드] — 주문 화면 · 3PL 청구서 · PG 정산 · 광고 관리자에서 그대로 옮겨 적는 값(기간 합계)
@@ -202,7 +269,7 @@
         ['월 고정비', F.man(fx.total), '', fx.rows.length + '개 항목 · 지출 흐름 고정비'], ['손익분기', bepNow ? bepNow.toLocaleString('ko-KR') + '개/월' : '불가', bepNow ? '' : 'red', bepNow ? '월 실결제 ' + F.man(bepNow * u.paid) : '광고비를 낮춰야 함']]),
       ui.panel('Inputs · 입력 세트', h('span', { class: 'meta', text: '자사몰 단품 기준 가정값 — 실제 계약 조건으로 고쳐 주세요 · 값을 바꾸면 바로 저장 · 다시 계산' }),
         h('div', { class: 'table-wrap flat' }, inputs)),
-      actualPanel(u, e, fx),
+      calcPanel(u),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Waterfall · 1개 팔면', null, h('div', { class: 'table-wrap flat' }, wf)),
         h('div', { class: 'stack' },

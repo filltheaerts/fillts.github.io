@@ -191,3 +191,26 @@ a.map-card:hover { border-color: var(--black); }
   .nav-links a { font-size: 11px; letter-spacing: 0.02em; }
   .nav-links li.nav-sep { padding-left: 14px; }
 }
+
+/* 단가 계산기 */
+.fin-calc .fin-cell { width: 100%; min-width: 80px; padding: 5px 7px; font-size: 13px; border: 1px solid var(--gray-200); background: #fffdf2; }
+.fin-calc td input.fin-cell[type="text"] { width: 100%; min-width: 96px; border: 1px solid var(--gray-200); background: #fffdf2; padding: 5px 7px; text-align: right; }
+.fin-calc td input.fin-cell.fin-cell-text[type="text"] { min-width: 230px; text-align: left; }
+.fin-calc td input.fin-cell.fin-cell-sm[type="text"] { min-width: 60px; width: 70px; }
+.fin-calc select.fin-cell { min-width: 70px; }
+
+/* 시뮬레이션 시트 — 엑셀 「틀 고정」: 월 머리줄(위)과 항목 열(왼쪽)이 스크롤해도 따라온다 */
+.sx-wrap { max-height: calc(100vh - 110px); overflow: auto; overscroll-behavior: contain; }
+.sx-grid { border-collapse: separate; border-spacing: 0; }
+.sx-grid thead th { position: sticky; top: 0; z-index: 4; background: var(--paper); box-shadow: inset 0 -2px 0 var(--black); padding-top: 10px; padding-bottom: 10px; font-size: 12px; color: var(--black); }
+.sx-grid thead th.sx-k { left: 0; z-index: 6; }
+.sx-grid thead th.sx-check { background: #fdf2f4; }
+.sx-grid tbody td.sx-k { box-shadow: inset -1px 0 0 var(--gray-200); }
+.sx-grid tbody tr:hover td { background-color: rgba(10, 10, 10, 0.025); }
+.sx-grid tbody tr:hover td.sx-k { background-color: #f5f5f5; }
+
+/* 단가 계산기 — 한 화면에 마지막 열까지 */
+.fin-calc td input.fin-cell.fin-cell-text[type="text"] { min-width: 170px; }
+.fin-calc td input.fin-cell[type="text"] { min-width: 84px; }
+.fin-calc select.fin-cell { min-width: 64px; }
+.fin-calc th, .fin-calc td { padding-left: 6px; padding-right: 6px; font-size: 12px; }
