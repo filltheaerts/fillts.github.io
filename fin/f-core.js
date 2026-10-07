@@ -136,6 +136,7 @@
     var d = (t.desc || '').replace(/^[0-9０-９]+/, '').replace(/주식회사|\(주\)|㈜|（주）/g, '').replace(/\(.*\)/, '').trim();
     return [d, d];
   }
+  // 반복 판정: 최근 완료 4개월 중 3번 이상, 또는 최근 2개월 연속(새로 시작된 반복 · 예: 대출 이자)
   F.recurring = function () {
     var cur = F.thisYm(), done = [fmt.ymShift(cur, -4), fmt.ymShift(cur, -3), fmt.ymShift(cur, -2), fmt.ymShift(cur, -1)];
     var G = {};
@@ -145,7 +146,7 @@
       var k = recurKey(t), g = G[k[0]] || (G[k[0]] = { key: k[0], title: k[1], cat: t.cat, m: {}, days: [] });
       g.m[ym] = (g.m[ym] || 0) + t.outAmt; if (ym !== cur) g.days.push(+t.date.slice(8, 10));
     });
-    return Object.keys(G).map(function (k) { return G[k]; }).filter(function (g) { return done.filter(function (ym) { return g.m[ym]; }).length >= 3; }).map(function (g) {
+    return Object.keys(G).map(function (k) { return G[k]; }).filter(function (g) { var n = done.filter(function (ym) { return g.m[ym]; }).length; return n >= 3 || (g.m[done[2]] && g.m[done[3]]); }).map(function (g) {
       var last3 = done.slice(1).filter(function (ym) { return g.m[ym]; }), amt = last3.reduce(function (a, ym) { return a + g.m[ym]; }, 0) / (last3.length || 1);
       var ds = g.days.slice().sort(function (a, b) { return a - b; }), day = ds[Math.floor(ds.length / 2)] || 1;
       if (F.RECUR_DAY[g.key]) day = F.RECUR_DAY[g.key];
