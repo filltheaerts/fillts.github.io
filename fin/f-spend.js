@@ -118,7 +118,10 @@
       var k = F.ym(t.date); if (!inK[k] || t.cat !== '카드대금' || !(t.outAmt > 0)) return;
       var ln = F.card.filter(function (x) { return x.payId === t.id; }); if (!ln.length) return;
       var r = t.outAmt - ln.reduce(function (a, x) { return a + x.amount; }, 0) - cardSplit(t).reduce(function () { return 0; }, 0);
-      if (r) put('카드 수수료 · 연회비 (카드대금 − 명세)', k, r);
+      // 카드대금 − 명세 차액: 1만원 단위 = 연회비, 400원 = 문자 발송(SMS) 이용료 (대표 확인 261007), 나머지는 기타 차액
+      if (r >= 10000) { put('카드 연회비 (국민카드)', k, 10000); r -= 10000; }
+      if (r === 400) { put('카드 문자 발송 (SMS) 이용료', k, 400); r = 0; }
+      if (r) put('카드 기타 차액', k, r);
     });
     F.card.forEach(function (x) {
       if (x.cat !== c || !x.payDate) return; var k = F.ym(x.payDate); if (!inK[k]) return;
