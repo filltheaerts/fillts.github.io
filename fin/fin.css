@@ -67,3 +67,12 @@ a.map-card:hover { border-color: var(--black); }
 .map-links a { font-size: 12px; padding: 4px 10px; border: 1px solid var(--gray-200); color: inherit; text-decoration: none; }
 .map-links a:hover { border-color: var(--black); }
 @media (max-width: 860px) { .map-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* 통장별 잔액 · 민감도 */
+.fin-total { display: flex; align-items: baseline; gap: 14px; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--gray-400); margin-top: 4px; }
+.fin-total strong { font-size: 20px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.list li.fin-owner { background: var(--gray-100); }
+.fin-table tr.fin-mine td { font-weight: 600; background: var(--gray-100); }
+.fin-acct-row { flex-wrap: wrap; gap: 10px; align-items: flex-end; padding-bottom: 10px; border-bottom: 1px solid var(--gray-100); }
+.fin-acct-row > .field { min-width: 120px; }
+.fin-acct-row > .field.grow { flex: 1 1 180px; }

@@ -53,7 +53,9 @@
   F.sortedTx = function () { return F.tx.slice().sort(function (a, b) { return F.txKey(a) < F.txKey(b) ? 1 : -1; }); };
 
   /* ---------- 잔액 ---------- */
-  // 계좌별 가장 최근 거래의 잔액 합. 설정의 「직접 입력 잔액」이 더 최근이면 그 값을 쓴다
+  // 계좌별 잔액: 통장 내역의 최근 잔액 + 설정에서 직접 입력한 계좌(cashAccts). 같은 계좌(key)면 기준일이 더 최근인 쪽
+  F.ACCT_KIND = [['op', '운영 자금'], ['loan', '정책자금 · 대출금'], ['reserve', '예비 · 기타']];
+  F.kindName = function (k) { return (F.ACCT_KIND.filter(function (x) { return x[0] === k; })[0] || ['', '운영 자금'])[1]; };
   F.balance = function () {
     var by = {};
     F.tx.forEach(function (t) {
@@ -61,11 +63,19 @@
       var k = F.acctKey(t), c = by[k];
       if (!c || F.txKey(t) > F.txKey(c)) by[k] = t;
     });
-    var keys = Object.keys(by), sum = 0, asOf = '';
-    var accts = keys.map(function (k) { var t = by[k]; sum += t.bal; if (t.date > asOf) asOf = t.date; return { key: k, name: F.acctName(t), bal: t.bal, date: t.date }; });
-    var man = F.cfg.cash;
-    if (man && man.amount != null && man.asOf && (!keys.length || man.asOf >= asOf)) return { amount: +man.amount, asOf: man.asOf, src: 'manual', accts: accts };
-    return { amount: sum, asOf: asOf, src: keys.length ? 'bank' : 'none', accts: accts };
+    var accts = {};
+    Object.keys(by).forEach(function (k) { var t = by[k]; accts[k] = { key: k, name: F.acctName(t), bal: t.bal, date: t.date, kind: ((F.cfg.acctKinds || {})[k]) || 'op', src: 'bank' }; });
+    (F.cfg.cashAccts || []).forEach(function (m, i) {
+      var k = m.key || ('m' + i), c = accts[k];
+      if (c && c.date > (m.asOf || '')) return;
+      accts[k] = { key: k, name: m.name || '계좌', bal: +m.amount || 0, date: m.asOf || '', kind: m.kind || 'op', note: m.note || '', src: 'manual', idx: i };
+    });
+    var list = Object.keys(accts).map(function (k) { return accts[k]; });
+    var man = F.cfg.cash;   // 예전 방식(합계 하나 직접 입력) — 계좌가 하나도 없을 때만
+    if (!list.length && man && man.amount != null) return { amount: +man.amount, asOf: man.asOf, src: 'manual', accts: [] };
+    var sum = 0, asOf = '';
+    list.forEach(function (a) { sum += a.bal; if (a.date > asOf) asOf = a.date; });
+    return { amount: sum, asOf: asOf, src: list.length ? (list.some(function (a) { return a.src === 'bank'; }) ? 'bank' : 'manual') : 'none', accts: list };
   };
 
   /* ---------- 월별 집계 ---------- */
@@ -118,6 +128,7 @@
   F.PLAN_STATUS = [['idea', '검토'], ['prep', '준비'], ['applied', '신청'], ['review', '심사'], ['approved', '승인 · 확정'], ['received', '입금 완료'], ['dropped', '탈락 · 보류']];
   F.PLAN_KIND = ['정책자금', '보증 대출', '정부지원 · R&D', '투자', '은행 대출', '대표 가수금', '기타'];
   F.statusName = function (k) { return (F.PLAN_STATUS.filter(function (x) { return x[0] === k; })[0] || [k, k])[1]; };
+  F.OWNER = '대표 가수금';   // 대표 개인자금 투입 — 런웨이를 「법인 통장만」과 「대표 자금 포함」으로 나눠 본다
   F.planWeight = function (p, scen) {
     if (p.status === 'received' || p.status === 'dropped') return 0;   // 입금 완료는 이미 잔액에 있다
     if (scen === 'safe') return p.status === 'approved' ? 1 : 0;
@@ -127,8 +138,9 @@
 
   /* ---------- 런웨이 예측 ---------- */
   F.SCEN = [['safe', '보수 — 확정 조달만'], ['base', '기본 — 확률 반영'], ['best', '낙관 — 계획 전부']];
-  F.project = function (scen, months) {
-    months = months || 24;
+  // opt.noOwner: 대표 개인자금(가수금) 계획을 빼고 계산
+  F.project = function (scen, months, opt) {
+    months = months || 24; opt = opt || {};
     var bal = F.balance(), rc = F.recent(3), cfg = F.cfg, start = F.thisYm();
     var revBase = cfg.revenue != null && cfg.revenue !== '' ? +cfg.revenue : rc.rev;
     var growth = (+cfg.revGrowth || 0) / 100;
@@ -141,14 +153,15 @@
       var fixed = F.fixedMonthly(ym) * part;
       var once = F.schedIn(from, ym + '-' + ('0' + last).slice(-2)).filter(function (o) { return o.s.kind !== 'monthly'; }).reduce(function (a, o) { return a + o.amount; }, 0);
       var rev = revBase * Math.pow(1 + growth, i) * part;
-      var fund = F.plan.reduce(function (a, p) { return a + (p.date && p.date.slice(0, 7) === ym && p.date >= (i === 0 ? today : '') ? (+p.amount || 0) * F.planWeight(p, scen) : 0); }, 0);
+      var fund = F.plan.reduce(function (a, p) { if (opt.noOwner && p.kind === F.OWNER) return a; return a + (p.date && p.date.slice(0, 7) === ym && p.date >= (i === 0 ? today : '') ? (+p.amount || 0) * F.planWeight(p, scen) : 0); }, 0);
       var outM = fixed + variable * part + once;
       cash = cash + rev + fund - outM;
       rows.push({ ym: ym, rev: rev, fund: fund, fixed: fixed, variable: variable * part, once: once, out: outM, end: cash });
       if (zero == null && cash < 0) zero = i;
     }
     var netBurn = variable + fixedNow - revBase;
-    return { bal: bal, rows: rows, zero: zero, netBurn: netBurn, variable: variable, fixed: fixedNow, rev: revBase, recent: rc,
+    var owner = F.plan.filter(function (p) { return p.kind === F.OWNER && p.status !== 'received' && p.status !== 'dropped'; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+    return { bal: bal, rows: rows, zero: zero, netBurn: netBurn, owner: owner, variable: variable, fixed: fixedNow, rev: revBase, recent: rc,
       simple: netBurn > 0 ? bal.amount / netBurn : null };
   };
 

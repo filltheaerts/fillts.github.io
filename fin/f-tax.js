@@ -103,13 +103,31 @@
         return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: [a.bank || '은행 미상', a.acct ? '…' + a.acct : ''].join(' ') }), h('div', { class: 'meta', text: a.n + '건' + (b ? ' · 잔액 ' + F.won(b.bal) + ' (' + fmt.dot(b.date) + ')' : '') })), al);
       }));
       if (!ul.children.length) ul.appendChild(h('li', { class: 'empty', text: '거래내역을 가져오면 계좌가 여기에 생깁니다.' }));
-      var man = F.cfg.cash || {}, amt = F.moneyInput({ value: man.amount != null ? man.amount : '' }), asOf = ui.input({ type: 'date', value: man.asOf || fmt.today() });
-      if (!ed) { amt.disabled = true; asOf.disabled = true; }
-      ui.put(view, ui.panel('Accounts · 계좌', null, ul),
-        ui.panel('Cash · 잔액 직접 입력', null, h('p', { class: 'meta', text: '통장 내역을 아직 안 올렸거나 은행 밖 현금(증권 · 외화 등)까지 합쳐 보고 싶을 때. 기준일이 최근 거래보다 같거나 늦으면 이 값이 우선합니다.' }),
-          h('div', { class: 'row' }, ui.field('잔액 (원)', amt), ui.field('기준일', asOf),
-            ed ? ui.btn('저장', function () { F.cfgSet({ cash: amt.value.trim() ? { amount: F.parseWon(amt.value), asOf: asOf.value } : null }).then(function () { ui.toast('저장했습니다.'); }).catch(ui.fail); }, 'btn-sm') : null,
-            ed && man.asOf ? ui.confirmBtn('직접 입력 해제', function () { F.cfgSet({ cash: null }).catch(ui.fail); }) : null)));
+      var list = (F.cfg.cashAccts || []).slice(), cm = ui.msg();
+      var rowsEl = h('div', { class: 'stack' });
+      var draw = function () {
+        ui.clear(rowsEl);
+        list.forEach(function (m, i) {
+          var nm = ui.input({ value: m.name || '', maxlength: 40, placeholder: '예: KB국민 일반 입출금', disabled: dis });
+          var kd = ui.select(F.ACCT_KIND, m.kind || 'op', { disabled: dis });
+          var am = F.moneyInput({ value: m.amount != null ? m.amount : '' }); if (!ed) am.disabled = true;
+          var dt = ui.input({ type: 'date', value: m.asOf || fmt.today(), disabled: dis });
+          var nt = ui.input({ value: m.note || '', maxlength: 80, placeholder: '메모', disabled: dis });
+          var sync = function () { list[i] = Object.assign({}, list[i], { name: nm.value.trim(), kind: kd.value, amount: F.parseWon(am.value), asOf: dt.value, note: nt.value.trim() }); };
+          [nm, kd, am, dt, nt].forEach(function (x) { x.addEventListener('change', sync); });
+          rowsEl.appendChild(h('div', { class: 'row fin-acct-row' }, ui.field('통장', nm, 'grow'), ui.field('구분', kd), ui.field('잔액 (원)', am), ui.field('기준일', dt), ui.field('메모', nt, 'grow'),
+            ed ? ui.btn('삭제', function () { list.splice(i, 1); draw(); }, 'btn-line btn-xs') : null));
+        });
+        if (!list.length) rowsEl.appendChild(h('p', { class: 'meta', text: '직접 입력한 통장이 없습니다.' }));
+      };
+      draw();
+      var total = (F.cfg.cashAccts || []).reduce(function (x, m) { return x + (+m.amount || 0); }, 0);
+      ui.put(view, ui.panel('Balances · 통장 잔액 직접 입력', h('span', { class: 'meta', text: '저장된 합계 ' + F.won(total) }),
+        h('p', { class: 'meta', text: '통장 내역(엑셀)을 아직 안 올렸을 때 쓰는 잔액입니다. 같은 통장의 거래내역을 가져오면 기준일이 더 최근인 쪽을 씁니다. 대표 개인자금은 여기가 아니라 자금조달 계획에 「대표 가수금」으로 넣습니다.' }),
+        rowsEl, cm,
+        ed ? h('div', { class: 'row' }, ui.btn('+ 통장 추가', function () { list.push({ name: '', kind: 'op', amount: 0, asOf: fmt.today() }); draw(); }, 'btn-line btn-sm'),
+          ui.btn('저장', function () { F.cfgSet({ cashAccts: list.filter(function (m) { return m.name; }) }).then(function () { ui.ok(cm, '저장했습니다.'); }).catch(function (e) { ui.fail(e, cm); }); }, 'btn-sm')) : null),
+        ui.panel('Accounts · 거래내역에서 찾은 계좌', null, ul));
     } else if (sub === 'rules') {
       var rules = F.cfg.rules || [];
       var k = ui.input({ maxlength: 40, placeholder: '내용에 이 글자가 있으면', disabled: dis }), dir = ui.select([['out', '출금'], ['in', '입금'], ['', '둘 다']], 'out', { disabled: dis });

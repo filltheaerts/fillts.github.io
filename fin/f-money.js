@@ -23,6 +23,7 @@
 
     var alerts = h('ul', { class: 'list fin-alerts' });
     var al = function (text, href, cls) { alerts.appendChild(h('li', null, h('a', { class: 'grow', href: href, text: text }), ui.tag(cls === 'red' ? '확인' : '안내', cls === 'red' ? 'red' : 'mute'))); };
+    if (!F.sched.length && F.cfg.varBurn == null) al('월 지출(고정비 · 인건비)이 아직 없습니다 — 지출예정에 매월 반복 항목을 넣어야 런웨이가 계산됩니다.', '#sched', 'red');
     if (!F.tx.length) al('통장 거래내역을 아직 가져오지 않았습니다 — 엑셀 파일을 올리거나 구글 드라이브 폴더를 연결하세요.', '#tx/import', 'red');
     if (p.zero != null && p.zero < 12) al('런웨이 ' + p.zero + '개월 — 12개월 게이트 미달입니다. 자금조달 계획을 확인하세요.', '#runway', 'red');
     if (uncategorized) al('분류가 비어 있는 거래 ' + uncategorized + '건', '#tx/list/uncat', 'red');
@@ -42,12 +43,20 @@
 
     var trend = Object.keys(M).sort().slice(-6).map(function (k) { return { label: (+k.slice(5)) + '월', v: M[k].opIn - M[k].opOut, title: k + ' 영업 입금 ' + F.won(M[k].opIn) + ' / 출금 ' + F.won(M[k].opOut) }; });
 
+    var acctList = h('ul', { class: 'list' }, p.bal.accts.map(function (a) {
+      return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: a.name }), h('div', { class: 'meta', text: F.kindName(a.kind) + (a.date ? ' · ' + fmt.dot(a.date) + ' 기준' : '') + (a.note ? ' · ' + a.note : '') })),
+        h('span', { class: 'num', text: F.won(a.bal) }));
+    }));
+    if (p.owner) acctList.appendChild(h('li', { class: 'fin-owner' }, h('div', { class: 'grow' }, h('div', { class: 'strong', text: '대표 개인자금 (투입 예정)' }), h('div', { class: 'meta', text: '법인 통장 밖 · 자금조달 계획의 「대표 가수금」' })), h('span', { class: 'num', text: F.won(p.owner) })));
+    if (!p.bal.accts.length) acctList.appendChild(h('li', { class: 'empty', text: '설정 › 계좌 · 잔액에서 통장을 추가하거나 거래내역을 가져오세요.' }));
     ui.put(view, ui.head('Finance', 'Overview', h('span', { class: 'meta', text: p.bal.asOf ? '잔액 기준 ' + fmt.dot(p.bal.asOf) + (p.bal.src === 'manual' ? ' (직접 입력)' : '') : '' })),
-      F.kpi([['현재 잔액', F.man(p.bal.amount), '', p.bal.accts.length ? p.bal.accts.length + '개 계좌' : ''],
+      F.kpi([['법인 통장 잔액', F.man(p.bal.amount), '', p.bal.accts.length ? p.bal.accts.length + '개 계좌' + (p.owner ? ' · 대표 자금 +' + F.man(p.owner) : '') : ''],
         ['월 순소진', p.netBurn > 0 ? F.man(p.netBurn) : '흑자', '', '고정 ' + F.man(p.fixed) + ' + 변동 ' + F.man(p.variable) + ' − 매출 ' + F.man(p.rev)],
         ['런웨이', rw.t, rw.cls, rw.sub],
         ['이번 달 영업 입금', F.man(cur.opIn)], ['이번 달 출금', F.man(cur.opOut)],
         ['30일 지출예정', F.man(upSum), '', up.length + '건']]),
+      ui.panel('Accounts · 통장별 잔액', h('a', { href: '#set/accounts', class: 'meta', text: '수정 →' }), acctList,
+        h('div', { class: 'fin-total' }, h('span', { text: '법인 합계' }), h('strong', { text: F.won(p.bal.amount) }), p.owner ? h('span', { class: 'meta', text: '대표 자금 포함 ' + F.won(p.bal.amount + p.owner) }) : null)),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Check · 확인할 것', null, alerts),
         ui.panel('Trend · 월 영업 순현금 (최근 6개월)', h('a', { href: '#flow', class: 'meta', text: '현금흐름 →' }), trend.length ? F.bars(trend) : ui.empty('거래내역을 가져오면 표시됩니다.'))),
@@ -58,8 +67,24 @@
   }
 
   /* ============ 런웨이 ============ */
+  // 월 지출별 런웨이 — 지출 데이터가 없어도 「얼마씩 쓰면 몇 개월」을 바로 본다 (매출 · 조달 계획 제외, 단순 나누기)
+  function sensitivity(p) {
+    var burns = [5e6, 1e7, 1.5e7, 2e7, 3e7, 5e7];
+    var mine = p.netBurn > 0 ? Math.round(p.netBurn) : 0;
+    if (mine && burns.indexOf(mine) < 0) { burns.push(mine); burns.sort(function (a, b) { return a - b; }); }
+    var corp = p.bal.amount, all = p.bal.amount + p.owner;
+    var mo = function (c, b) { return (c / b).toFixed(1) + '개월'; };
+    var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, h('th', { text: '월 순지출' }), h('th', { class: 'num', text: '법인 통장만 (' + F.man(corp) + ')' }), p.owner ? h('th', { class: 'num', text: '대표 자금 포함 (' + F.man(all) + ')' }) : null)),
+      h('tbody', null, burns.map(function (b) {
+        return h('tr', { class: b === mine ? 'fin-mine' : '' }, h('td', { text: F.man(b) + (b === mine ? ' ← 지금 입력 기준' : '') }), h('td', { class: 'num' + (corp / b < 12 ? ' red' : ''), text: mo(corp, b) }),
+          p.owner ? h('td', { class: 'num' + (all / b < 12 ? ' red' : ''), text: mo(all, b) }) : null);
+      })));
+    return ui.panel('Sensitivity · 월 지출별 런웨이', null, h('div', { class: 'table-wrap flat' }, tb),
+      h('p', { class: 'meta', text: '잔액 ÷ 월 순지출(지출 − 매출). 자금조달 계획 · 매출 성장은 빼고 계산한 단순 값 — 빨간 숫자는 12개월 미만.' }));
+  }
   function runway(view) {
     var p = F.project(V.scen, V.months), rw = runwayText(p);
+    var pc = F.project(V.scen, V.months, { noOwner: true }), rwc = runwayText(pc);
     var bars = p.rows.map(function (r, i) { return { label: F.ymLabel(r.ym), v: r.end, cls: i === 11 ? 'gate' : '', title: r.ym + ' 월말 ' + F.won(r.end) }; });
     var tb = h('table', { class: 'table fin-table' }, h('thead', null, h('tr', null, ['월', '매출', '자금조달', '고정 지출', '변동 지출', '일회성', '월말 잔액'].map(function (x, i) { return h('th', { class: i ? 'num' : '', text: x }); }))),
       h('tbody', null, p.rows.map(function (r, i) {
@@ -73,8 +98,11 @@
       assumption('월 매출 (영업 입금)', 'revenue', p.rev, '비우면 최근 3개월 평균 영업 입금 (' + F.man(p.recent.rev) + ')', ed),
       assumption('매출 월 성장률 %', 'revGrowth', +F.cfg.revGrowth || 0, '예: 10 = 매달 10%씩 증가', ed, true));
     ui.put(view, ui.head('Runway', '런웨이'), h('div', { class: 'toolbar' }, F.seg(F.SCEN, V.scen, function (k) { V.scen = k; }, '시나리오')),
-      F.kpi([['현재 잔액', F.man(p.bal.amount)], ['월 순소진', p.netBurn > 0 ? F.man(p.netBurn) : '흑자'], ['단순 런웨이', p.simple != null ? p.simple.toFixed(1) + '개월' : '-', '', '잔액 ÷ 순소진'],
-        ['예측 런웨이', rw.t, rw.cls, rw.sub], ['12개월 게이트', gate ? '통과' : '미달', gate ? '' : 'red', '투자 · 확장 판단 기준'], ['반영 조달', F.man(p.rows.reduce(function (a, r) { return a + r.fund; }, 0))]]),
+      F.kpi([['법인 통장 잔액', F.man(p.bal.amount), '', p.owner ? '대표 자금 +' + F.man(p.owner) : ''],
+        ['월 순소진', p.netBurn > 0 ? F.man(p.netBurn) : (F.sched.length || F.cfg.varBurn != null ? '흑자' : '미입력'), p.netBurn > 0 ? '' : 'red', p.netBurn > 0 ? '' : '지출예정을 넣어야 계산됩니다'],
+        p.owner ? ['법인 통장만 런웨이', rwc.t, rwc.cls, '대표 자금 없이 · ' + rwc.sub] : ['단순 런웨이', p.simple != null ? p.simple.toFixed(1) + '개월' : '-', '', '잔액 ÷ 순소진'],
+        ['예측 런웨이', rw.t, rw.cls, (p.owner ? '대표 자금 포함 · ' : '') + rw.sub], ['12개월 게이트', gate ? '통과' : '미달', gate ? '' : 'red', '투자 · 확장 판단 기준'], ['반영 조달', F.man(p.rows.reduce(function (a, r) { return a + r.fund; }, 0))]]),
+      sensitivity(p),
       ui.panel('Projection · 월말 잔액', F.seg([[12, '12개월'], [18, '18개월'], [24, '24개월']], V.months, function (k) { V.months = k; }, '기간'), F.bars(bars), h('p', { class: 'meta', text: '빨간 막대 = 월말 잔액이 0원 아래인 달 · 테두리 막대 = 12개월째' })),
       ui.panel('Assumptions · 가정', null, asm, F.readOnlyNote()),
       ui.panel('Detail · 월별 예측', null, h('div', { class: 'table-wrap flat' }, tb)),
