@@ -286,3 +286,7 @@ a.map-card:hover { border-color: var(--black); }
 .sp-ktitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 16px; }
 .fin-spend .sp-tog { margin-left: 8px; background: none; border: 1px solid var(--gray-200); padding: 0 6px; font-size: 10px; line-height: 16px; color: var(--gray-600, #555); cursor: pointer; }
 .fin-spend .sp-tog:hover { border-color: var(--black, #111); color: var(--black, #111); }
+.fin-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.fin-qbtn { background: var(--paper, #fff); border: 1px solid var(--gray-200); padding: 2px 8px; font-size: 11px; cursor: pointer; color: var(--gray-800, #333); }
+.fin-qbtn:hover { border-color: var(--black, #111); }
+.fin-qbtn.on { border-color: var(--red); color: var(--red); }

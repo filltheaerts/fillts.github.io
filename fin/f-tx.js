@@ -220,6 +220,8 @@
 
   /* ---------- 카드_KB: 법인카드 사용내역 — 지출은 통장 「카드대금」으로 이미 잡히므로 여기는 「어디에 썼나」 확인용 ---------- */
   var CV = { ym: '', only: '' };
+  var QUICK = [['비품 · 장비', '비품 · 가구', '사무 비품'], ['기타 지출', '사무용품 · 소모품', '사무용품 · 소모품'], ['포장 · 부자재', '포장 · 부자재', '포장 · 부자재'],
+    ['원료 · 생산(OEM)', '샘플 · 원료', '제품 샘플 · 원료'], ['마케팅 · 광고', '마케팅', '마케팅 · 촬영 소품'], ['소프트웨어 · 구독', '구독 · 툴', '소프트웨어 · 구독'], ['복리후생 · 식대', '식대 · 복리', '식대 · 복리후생']];
   function cardView(view) {
     var ed = F.canEdit();
     var all = F.card.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
@@ -235,7 +237,11 @@
         note.addEventListener('keydown', function (e) { if (e.key === 'Enter') note.blur(); });
         return h('tr', null, h('td', { class: 'meta', text: fmt.dot(x.date).slice(2) }),
           h('td', null, h('div', { text: x.merchant }), h('div', { class: 'meta', text: (x.issuer || '법인카드') + (x.cardNo ? ' …' + x.cardNo : '') + (x.foreign ? ' · 해외' : '') }),
-            x.check ? h('div', { class: 'fin-check' }, h('span', { class: 'tag red', text: '확인' }), ' ' + x.check, ed ? ui.btn('확인 완료', function () { upd(x, { check: '' }); }, 'btn-line btn-xs') : null) : null),
+            x.check ? h('div', { class: 'fin-check' }, h('span', { class: 'tag red', text: '확인' }), ' ' + x.check, ed ? ui.btn('확인 완료', function () { upd(x, { check: '' }); }, 'btn-line btn-xs') : null) : null,
+            // 빠른 정리: 누르면 사용처 지정 + 확인 표시 해제 (사용내용은 옆 칸에 적으면 됨)
+            ed && (x.check || !x.cat) ? h('div', { class: 'fin-quick' }, QUICK.map(function (q) {
+              return h('button', { type: 'button', class: 'fin-qbtn' + (x.cat === q[0] ? ' on' : ''), text: q[1], onclick: function () { upd(x, { cat: q[0], check: '', note: x.note || q[2] }); } });
+            })) : null),
           h('td', { class: 'num', text: F.won(x.amount) }), h('td', null, sel), h('td', null, note),
           h('td', { class: 'meta', text: x.payDate ? fmt.dot(x.payDate).slice(2) + ' 카드대금' : '아직 결제 전 · 미연결' }), h('td'));
       })));
