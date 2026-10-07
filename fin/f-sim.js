@@ -102,6 +102,11 @@
     var auto = F.invUnitCost ? F.invUnitCost(false).total : 0, applied = +F.econ().cogsOverride || 0;
     var foot = h('tr', { class: 'fin-result' }, h('td', { colspan: '8', class: 'strong', text: '제품 1개 원가 (공급가)' }), h('td', { class: 'num strong', text: F.won(Math.round(total)) }), h('td'));
     var foot2 = h('tr', { class: 'fin-auto' }, h('td', { colspan: '8', text: '부가세 포함으로 보면 · 결제 금액 합계 ' + F.man(totalPay) }), h('td', { class: 'num', text: F.won(Math.round(total * 1.1)) }), h('td'));
+    // 표 맨 아래에서 바로 추가 (견적서 품목 · 촬영 소품 · 동봉물 등)
+    if (ed) body.appendChild(h('tr', { class: 'fin-addline' }, h('td', { colspan: '10' },
+      ui.btn('+ 품목 추가 (개당)', function () { put(rows.concat([{ name: '', qty: 0, amount: 0, vat: 'incl', per: 1, kind: 'unit' }])); }, 'btn-line btn-sm'),
+      ui.btn('+ 초도비 추가 (동판 · 목형 등)', function () { put(rows.concat([{ name: '', qty: 0, amount: 0, vat: 'incl', per: 1, kind: 'setup' }])); }, 'btn-line btn-sm'),
+      h('span', { class: 'meta', text: '  추가한 줄의 품목 이름 · 수량 · 결제 금액 · 1개당 사용량을 적으면 바로 합계에 들어갑니다. 빼려면 줄 끝 ×.' }))));
     body.appendChild(foot); body.appendChild(foot2);
     var tb = h('table', { class: 'table fin-table fin-inputs fin-calc' }, h('thead', null, h('tr', null,
       ['품목', '구분', '수량', '결제 금액 (원)', '부가세', '개당 단가 (공급가)', '부가세 포함', '제품 1개당 사용량', '제품 1개 원가에 들어가는 돈', ''].map(function (t, i) { return h('th', { class: i >= 5 && i <= 8 && i !== 7 ? 'num' : '', text: t }); }))), body);

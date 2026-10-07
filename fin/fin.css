@@ -222,3 +222,6 @@ a.map-card:hover { border-color: var(--black); }
 .sx-grid tr.sx-u-profit td { border-top: 2px solid var(--black); background: var(--gray-100); font-size: 14px; }
 .sx-grid tr.sx-u-profit td.sx-k { background: var(--gray-100); }
 .sx-grid tr.sx-u-profit td.sx-unitnote { font-size: 12px; }
+
+.fin-calc tr.fin-addline td { padding: 12px 6px; background: var(--paper); }
+.fin-calc tr.fin-addline .btn { margin-right: 8px; }
