@@ -147,6 +147,18 @@
     var free = FREE_RE.test(email);
     return h('span', { class: 'tag ' + (free ? 'in-mail-p' : 'in-mail-c'), title: email, text: free ? '개인 메일' : '회사 메일' });
   };
+  // 재테크 · 절약 · 투자 채널 (서버 money 값, 없으면 이름 · 소개 · 최근 제목으로 추정) · 구조화 › 제외 유튜버
+  var MONEY_RE = /(재테크|짠테크|앱테크|절약|아끼는\s?법|돈\s?모으|돈\s?아끼|가계부|적금|주식|투자|부동산|청약|코인|파이어족|경제적\s?자유|부업|무지출|생활비\s?절약|배당)/i;
+  I.isMoney = function (c) {
+    var m = c && c.money;
+    if (m && m.of != null) return !!(m.self || m.n >= 4 || (m.of && m.n / m.of >= 0.2));
+    var self = MONEY_RE.test((c.title || '') + ' ' + (c.desc || '')), rec = (c.recent || []).filter(function (v) { return MONEY_RE.test(v.title); }).length;
+    return self || rec >= 2;
+  };
+  I.isBlocked = function (c) {
+    var bl = I.cfg.blockCh || [], hd = String(c.handle || '').toLowerCase();
+    return bl.some(function (x) { return (x.id && x.id === c.id) || (x.handle && hd && x.handle.toLowerCase() === hd); });
+  };
   I.agencyTag = function (c, short) {
     var a = I.agency(c);
     return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none && !short ? '개인 · 정보 없음' : '개인' });

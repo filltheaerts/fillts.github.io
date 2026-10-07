@@ -329,3 +329,44 @@ td.in-ell { display: table-cell; }
 .in-row-head .in-hstats { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .in-row-head .in-hcells { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .in-row-head .in-sorth { font-size: 10px; }
+
+/* 전략 — 보라 굵게 · 구조화 — 파랑 (대표님 지정) */
+.nav-links a.nav-strat { color: #6d28d9; font-weight: 700; }
+.nav-links a.nav-strat::after { background: #6d28d9; }
+.nav-links a.nav-tree { color: #1d4ed8; font-weight: 700; }
+.nav-links a.nav-tree::after { background: #1d4ed8; }
+
+/* 전략 페이지 */
+.in-st-intro { margin: 12px 0 16px; }
+.in-st-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.in-st-item { border: 1px solid var(--gray-200); padding: 12px 14px; background: var(--paper); }
+.in-st-item.on { border-color: #6d28d9; box-shadow: inset 3px 0 0 #6d28d9; }
+.in-st-top { display: flex; align-items: center; gap: 10px; }
+.in-st-no { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gray-100); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.in-st-how { font-size: 13px; line-height: 1.7; margin: 6px 0 2px; white-space: pre-wrap; }
+.in-st-ap { flex: none; font-size: 12px; }
+.in-st-src { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.in-idea-cols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.in-idea-col { background: var(--gray-100); padding: 10px; min-height: 120px; }
+.in-idea-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.in-idea { background: var(--paper); border: 1px solid var(--gray-200); padding: 10px; font-size: 12px; }
+.in-idea.st-good { border-color: #6d28d9; }
+.in-idea-foot { align-items: center; gap: 6px; margin-top: 6px; }
+.in-idea-foot select { width: auto; font-size: 11px; padding: 2px 4px; }
+.in-like { border: 1px solid var(--gray-200); background: var(--paper); font: inherit; font-size: 11px; padding: 1px 8px; cursor: pointer; color: var(--gray-600); }
+.in-like.on { color: var(--red); border-color: var(--red); }
+
+/* 구조화 페이지 */
+.in-br-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.in-br { background: var(--paper); border: 1px solid var(--gray-200); border-top: 3px solid #1d4ed8; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.in-br-head { display: flex; align-items: center; gap: 8px; }
+.in-br-name { font-size: 16px; }
+.in-br-tag { color: #1d4ed8; border-color: #1d4ed8; }
+.in-br-msg { font-size: 13px; line-height: 1.6; }
+.in-br-chain { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.in-br-arrow { color: #1d4ed8; font-size: 12px; }
+.in-br-note { color: var(--warn); }
+.in-br-add { border-style: dashed; border-top-width: 1px; color: var(--gray-600); font: inherit; cursor: pointer; justify-content: center; align-items: center; min-height: 120px; }
+.in-ex-chip { border-color: var(--red); color: var(--red); }
+.in-rules { margin: 0 0 0 18px; font-size: 13px; line-height: 1.8; }
+@media (max-width: 960px) { .in-idea-cols { grid-template-columns: minmax(0, 1fr); } }

@@ -61,7 +61,8 @@
   }
   function doneText(r) {
     var sk = r.skipped || {}, ch = r.cache || {}, t = '후보 ' + r.count + '명을 찾았습니다 · ' + (r.units || 0) + '포인트' + (ch.s || ch.c ? ' (캐시 재사용: 검색 ' + (ch.s || 0) + ' · 채널 ' + (ch.c || 0) + ')' : '') + '.';
-    if (sk.known || sk.seen) t += ' (중복 제외: 리스트 ' + (sk.known || 0) + '명' + (sk.seen ? ' · 지난 탐색 ' + sk.seen + '명' : '') + ')';
+    var ex = [sk.known ? '리스트 ' + sk.known : '', sk.seen ? '지난 탐색 ' + sk.seen : '', sk.money ? '재테크 · 절약 ' + sk.money : '', sk.topic ? '제외 주제 ' + sk.topic : '', sk.blocked ? '제외 유튜버 ' + sk.blocked : ''].filter(Boolean);
+    if (ex.length) t += ' (뺀 채널: ' + ex.join(' · ') + ')';
     return t;
   }
   function dedupBox() {
@@ -128,7 +129,7 @@
   function condParams(C) {
     return { action: 'scan', mode: 'cond', minSubs: +C.minSubs, maxSubs: +C.maxSubs, days: +C.days, minGrowth: +C.minGrowth, minCmt: +C.minCmt,
       minMedian: +C.minMedian, minVideos: 10, mailOnly: C.mailOnly, n: +C.n, skipSeen: V.skipSeen,
-      fit: C.fitOn ? I.brandFit() : [], fitRequired: !!C.fitOn, beautyOnly: C.beautyOnly !== false };
+      fit: C.fitOn ? I.brandFit() : [], fitRequired: !!C.fitOn, beautyOnly: C.beautyOnly !== false, excludeMoney: C.excludeMoney !== false };
   }
   function condRun(kw, opt, label) {
     var C = V.cond;
@@ -164,6 +165,8 @@
           h('input', { type: 'checkbox', checked: C.fitOn, onchange: function () { C.fitOn = this.checked; HR.refresh(); } }), ' 바인그라피 브랜드 적합 채널만 (클렌징 · 스킨케어 · 성분 · 루틴 …)'),
         h('label', { class: 'check', title: '최근 영상 15편 중 뷰티 콘텐츠 2편 이상이거나 뷰티 협찬이 1편 이상인 채널만 남깁니다 (돈 아끼기 · 일상만 하는 채널 제외)' },
           h('input', { type: 'checkbox', checked: C.beautyOnly !== false, onchange: function () { C.beautyOnly = this.checked; } }), ' 뷰티 콘텐츠 · 협찬 이력 있는 채널만'),
+        h('label', { class: 'check', title: '채널 소개에 재테크 · 절약 · 투자가 있거나 최근 영상 20% 이상이 그 주제면 뺍니다. 제외 주제 · 제외 유튜버는 「구조화」 메뉴에서 관리' },
+          h('input', { type: 'checkbox', checked: C.excludeMoney !== false, onchange: function () { C.excludeMoney = this.checked; } }), ' 재테크 · 절약 · 투자 채널 빼기'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: C.mailOnly, onchange: function () { C.mailOnly = this.checked; } }), ' 메일 공개한 채널만'),
         dedupBox())
     ];
@@ -336,6 +339,8 @@
       if (V.onlyMail && !c.email) return false;
       if (V.onlyNew && I.creator(c.id)) return false;
       if (V.onlyBeauty && !I.beauty(c).on) return false;
+      if (V.hideMoney !== false && I.isMoney(c)) return false;
+      if (I.isBlocked(c)) return false;
       if (V.ag) { var ap = I.agency(c).p; if (V.ag === 'agency' ? ap === 0 : V.ag === 'a100' ? ap !== 100 : V.ag === 'a50' ? ap !== 50 : ap !== 0) return false; }
       if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -429,7 +434,8 @@
       ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
         s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회 추세 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
       agBar(s),
-      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), chk('뷰티 이력 있는 채널만', 'onlyBeauty'), q,
+      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), chk('뷰티 이력 있는 채널만', 'onlyBeauty'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: V.hideMoney !== false, onchange: function () { V.hideMoney = this.checked; HR.refresh(); } }), ' 재테크 · 절약 숨기기'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
         ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),
       table,
@@ -462,7 +468,8 @@
         h('div', { class: 'row in-cand-act' },
           inP ? ui.btn('파이프라인에서 열기', function () { HR.go('c/' + c.id); }, 'btn-sm')
             : ui.btn('디벨롭으로 추가', function () { I.addToPipe([c], s).then(function () { ui.toast(c.title + ' — 디벨롭에 추가'); }).catch(ui.fail); }, 'btn-sm'),
-          ui.btn('이 채널을 씨드로 다시 찾기', function () { V.input = c.id; HR.go('find'); analyze(c.id); }, 'btn-line btn-sm'))));
+          ui.btn('이 채널을 씨드로 다시 찾기', function () { V.input = c.id; HR.go('find'); analyze(c.id); }, 'btn-line btn-sm'),
+          ui.confirmBtn('제외 유튜버로', function () { I.blockChannel(c, '탐색 결과에서 제외'); }, 'btn-line btn-sm danger'))));
   }
 
   /* ============ 지난 탐색 — 서버에서 다시 읽어 와 보여 준다 ============ */
