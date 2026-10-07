@@ -362,10 +362,10 @@
   var showHold = false;
   function setStatus(x, st) {
     db.doc('mkt_items/' + x.id).update({ status: st, updatedAt: FV.serverTimestamp(), updatedBy: S.mid })
-      .then(function () { if (st === 'review') { toast('「' + x.title + '」을 프로젝트로 올렸습니다. 기간 · 서브를 채우세요.'); projectModal(x.id); } else toast('옮겼습니다.'); }).catch(function (e) { fail(e); });
+      .then(function () { if (st === 'review') { toast('「' + x.title + '」을 프로젝트로 올렸습니다. 서브 이름부터 대략 적어 보세요.'); pjQuickSub(x); } else toast('옮겼습니다.'); }).catch(function (e) { fail(e); });
   }
   function addTask(inp, m) {
-    var t = inp.value.replace(/^\s*[-·•*\d.)]+\s*/, '').trim();
+    var t = inp.value.replace(/^\s*(?:[-·•*]+|\d+[.)])\s+/, '').trim();
     if (!t) return;
     db.collection('mkt_items').add({ board: 'project', title: t.slice(0, 120), body: '', status: 'idea', subs: [], links: [], likes: [],
       by: S.mid, at: FV.serverTimestamp(), updatedAt: FV.serverTimestamp(), updatedBy: S.mid }).catch(function (e) { fail(e, m); });
@@ -611,8 +611,41 @@
             h('span', { class: 'mx-pjb-check', text: s.done ? '✓' : '' }),
             h('div', { class: 'grow' }, h('div', { class: 'mx-pjb-subt' }, h('b', { text: s.t }), period(s) ? h('span', { class: 'meta', text: period(s) }) : null),
               s.body ? h('p', { class: 'mx-pjb-subb', text: String(s.body).split('\n').filter(function (l) { return l.trim(); }).slice(0, 2).join(' · ').slice(0, 160) }) : null));
-        })) : null)
-        : h('button', { type: 'button', class: 'mx-pjb-nosub', text: '+ 서브로 쪼개기', onclick: openIt }));
+        })) : null) : null,
+      h('div', { class: 'mx-pjb-act' },
+        h('button', { type: 'button', class: 'mx-pjb-quick', text: '+ 간단 서브', title: '서브 이름만 여러 개 한 번에', onclick: function () { pjQuickSub(x); } }),
+        h('button', { type: 'button', class: 'mx-pjb-nosub', text: subs.length ? '기간 · 설명 채우기' : '열어서 자세히', onclick: openIt })));
+  }
+  // 목록에서 바로: 서브 이름만 칸마다 → 한 번에 추가 (WORK 간단 서브와 같은 방식)
+  function pjQuickSub(x) {
+    modal('간단 서브 · ' + x.title, 'b-project', function (panel, close) {
+      var m = msg(), count = h('span', { class: 'meta' });
+      var q = quickRows('서브 이름', MAX_PSUBS, function (n) { count.textContent = n ? n + '개 추가 예정' : ''; });
+      var auto = h('input', { type: 'checkbox', checked: true });
+      var add = function () {
+        var names = q.values(), subs = (x.subs || []).map(function (s) { return { t: s.t, done: !!s.done, start: s.start || '', due: s.due || '', body: s.body || '' }; });
+        if (!names.length) return err(m, '서브 이름을 칸마다 하나씩 적어 주세요.');
+        if (subs.length + names.length > MAX_PSUBS) return err(m, '서브는 최대 ' + MAX_PSUBS + '개입니다. 지금 ' + subs.length + '개가 있습니다.');
+        var cur = '';
+        if (auto.checked) { for (var k = subs.length - 1; k >= 0 && !cur; k--) if (subs[k].due) cur = addDays(subs[k].due, 1); cur = cur || x.start || today(); }
+        names.forEach(function (t) {
+          var s = { t: t.slice(0, 80), done: false, start: '', due: '', body: '' };
+          if (cur) { s.start = cur; s.due = addDays(cur, 6); cur = addDays(cur, 7); }
+          subs.push(s);
+        });
+        var data = { subs: subs, updatedAt: FV.serverTimestamp(), updatedBy: S.mid };
+        if (auto.checked && !x.start) data.start = subs[0].start;   // 프로젝트 기간이 비어 있으면 서브 일정으로 채운다
+        if (auto.checked && (!x.due || x.due < subs[subs.length - 1].due)) data.due = subs[subs.length - 1].due;
+        db.doc('mkt_items/' + x.id).update(data).then(function () { close(); pjOpen[x.id] = true; toast(names.length + '개를 추가했습니다. 「기간 · 설명 채우기」로 하나씩 채우세요.'); }).catch(function (e) { fail(e, m); });
+      };
+      panel.appendChild(h('p', { class: 'muted small', text: '서브 이름만 칸마다 적으세요. Enter를 누르면 다음 칸으로 넘어가고, 여러 줄을 붙여 넣으면 줄마다 나뉩니다. 기간 · 설명은 나중에 채웁니다.' }));
+      panel.appendChild(q.el);
+      panel.appendChild(h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '+ 칸 추가', onclick: function () { q.add(true); } }), count));
+      panel.appendChild(h('label', { class: 'check' }, auto, ' ' + ((x.subs || []).some(function (s) { return s.due; }) ? '앞 서브 마감 후' : '프로젝트 시작일') + '부터 1주씩 자동으로 기간 배치'));
+      panel.appendChild(m);
+      panel.appendChild(h('div', { class: 'row sm-actions' }, h('button', { type: 'button', class: 'btn', text: '한 번에 추가', onclick: add }), btn('취소', close, 'btn-line')));
+      setTimeout(function () { q.first().focus(); }, 0);
+    });
   }
 
   function renderProject(view) {
@@ -626,7 +659,7 @@
 
     tab.appendChild(h('ol', { class: 'mx-howto' },
       h('li', null, h('b', { text: '① 프로젝트 적기' }), h('span', { text: '이름 · 기간 · 설명. 아직 막연하면 아래 과업 리스트에 한 줄로 먼저 적어 두세요.' })),
-      h('li', null, h('b', { text: '② 서브로 쪼개기' }), h('span', { text: '서브마다 이름 · 기간 · 설명. 「앞 서브 마감 후」로 일정이 이어집니다.' })),
+      h('li', null, h('b', { text: '② 서브로 쪼개기' }), h('span', { text: '「+ 간단 서브」로 이름만 쭉 적고(1주씩 자동 배치), 기간 · 설명은 나중에 채웁니다.' })),
       h('li', null, h('b', { text: '③ WORK로 보내기' }), h('span', { text: '프로젝트를 열고 「WORK 일정으로 보내기」 — HR WORK 타임라인에 그대로 올라갑니다.' }))));
 
     // 진행 프로젝트 — 기간 · 서브 트리
@@ -749,7 +782,7 @@
       });
       recount();
     });
-    var values = function () { return inputs().map(function (x) { return x.value.replace(/^\s*[-·•*\d.)]+\s*/, '').trim(); }).filter(Boolean); };
+    var values = function () { return inputs().map(function (x) { return x.value.replace(/^\s*(?:[-·•*]+|\d+[.)])\s+/, '').trim(); }).filter(Boolean); };
     for (var r0 = 0; r0 < 5; r0++) addRow(false);
     return { el: ol, add: addRow, values: values, first: function () { return inputs()[0]; } };
   }
