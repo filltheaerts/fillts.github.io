@@ -340,7 +340,7 @@
   }
   // 소속 / 개인 필터 (메일 도메인 · 설명란 회사 정보 기준)
   var WNAME = { kw: '키워드 일치', sub: '구독자 규모', tone: '댓글 톤', topic: '주제', eng: '참여율', growth: '조회 추세', cmt: '댓글 활발', reach: '구독 대비 조회' };
-  var WDEF = { similar: { kw: 32, sub: 22, tone: 20, topic: 14, eng: 12 }, rising: { kw: 30, growth: 25, cmt: 20, reach: 15, tone: 10 } };
+  var WDEF = { similar: { kw: 32, sub: 22, tone: 20, topic: 14, eng: 12 }, rising: { kw: 30, growth: 25, cmt: 20, reach: 15, tone: 10 }, cond: { kw: 35, growth: 30, cmt: 25, reach: 10 } };
   function wText(s, mode) { var w = s.weights || WDEF[mode]; return Object.keys(w).map(function (k) { return WNAME[k] + ' ' + w[k] + '%'; }).join(' · '); }
   function agBar(s) {
     var n = { all: 0, a100: 0, a50: 0, solo: 0 };
@@ -358,7 +358,7 @@
     var list = sorted(s);
     if (isRandom) list = list.slice(0, 20);   // 랜덤 탐색은 20명씩
     var nSel = Object.keys(sel).filter(function (k) { return sel[k]; }).length;
-    var rising = s.mode === 'rising';
+    var rising = s.mode === 'rising' || s.mode === 'cond';
     var seg = h('div', { class: 'in-seg' }, (rising ? [['score', '점수'], ['growth', '조회 추세'], ['cmt', '댓글 활발'], ['subs', '구독자'], ['tone', '댓글 톤']]
       : [['score', '점수'], ['subs', '구독자'], ['median', '조회수'], ['tone', '댓글 톤'], ['engage', '참여율']]).map(function (x) {
       return h('button', { type: 'button', class: V.sort === x[0] ? 'active' : '', text: x[1], onclick: function () { V.sort = x[0]; HR.refresh(); } });
@@ -423,7 +423,7 @@
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
         ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),
       table,
-      rising ? h('p', { class: 'note', text: '라이징 점수 = ' + wText(s, 'rising') + '. 최근 ' + (s.days || 90) + '일 영상 검색 · 구독 ' + I.cnt(s.minSubs || 1000) + ' ~ ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만. 기준은 「알고리즘」 메뉴에서 바꿉니다.' }) :
+      rising ? h('p', { class: 'note', text: (s.mode === 'cond' ? '조건 탐색 점수 = ' + wText(s, 'cond') + ((s.cond || {}).fit ? ' → 여기에 브랜드 적합도 20%' : '') : '라이징 점수 = ' + wText(s, 'rising')) + '. 최근 ' + (s.days || 90) + '일 영상 검색 · 구독 ' + I.cnt(s.minSubs || 1000) + ' ~ ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만. 기준은 「알고리즘」 메뉴에서 바꿉니다.' }) :
       h('p', { class: 'note', text: '점수 = 키워드 일치 32% · 구독자 규모 22% · 댓글 톤 20% · 주제 14% · 참여율(중앙 조회수 ÷ 구독자) 12%. 댓글은 최근 영상 2편의 상위 댓글 기준입니다.' }),
       (s.by === S.mid || S.isAdmin) ? h('div', { class: 'row' }, ui.confirmBtn('이 탐색 기록 삭제', function () { db.doc('inf_scans/' + s.id).delete().then(function () { HR.go('find'); }).catch(ui.fail); })) : null,
       pastPanel(s.id),
