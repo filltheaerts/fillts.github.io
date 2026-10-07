@@ -67,7 +67,7 @@
       ['다음 달', F.man(totalNext), totalNext > total ? 'red' : '', totalNext !== total ? (totalNext > total ? '+' : '') + F.man(totalNext - total) : '변동 없음'],
       ['연간 환산', F.man(total * 12)], ['손익분기 판매량', bep ? bep.toLocaleString('ko-KR') + '개/월' : '-', '', u ? '개당 남는 돈 ' + won(u.contrib) + ' 기준' : ''],
       ['가정값 남음', assumed + '개', assumed ? 'red' : '', assumed ? '노란 「가정값」 표시 — 실제 금액으로 수정' : '모두 실제 값'],
-      ['예측 런웨이', p.zero != null ? (p.zero === 0 ? '이번 달' : p.zero + '개월') : p.rows.length + '개월+', p.zero != null && p.zero < 12 ? 'red' : '', '런웨이 메뉴 기준']]),
+      ['판매와 무관', '매달 고정', '', '판매 · 광고에 따라 바뀌는 돈은 시뮬레이션에서']]),
       ui.panel('Fixed · 회사 운영 고정비 (매달 판매와 상관없이 나가는 돈)', ed ? ui.btn('+ 고정비 추가', function () {
         db.collection('fin_sched').add({ title: '새 고정비', kind: 'monthly', amount: 0, cat: '기타 지출', day: 25, start: F.thisYm(), end: '', vendor: '', memo: '', paid: false, paidYms: [], by: S.mid, createdAt: FV.serverTimestamp() }).catch(ui.fail);
       }, 'btn-sm') : null, h('div', { class: 'table-wrap flat' }, tb),
@@ -109,9 +109,8 @@
 
   function render(view, parts) {
     var sub = parts[0] || '';
-    ui.put(view, ui.head('Cost flow', '지출 흐름'), ui.tabs([['', '고정비'], ['var', '변동비'], ['once', '일회성 · 예정']], sub, 'cost'));
-    if (sub === 'var') varTab(view);
-    else if (sub === 'once') { var tmp = h('div'); HR.modules.sched.render(tmp, parts.slice(1)); Array.prototype.slice.call(tmp.childNodes).forEach(function (n, i) { if (i) view.appendChild(n); }); }   // 지출예정 화면 재사용 (제목 줄 제외)
+    ui.put(view, ui.head('Cost flow', '지출 흐름'), ui.tabs([['', '고정비'], ['once', '일회성 · 예정']], sub, 'cost'));
+    if (sub === 'once') { var tmp = h('div'); HR.modules.sched.render(tmp, parts.slice(1)); Array.prototype.slice.call(tmp.childNodes).forEach(function (n, i) { if (i) view.appendChild(n); }); }   // 지출예정 화면 재사용 (제목 줄 제외)
     else fixedTab(view);
   }
   HR.register('cost', { render: render });

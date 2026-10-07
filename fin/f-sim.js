@@ -285,8 +285,6 @@
           ui.panel('Fixed · 월 고정비', h('a', { href: '#cost', class: 'meta', text: '지출 흐름에서 수정 →' }), fxList))),
       ui.panel('Marketing · 광고비 비중별로 어떻게 굴러가나', null, h('div', { class: 'table-wrap flat' }, mk),
         h('p', { class: 'meta', text: '필요 ROAS = 광고비 1원으로 만들어야 하는 매출(실결제). 손익분기 판매량 = 월 고정비 ÷ 개당 남는 돈.' })),
-      ui.panel('Matrix · 월 영업이익 (광고비 비중 × 월 판매량)', null, h('div', { class: 'table-wrap flat' }, mx),
-        h('p', { class: 'meta', text: '= 판매량 × 개당 남는 돈 − 월 고정비(지금 ' + F.man(fx.total) + '). 빨간 칸은 적자. 채용이 늘면 고정비가 커지므로 시뮬레이션에서 월별로 봅니다.' })),
       h('p', { class: 'note', text: '다음 단계로 나눌 것: 채널별(쿠팡 · 스마트스토어 · 올리브영) 수수료와 정산 주기, 묶음 · 세트 객단가, 재구매율, 무료배송 기준, 신규/재구매 광고비 차이.' }));
   }
 

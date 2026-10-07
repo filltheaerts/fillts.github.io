@@ -13,57 +13,62 @@
 
   /* ============ Overview ============ */
   function home(view) {
-    var p = F.project(V.scen, 24), rw = runwayText(p), t = fmt.today();
-    var M = F.monthly(), cur = M[F.thisYm()] || { opIn: 0, opOut: 0 };
-    var up = F.schedIn(t, HR.L.addDays(t, 30)), upSum = up.reduce(function (a, o) { return a + o.amount; }, 0);
-    var nextFund = F.plan.filter(function (x) { return x.date >= t && x.status !== 'received' && x.status !== 'dropped'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
-    var uncategorized = F.tx.filter(function (x) { return !x.cat || x.cat === '미분류'; }).length;
+    // 실제 통장 잔액 + 시뮬레이션 계획(판매 · 발주 · 고정비 · 광고 · 차입)으로 본 요약
+    var bal = F.balance(), t = fmt.today(), X = F.runSim ? F.runSim() : null, R = X ? X.rows : [], c = X ? X.c : {};
+    var cur = R.filter(function (r) { return r.ym === F.thisYm(); })[0] || R[0] || {}, last = R[R.length - 1] || {};
+    var risk = R.filter(function (r) { return r.cash < +(c.minCash || 0); });
+    var low = R.reduce(function (a, r) { return r.cash < a.cash ? r : a; }, R[0] || { cash: 0, ym: '' });
+    var ownerSum = Object.keys(c.owner || {}).reduce(function (a, k) { return a + (+c.owner[k] || 0); }, 0), ownerLimit = +(c.ownerLimit || 150000000);
+    var uv = X ? X.uv : { net: 0, vari: 0, cogs: 0 }, unitProfit = uv.net - uv.vari - uv.cogs;
+    var profitSum = R.reduce(function (a, r) { return a + (r.profit || 0); }, 0);
+    var up = F.schedIn(t, HR.L.addDays(t, 45)), nextOrder = R.filter(function (r) { return r.order && r.ym >= F.thisYm(); })[0];
     var noEvid = F.tx.filter(function (x) { return x.outAmt > 0 && !F.isTransfer(x) && !x.evid; }).length;
-    var prevYm = fmt.ymShift(F.thisYm(), -1), sentPrev = F.mail.some(function (m) { return m.ym === prevYm; });
+    var assumed = F.sched.filter(function (s) { return s.kind === 'monthly' && s.assumed; }).length;
 
     var alerts = h('ul', { class: 'list fin-alerts' });
     var al = function (text, href, cls) { alerts.appendChild(h('li', null, h('a', { class: 'grow', href: href, text: text }), ui.tag(cls === 'red' ? '확인' : '안내', cls === 'red' ? 'red' : 'mute'))); };
-    if (!F.sched.length && F.cfg.varBurn == null) al('월 지출(고정비 · 인건비)이 아직 없습니다 — 지출예정에 매월 반복 항목을 넣어야 런웨이가 계산됩니다.', '#sched', 'red');
-    if (!F.tx.length) al('통장 거래내역을 아직 가져오지 않았습니다 — 엑셀 파일을 올리거나 구글 드라이브 폴더를 연결하세요.', '#tx/import', 'red');
-    if (p.zero != null && p.zero < 12) al('런웨이 ' + p.zero + '개월 — 12개월 게이트 미달입니다. 자금조달 계획을 확인하세요.', '#runway', 'red');
-    if (uncategorized) al('분류가 비어 있는 거래 ' + uncategorized + '건', '#tx/list/uncat', 'red');
+    if (risk.length) al('현금 리스크 ' + risk.length + '개월 (' + F.ymLabel(risk[0].ym) + '~) — 최저 ' + F.man(low.cash) + ' · 시뮬레이션 ⑤에서 차입 확인', '#sim', 'red');
+    if (ownerSum > ownerLimit) al('대표 차입 계획 ' + F.man(ownerSum) + ' > 한도 ' + F.man(ownerLimit), '#sim', 'red');
+    var lost = R.filter(function (r) { return r.lost > 0; })[0];
+    if (lost) al(F.ymLabel(lost.ym) + ' 재고 부족 — 판매 계획 ' + lost.plan.toLocaleString('ko-KR') + '개 중 ' + lost.lost.toLocaleString('ko-KR') + '개 못 팖 · 발주를 앞당기세요', '#sim', 'red');
+    if (assumed) al('지출 흐름 고정비 중 가정값 ' + assumed + '개 — 실제 금액으로 수정', '#cost', 'red');
+    if (!F.tx.length) al('통장 거래내역을 아직 가져오지 않았습니다 — 엑셀을 올리거나 구글 드라이브 폴더를 연결하세요.', '#tx/import');
     if (noEvid) al('증빙 표시가 없는 출금 ' + noEvid + '건 — 세무사 전달 전에 확인', '#tx/list/noevid');
-    if (F.tx.length && !sentPrev && +t.slice(8, 10) >= 3) al(F.ymLabel(prevYm) + ' 세무 자료를 아직 보내지 않았습니다.', '#tax', 'red');
     if (F.status.drive && F.status.drive.err) al('구글 드라이브 동기화 오류: ' + F.status.drive.err, '#set/drive', 'red');
     if (!alerts.children.length) alerts.appendChild(h('li', { class: 'empty', text: '확인할 항목이 없습니다.' }));
 
-    var upList = h('ul', { class: 'list' }, up.slice(0, 8).map(function (o) {
+    var acctList = h('ul', { class: 'list' }, bal.accts.map(function (x) {
+      return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: x.name }), h('div', { class: 'meta', text: F.kindName(x.kind) + (x.date ? ' · ' + fmt.dot(x.date) + ' 기준' : '') + (x.note ? ' · ' + x.note : '') })), h('span', { class: 'num', text: F.won(x.bal) }));
+    }));
+    if (!bal.accts.length) acctList.appendChild(h('li', { class: 'empty', text: '설정 › 계좌 · 잔액에서 통장을 추가하세요.' }));
+
+    var bars = R.map(function (r) { return { label: F.ymLabel(r.ym), v: r.cash, title: r.ym + ' 월말 ' + F.won(r.cash) }; });
+    var upList = h('ul', { class: 'list' }, up.slice(0, 6).map(function (o) {
       return h('li', null, h('span', { class: 'meta fin-date', text: fmt.date(o.date) }), h('span', { class: 'grow', text: o.s.title }), h('span', { class: 'num', text: F.won(o.amount) }));
     }));
-    if (!up.length) upList.appendChild(h('li', { class: 'empty', text: '30일 안에 잡힌 지출예정이 없습니다.' }));
-    var fundList = h('ul', { class: 'list' }, nextFund.slice(0, 5).map(function (x) {
-      return h('li', null, h('span', { class: 'meta fin-date', text: fmt.dot(x.date) }), h('span', { class: 'grow', text: x.name }), ui.tag(F.statusName(x.status), x.status === 'approved' ? 'ok' : 'mute'), h('span', { class: 'num', text: F.man(x.amount) }));
+    if (nextOrder) upList.appendChild(h('li', null, h('span', { class: 'meta fin-date', text: F.ymLabel(nextOrder.ym) }), h('span', { class: 'grow', text: '발주 ' + nextOrder.order.toLocaleString('ko-KR') + '개 (시뮬레이션)' }), h('span', { class: 'num', text: F.won(Math.round(nextOrder.inv)) })));
+    if (!upList.children.length) upList.appendChild(h('li', { class: 'empty', text: '45일 안에 잡힌 지출이 없습니다.' }));
+    var funds = F.plan.filter(function (p) { return p.status !== 'received' && p.status !== 'dropped'; }).sort(function (a, b) { return (a.date || '9') < (b.date || '9') ? -1 : 1; });
+    var fundList = h('ul', { class: 'list' }, funds.slice(0, 6).map(function (p) {
+      return h('li', null, h('span', { class: 'meta fin-date', text: p.date ? fmt.dot(p.date) : '미정' }), h('span', { class: 'grow', text: p.name }), ui.tag(F.statusName(p.status), p.status === 'approved' ? 'ok' : 'mute'), h('span', { class: 'num', text: F.man(p.amount) }));
     }));
-    if (!nextFund.length) fundList.appendChild(h('li', { class: 'empty', text: '예정된 자금조달이 없습니다.' }));
+    if (!funds.length) fundList.appendChild(h('li', { class: 'empty', text: '예정된 자금조달이 없습니다.' }));
 
-    var trend = Object.keys(M).sort().slice(-6).map(function (k) { return { label: (+k.slice(5)) + '월', v: M[k].opIn - M[k].opOut, title: k + ' 영업 입금 ' + F.won(M[k].opIn) + ' / 출금 ' + F.won(M[k].opOut) }; });
-
-    var acctList = h('ul', { class: 'list' }, p.bal.accts.map(function (a) {
-      return h('li', null, h('div', { class: 'grow' }, h('div', { class: 'strong', text: a.name }), h('div', { class: 'meta', text: F.kindName(a.kind) + (a.date ? ' · ' + fmt.dot(a.date) + ' 기준' : '') + (a.note ? ' · ' + a.note : '') })),
-        h('span', { class: 'num', text: F.won(a.bal) }));
-    }));
-    if (p.owner) acctList.appendChild(h('li', { class: 'fin-owner' }, h('div', { class: 'grow' }, h('div', { class: 'strong', text: '대표 개인자금 (투입 예정)' }), h('div', { class: 'meta', text: '법인 통장 밖 · 자금조달 계획의 「대표 가수금」' })), h('span', { class: 'num', text: F.won(p.owner) })));
-    if (!p.bal.accts.length) acctList.appendChild(h('li', { class: 'empty', text: '설정 › 계좌 · 잔액에서 통장을 추가하거나 거래내역을 가져오세요.' }));
-    ui.put(view, ui.head('Finance', 'Overview', h('span', { class: 'meta', text: p.bal.asOf ? '잔액 기준 ' + fmt.dot(p.bal.asOf) + (p.bal.src === 'manual' ? ' (직접 입력)' : '') : '' })),
-      F.kpi([['법인 통장 잔액', F.man(p.bal.amount), '', p.bal.accts.length ? p.bal.accts.length + '개 계좌' + (p.owner ? ' · 대표 자금 +' + F.man(p.owner) : '') : ''],
-        ['월 순소진', p.netBurn > 0 ? F.man(p.netBurn) : '흑자', '', '고정 ' + F.man(p.fixed) + ' + 변동 ' + F.man(p.variable) + ' − 매출 ' + F.man(p.rev)],
-        ['런웨이', rw.t, rw.cls, rw.sub],
-        ['이번 달 영업 입금', F.man(cur.opIn)], ['이번 달 출금', F.man(cur.opOut)],
-        ['30일 지출예정', F.man(upSum), '', up.length + '건']]),
-      ui.panel('Accounts · 통장별 잔액', h('a', { href: '#set/accounts', class: 'meta', text: '수정 →' }), acctList,
-        h('div', { class: 'fin-total' }, h('span', { text: '법인 합계' }), h('strong', { text: F.won(p.bal.amount) }), p.owner ? h('span', { class: 'meta', text: '대표 자금 포함 ' + F.won(p.bal.amount + p.owner) }) : null)),
+    ui.put(view, ui.head('Finance', 'Overview', h('span', { class: 'meta', text: '실제 잔액 + 시뮬레이션 계획 기준' })),
+      F.kpi([['법인 통장 잔액', F.man(bal.amount), '', bal.asOf ? fmt.dot(bal.asOf) + ' 기준 · ' + bal.accts.length + '개 계좌' : ''],
+        ['1개당 순익 (광고 전)', F.won(Math.round(unitProfit)), '', '순매출 ' + F.won(Math.round(uv.net)) + ' − 변동비 − 원가'],
+        ['이번 달 고정비', F.man(cur.fixed || 0), '', '인건비 ' + F.man(cur.pay || 0) + ' · 임대 ' + F.man(cur.rent || 0)],
+        [F.ymLabel(last.ym || '') + ' 월말 현금', F.man(last.cash || 0), (last.cash || 0) < +(c.minCash || 0) ? 'red' : '', '시뮬레이션 · 누적 순익 ' + F.man(profitSum)],
+        ['현금 리스크', risk.length ? risk.length + '개월' : '없음', risk.length ? 'red' : '', risk.length ? '최저 ' + F.man(low.cash) + ' (' + F.ymLabel(low.ym) + ')' : '최소 보유액 위'],
+        ['대표 차입 계획', F.man(ownerSum), ownerSum > ownerLimit ? 'red' : '', '한도 ' + F.man(ownerLimit)]]),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Check · 확인할 것', null, alerts),
-        ui.panel('Trend · 월 영업 순현금 (최근 6개월)', h('a', { href: '#flow', class: 'meta', text: '현금흐름 →' }), trend.length ? F.bars(trend) : ui.empty('거래내역을 가져오면 표시됩니다.'))),
+        ui.panel('Cash · 월말 현금 (시뮬레이션)', h('a', { href: '#sim', class: 'meta', text: '시뮬레이션 →' }), R.length ? F.bars(bars) : ui.empty('시뮬레이션을 채우면 표시됩니다.'))),
       h('div', { class: 'two-col fin-two' },
-        ui.panel('Upcoming · 30일 지출예정', h('a', { href: '#sched', class: 'meta', text: '전체 →' }), upList),
-        ui.panel('Funding · 다가오는 자금조달', h('a', { href: '#plan', class: 'meta', text: '전체 →' }), fundList)),
-      h('p', { class: 'note', text: '런웨이 = 현재 잔액에서 매월 (고정 지출예정 + 변동 지출 + 일회성 지출예정 − 매출 + 자금조달)을 더해 처음 0원 아래로 내려가는 달까지. 시나리오는 「기본(확률 반영)」 기준이며 런웨이 메뉴에서 바꿀 수 있습니다. 내부 이체 · 정책자금 · 투자 · 대출 입금은 영업 입금에서 뺍니다.' }));
+        ui.panel('Accounts · 통장별 잔액', h('a', { href: '#set/accounts', class: 'meta', text: '수정 →' }), acctList),
+        ui.panel('Upcoming · 다가오는 지출 (45일)', h('a', { href: '#cost/once', class: 'meta', text: '전체 →' }), upList)),
+      ui.panel('Funding · 자금조달', h('a', { href: '#plan', class: 'meta', text: '전체 →' }), fundList),
+      h('p', { class: 'note', text: '숫자 기준: 통장 잔액은 실제 값, 월말 현금 · 리스크 · 차입은 시뮬레이션(판매 · 발주 · 광고 · 고정비 · 차입 계획)에서 계산합니다. 고정비 기본값은 지출 흐름 › 고정비입니다.' }));
   }
 
   /* ============ 런웨이 ============ */

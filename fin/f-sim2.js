@@ -118,7 +118,7 @@
     var ownerSum = Object.keys(c.owner).reduce(function (a, k) { return a + (+c.owner[k] || 0); }, 0);
     var firstLost = R.filter(function (r) { return r.lost > 0; })[0];
     var opPlus = R.filter(function (r) { return r.sold && r.profit >= 0; })[0], pSum = R.reduce(function (a, r) { return a + r.profit; }, 0);
-    var ownerLimit = F.plan.filter(function (p) { return p.kind === F.OWNER && p.status !== 'dropped'; }).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+    var ownerLimit = +(c.ownerLimit || 150000000);
 
     // 엑셀형 표: 행 = 항목, 열 = 월
     var cols = R.map(function (r) { return r.ym; });
@@ -328,14 +328,14 @@
       F.kpi([['시작 현금', F.man(X.start), '', c.cash0 != null && c.cash0 !== '' ? '직접 입력' : '법인 통장 잔액'],
         ['27.03 월말 현금', F.man(c12.cash || 0), (c12.cash || 0) < +c.minCash ? 'red' : '', '누적 판매 ' + R.reduce(function (a, r) { return a + r.sold; }, 0).toLocaleString('ko-KR') + '개 · 남은 재고 ' + (c12.stock || 0).toLocaleString('ko-KR') + '개'],
         ['현금 리스크 구간', risk.length ? risk.length + '개월' : '없음', risk.length ? 'red' : '', risk.length ? F.ymLabel(risk[0].ym) + ' ~ ' + F.ymLabel(risk[risk.length - 1].ym) + ' · 최저 ' + F.man(low.cash) + ' (' + F.ymLabel(low.ym) + ')' : '최소 보유액 위'],
-        ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', ownerLimit ? '한도 ' + F.man(ownerLimit) + ' (자금조달 계획)' : ''],
+        ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', '한도 ' + F.man(ownerLimit)],
         ['월 순익 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '기간 누적 순익 ' + F.man(pSum) + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
       h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
       ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '노란 칸 = 입력 · 굵은 숫자 = 직접 고친 값 · ▾ 누르면 펼치기 / ▴ 접기' }),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
       h('div', { class: 'fin-sim-settings' },
         ui.panel('Settings · 기준값', null, h('div', { class: 'stack fin-form' },
-          h('div', { class: 'row' }, setting('최소 보유 현금', 'minCash', 'money'), setting('시작 현금 (비우면 실잔액)', 'cash0', 'money')),
+          h('div', { class: 'row' }, setting('최소 보유 현금', 'minCash', 'money'), setting('시작 현금 (비우면 실잔액)', 'cash0', 'money'), setting('대표 차입 한도', 'ownerLimit', 'money')),
           h('div', { class: 'row' }, setting('발주 → 입고 리드타임 (개월)', 'lead'), setting('발주 달에 내는 비율 (%) · 100 = 전액', 'upfront'))),
           h('p', { class: 'meta', text: '발주 대금 = 발주 수량 × 1개당 제품 원가(' + F.won(Math.round(X.uv.cogs)) + '), 기본은 발주한 달에 전액 나가는 현금 기준입니다. 선금 · 잔금으로 나눠 내면 비율을 바꾸세요. 부가세 · 정산 시차는 무시한 단순 현금 모형입니다.' }))));
   }
