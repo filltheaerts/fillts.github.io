@@ -100,3 +100,18 @@ a.map-card:hover { border-color: var(--black); }
 .fin-mixbar { width: 30%; min-width: 80px; margin: 0 12px; }
 .fw-fill.red { background: var(--red); }
 .fin-mk td, .fin-mk th { font-size: 12px; }
+
+/* 입력 세트 — 엑셀처럼 세로 한 표 */
+.fin-inputs td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; }
+.fin-inputs .fin-grp { font-size: 10px; letter-spacing: 0.1em; color: var(--gray-400); white-space: nowrap; width: 72px; }
+.fin-inputs tr.fin-grp-first td { border-top: 1px solid var(--gray-400); }
+.fin-inputs .fin-in { width: 130px; }
+.fin-inputs input.fin-cell { width: 120px; padding: 6px 8px; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--gray-200); background: #fffdf2; }
+.fin-inputs input.fin-cell:focus { outline: 2px solid var(--black); outline-offset: -1px; background: #fff; }
+.fin-inputs td.minus { color: var(--gray-600); }
+.fin-inputs .fin-guide { font-size: 12px; line-height: 1.6; min-width: 260px; }
+.fin-inputs tr.fin-auto td { background: var(--gray-100); }
+.fin-inputs tr.fin-result td { border-top: 2px solid var(--black); background: var(--gray-100); }
+.fin-inputs tr.fin-result .fin-in { font-size: 16px; }
+@media (max-width: 860px) { .fin-inputs .fin-guide { min-width: 200px; } }

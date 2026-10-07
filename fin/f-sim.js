@@ -13,10 +13,19 @@
     ship: 3000, pick: 1100, box: 605, storage: 50,
     pgRate: 3.5, review: 200, adRate: 30
   };
-  var ECON_FIELDS = [
-    ['매출', [['price', '정가 (부가세 포함)', '원'], ['discount', '평균 할인 (쿠폰 · 적립금 · 첫구매)', '%'], ['upo', '주문당 평균 수량', '개'], ['returnRate', '반품 · 환불률', '%']]],
-    ['물류 (주문당)', [['ship', '택배비', '원/주문'], ['pick', '출고 작업 (피킹 · 포장)', '원/주문'], ['box', '박스 · 완충재', '원/주문'], ['storage', '보관비', '원/개']]],
-    ['판매 비용', [['pgRate', '결제수수료 (PG)', '% of 실결제'], ['review', '리뷰 적립 · CS 사은', '원/개'], ['adRate', '광고비 비중', '% of 실결제']]]
+  // 입력 세트 (엑셀처럼 세로 한 표) — [키, 구분, 항목, 단위, 가이드]
+  var ECON_ROWS = [
+    ['price', '매출', '정가', '원 (부가세 포함)', '자사몰 판매가. 고객이 보는 가격 그대로 (부가세 포함).'],
+    ['discount', '매출', '평균 할인', '%', '쿠폰 · 적립금 · 첫구매 할인을 평균 낸 비율. 런칭 초기 15~25%, 안정기 5~10%.'],
+    ['upo', '매출', '주문당 평균 수량', '개', '주문 1건에 평균 몇 개 사는지. 단품 1.0~1.3, 2+1 · 세트를 팔면 1.5 이상 → 택배비가 개당으로 줄어듦.'],
+    ['returnRate', '매출', '반품 · 환불률', '%', '순매출 중 돌려주는 비율. 화장품 자사몰 보통 1~3%.'],
+    ['ship', '물류', '택배비', '원 / 주문', '3PL 계약 택배 단가(공급가). 소형 박스 기준 보통 2,500~3,300원.'],
+    ['pick', '물류', '출고 작업 (피킹 · 포장)', '원 / 주문', '3PL이 주문 1건을 꺼내 포장하는 작업비. 보통 1,000~1,500원. 합포장 추가비는 계약서 확인.'],
+    ['box', '물류', '박스 · 완충재', '원 / 주문', '택배 박스 · 완충재 · 테이프. 보통 400~800원.'],
+    ['storage', '물류', '보관비', '원 / 개', '3PL 보관비를 개당으로 나눈 값. 팔레트 월 2~4만 원 기준이면 개당 수십 원.'],
+    ['pgRate', '판매 비용', '결제수수료 (PG)', '% (실결제 기준)', '카드 3.3~3.5% 수준(부가세 별도 기준으로 입력). 간편결제 일부는 더 높음.'],
+    ['review', '판매 비용', '리뷰 적립 · CS 사은', '원 / 개', '리뷰 적립금 × 리뷰 작성률 + CS 사은품. 예: 적립 1,000원 × 작성률 20% = 200원.'],
+    ['adRate', '마케팅', '광고비 비중', '% (실결제 기준)', '실결제 100원 중 광고에 쓰는 돈. 런칭기 30~50%, 안정기 15~25%. 필요 ROAS = 100 ÷ 비중.']
   ];
   F.econ = function () { return Object.assign({}, ECON0, (F.cfg.inv || {}).econ || {}); };
   F.unitPnl = function (e) {
@@ -43,16 +52,104 @@
   var pct = function (v, base) { return base ? (v / base * 100).toFixed(1) + '%' : ''; };
   var won = function (v) { return F.won(Math.round(v)); };
 
+
+  /* ---------- 실제 주문 값으로 계산 ---------- */
+  // [키, 항목, 단위, 가이드] — 주문 화면 · 3PL 청구서 · PG 정산 · 광고 관리자에서 그대로 옮겨 적는 값(기간 합계)
+  var ACT_ROWS = [
+    ['orders', '주문 건수', '건', '카페24 주문 관리 › 기간 내 결제 완료 주문 수'],
+    ['units', '판매 수량', '개', '같은 기간 판매된 본품 수 (세트는 본품 개수로)'],
+    ['paid', '실결제 금액 합계', '원 (부가세 포함)', '할인 · 적립금 사용 후 고객이 실제 낸 돈의 합계. 배송비 받은 게 있으면 빼고 입력'],
+    ['refund', '반품 · 환불 금액', '원 (부가세 포함)', '같은 기간 환불해 준 금액'],
+    ['ship', '택배비 청구액', '원', '3PL(품고) 청구서의 택배비 합계 (공급가)'],
+    ['pick', '출고 작업비 청구액', '원', '3PL 청구서의 피킹 · 포장 · 합포장 작업비 합계'],
+    ['box', '박스 · 자재비', '원', '3PL 청구서의 박스 · 완충재 · 테이프'],
+    ['storage', '보관비', '원', '3PL 청구서의 보관비'],
+    ['pg', '결제수수료', '원', 'PG 정산 내역의 수수료 합계 (공급가)'],
+    ['review', '리뷰 적립 · 사은품', '원', '지급한 리뷰 적립금 + CS 사은품 원가'],
+    ['ad', '광고비', '원', '메타 · 네이버 · 구글 등 광고 관리자 결제액 합계 (공급가)']
+  ];
+  function actualPanel(u, e, fx) {
+    var A = Object.assign({ label: '', orders: '', units: '', paid: '', refund: '', ship: '', pick: '', box: '', storage: '', pg: '', review: '', ad: '' }, F.cfg.actual || {});
+    var ed = F.canEdit(), n = function (k) { return +A[k] || 0; };
+    var units = n('units'), orders = n('orders') || units, paid = n('paid');
+    var ok = units > 0 && paid > 0;
+    // 실적 → 입력 세트 형태로 환산 (정가는 그대로, 나머지 비율 · 단가를 실제 값으로)
+    var der = ok ? {
+      price: +e.price, discount: Math.max(0, (1 - paid / (units * +e.price)) * 100), upo: orders ? units / orders : 1,
+      returnRate: paid ? n('refund') / paid * 100 : 0,
+      ship: orders ? n('ship') / orders : 0, pick: orders ? n('pick') / orders : 0, box: orders ? n('box') / orders : 0, storage: units ? n('storage') / units : 0,
+      pgRate: paid ? n('pg') / (paid / 1.1) * 100 : 0, review: units ? n('review') / units : 0, adRate: paid ? n('ad') / (paid / 1.1) * 100 : 0
+    } : null;
+    // 비율 기준 맞추기: 가정 세트는 실결제(부가세 포함) 기준 비율 → 실적도 같은 기준으로
+    if (der) { der.pgRate = n('pg') / paid * 100; der.adRate = n('ad') / paid * 100; }
+    var x = der ? F.unitPnl(der) : null;
+    var body = h('tbody');
+    ACT_ROWS.forEach(function (f, i) {
+      var inp = F.moneyInput({ value: A[f[0]] }); inp.className = 'fin-cell'; if (!ed) inp.disabled = true;
+      inp.addEventListener('change', function () { var o = Object.assign({}, F.cfg.actual || {}); o[f[0]] = F.parseWon(inp.value) || ''; F.cfgSet({ actual: o }).catch(ui.fail); });
+      body.appendChild(h('tr', { class: i === 2 || i === 4 || i === 10 ? 'fin-grp-first' : '' }, h('td', { class: 'strong', text: f[1] }), h('td', { class: 'fin-in' }, inp), h('td', { class: 'meta', text: f[2] }), h('td', { class: 'meta fin-guide', text: f[3] })));
+    });
+    var label = ui.input({ value: A.label || '', placeholder: '예: 2026년 11월 · 런칭 첫 달', maxlength: 40, disabled: ed ? null : true });
+    label.addEventListener('change', function () { F.cfgSet({ actual: Object.assign({}, F.cfg.actual || {}, { label: label.value.trim() }) }).catch(ui.fail); });
+    var cmp = null;
+    if (x) {
+      var R = [['실결제 (1개)', x.paid, u.paid, 1], ['순매출', x.net, u.net, 1], ['반품 · 환불', -x.ret, -u.ret], ['제품 원가', -x.cogs, -u.cogs], ['택배비', -x.ship, -u.ship], ['출고 작업', -x.pick, -u.pick],
+        ['박스 · 자재', -x.box, -u.box], ['보관비', -x.storage, -u.storage], ['결제수수료', -x.pg, -u.pg], ['리뷰 적립 · 사은', -x.review, -u.review], ['광고 전 이익', x.pre, u.pre, 1], ['광고비', -x.ad, -u.ad], ['개당 남는 돈', x.contrib, u.contrib, 2]];
+      cmp = h('table', { class: 'table fin-table fin-narrow fin-inputs' }, h('thead', null, h('tr', null, ['1개당', '실제', '가정', '차이'].map(function (t, k) { return h('th', { class: k ? 'num' : '', text: t }); }))),
+        h('tbody', null, R.map(function (r) {
+          var d = r[1] - r[2];
+          return h('tr', { class: r[3] === 2 ? 'fin-result' : r[3] ? 'fin-grp-first' : '' }, h('td', { class: r[3] ? 'strong' : '', text: r[0] }), h('td', { class: 'num strong', text: (r[1] < 0 ? '−' : '') + won(Math.abs(r[1])) }),
+            h('td', { class: 'num meta', text: (r[2] < 0 ? '−' : '') + won(Math.abs(r[2])) }), h('td', { class: 'num' + (Math.round(d) < 0 ? ' red' : ''), text: Math.round(d) ? (d > 0 ? '+' : '−') + won(Math.abs(d)) : '—' }));
+        })));
+    }
+    var rates = der ? [['평균 할인', der.discount.toFixed(1) + '%', e.discount + '%'], ['주문당 수량', der.upo.toFixed(2) + '개', e.upo + '개'], ['반품률', der.returnRate.toFixed(1) + '%', e.returnRate + '%'],
+      ['택배비 / 주문', won(der.ship), won(e.ship)], ['결제수수료', der.pgRate.toFixed(2) + '%', e.pgRate + '%'], ['광고비 비중', der.adRate.toFixed(1) + '%', e.adRate + '%'], ['ROAS', der.adRate ? (100 / der.adRate).toFixed(2) + '배' : '-', e.adRate ? (100 / e.adRate).toFixed(2) + '배' : '-']] : [];
+    var monthly = x ? units * x.contrib - fx.total : null;
+    return ui.panel('Actual · 실제 주문 값으로 계산', ed && der ? ui.confirmBtn('이 실적으로 입력 세트 바꾸기', function () {
+        var p = {}; Object.keys(der).forEach(function (k) { p[k] = Math.round(der[k] * 100) / 100; });
+        saveEcon(p).then(function () { ui.toast('입력 세트를 실적 값으로 바꿨습니다.'); }).catch(ui.fail);
+      }, 'btn-sm') : null,
+      h('p', { class: 'meta', text: '한 달(또는 원하는 기간) 실제 숫자를 주문 화면 · 3PL 청구서 · PG 정산 · 광고 관리자에서 그대로 옮겨 적으면, 1개당 실제 손익이 계산되고 위 가정과 나란히 비교됩니다. 값은 바로 저장됩니다.' }),
+      h('div', { class: 'row fin-form' }, ui.field('기간 이름', label, 'grow')),
+      h('div', { class: 'table-wrap flat' }, h('table', { class: 'table fin-table fin-narrow fin-inputs' }, h('thead', null, h('tr', null, ['항목', '입력 (기간 합계)', '단위', '어디서 보나'].map(function (t) { return h('th', { text: t }); }))), body)),
+      x ? F.kpi([['실제 개당 남는 돈', won(x.contrib), x.contrib < 0 ? 'red' : '', '가정 ' + won(u.contrib)], ['이 기간 영업이익', F.man(monthly), monthly < 0 ? 'red' : '', units.toLocaleString('ko-KR') + '개 × 개당 − 월 고정비 ' + F.man(fx.total)],
+        ['실제 광고비 비중', der.adRate.toFixed(1) + '%', '', 'ROAS ' + (der.adRate ? (100 / der.adRate).toFixed(2) + '배' : '-')], ['실제 평균 할인', der.discount.toFixed(1) + '%', '', '정가 ' + F.won(e.price) + ' 기준']], 'four') : h('p', { class: 'empty', text: '판매 수량과 실결제 금액을 넣으면 1개당 실제 손익이 여기에 나옵니다.' }),
+      x ? h('div', { class: 'two-col fin-two' },
+        h('div', { class: 'table-wrap flat' }, cmp),
+        h('div', { class: 'stack' }, h('div', { class: 'label', text: '실적에서 나온 비율 · 단가' }), h('ul', { class: 'list' }, rates.map(function (r) { return h('li', null, h('span', { class: 'grow', text: r[0] }), h('span', { class: 'num strong', text: r[1] }), h('span', { class: 'meta', text: '가정 ' + r[2] })); })),
+          h('p', { class: 'meta', text: '「이 실적으로 입력 세트 바꾸기」를 누르면 이 비율 · 단가가 위 입력 세트에 들어가고, 손익분기 · 시뮬레이션이 실적 기준으로 다시 계산됩니다.' }))) : null);
+  }
+
   function unit(view) {
     var u = F.unitPnl(), ed = F.canEdit(), e = u.e, c = simCfg(), fx = simFixedAt(c, F.thisYm());
-    // 입력
-    var inputs = ECON_FIELDS.map(function (g) {
-      return h('div', { class: 'stack' }, h('div', { class: 'label', text: g[0] }), h('div', { class: 'row fin-form' }, g[1].map(function (f) {
-        var i = ui.input({ type: 'number', step: 'any', value: String(e[f[0]]), disabled: ed ? null : true });
-        i.addEventListener('change', function () { var p = {}; p[f[0]] = +i.value || 0; saveEcon(p).then(function () { ui.toast('저장했습니다.'); }).catch(ui.fail); });
-        return ui.field(f[1] + ' (' + f[2] + ')', i);
-      })));
+    // 입력: 세로 한 표 — 값 · 단위 · 1개당 영향 · 가이드
+    var effect = {
+      price: ['실결제 ' + won(u.paid), ''], discount: ['−' + won(u.disc), 'minus'], upo: ['주문당 비용 ÷ ' + e.upo, ''], returnRate: ['−' + won(u.ret), 'minus'],
+      ship: ['−' + won(u.ship), 'minus'], pick: ['−' + won(u.pick), 'minus'], box: ['−' + won(u.box), 'minus'], storage: ['−' + won(u.storage), 'minus'],
+      pgRate: ['−' + won(u.pg), 'minus'], review: ['−' + won(u.review), 'minus'], adRate: ['−' + won(u.ad), 'minus']
+    };
+    var lastGroup = '';
+    var inBody = h('tbody');
+    ECON_ROWS.forEach(function (f) {
+      var i = ui.input({ type: 'number', step: 'any', value: String(e[f[0]]), class: 'fin-cell', 'aria-label': f[2], disabled: ed ? null : true });
+      i.addEventListener('change', function () { var p = {}; p[f[0]] = +i.value || 0; saveEcon(p).then(function () { ui.toast(f[2] + ' 저장'); }).catch(ui.fail); });
+      inBody.appendChild(h('tr', { class: f[1] !== lastGroup ? 'fin-grp-first' : '' }, h('td', { class: 'fin-grp', text: f[1] !== lastGroup ? f[1] : '' }), h('td', { class: 'strong', text: f[2] }),
+        h('td', { class: 'fin-in' }, i), h('td', { class: 'meta', text: f[3] }), h('td', { class: 'num ' + effect[f[0]][1], text: effect[f[0]][0] }), h('td', { class: 'meta fin-guide', text: f[4] })));
+      lastGroup = f[1];
     });
+    // 자동으로 오는 값 · 결과
+    inBody.appendChild(h('tr', { class: 'fin-grp-first fin-auto' }, h('td', { class: 'fin-grp', text: '자동' }), h('td', { class: 'strong', text: '제품 원가' }),
+      h('td', { class: 'fin-in num', text: won(u.cogs) }), h('td', { class: 'meta', text: '원 / 개 (공급가)' }), h('td', { class: 'num minus', text: '−' + won(u.cogs) }),
+      h('td', { class: 'meta fin-guide' }, '재고 탭 품목의 「제품 1개당 사용량 × 평균 매입 단가」 합계. ', h('a', { href: '#inv', text: '재고 → 품목' }), '에서 바뀌면 여기도 바뀝니다.')));
+    inBody.appendChild(h('tr', { class: 'fin-auto' }, h('td', { class: 'fin-grp' }), h('td', { class: 'strong', text: '부가세' }),
+      h('td', { class: 'fin-in num', text: '1/11' }), h('td', { class: 'meta', text: '실결제 기준' }), h('td', { class: 'num minus', text: '−' + won(u.vat) }),
+      h('td', { class: 'meta fin-guide', text: '고객이 낸 돈 안의 부가세는 분기마다 나라에 냅니다 — 회사 매출이 아님.' })));
+    inBody.appendChild(h('tr', { class: 'fin-result' }, h('td', { class: 'fin-grp', text: '결과' }), h('td', { class: 'strong', text: '개당 남는 돈' }),
+      h('td', { class: 'fin-in num strong' + (u.contrib < 0 ? ' red' : ''), text: won(u.contrib) }), h('td', { class: 'meta', text: '실결제의 ' + pct(u.contrib, u.paid) }),
+      h('td', { class: 'num', text: '광고 전 ' + won(u.pre) }), h('td', { class: 'meta fin-guide', text: '이 돈으로 월 고정비 ' + F.man(fx.total) + '를 갚습니다 → 손익분기 ' + (u.contrib > 0 ? Math.ceil(fx.total / u.contrib).toLocaleString('ko-KR') + '개/월' : '불가') })));
+    var inputs = h('table', { class: 'table fin-table fin-narrow fin-inputs' },
+      h('thead', null, h('tr', null, ['구분', '항목', '입력값', '단위', '1개당 영향', '가이드'].map(function (x, k) { return h('th', { class: k === 4 ? 'num' : '', text: x }); }))), inBody);
+
     // 워터폴: [이름, 금액, 종류, 설명]
     var R = [['정가 (부가세 포함)', u.price, 'top', '']];
     if (u.disc) R.push(['− 평균 할인 ' + e.discount + '%', -u.disc, 'minus', '쿠폰 · 적립금 · 첫구매']);
@@ -103,8 +200,9 @@
       F.kpi([['실결제 (1개)', won(u.paid), '', '정가 ' + F.won(u.price) + ' − 할인 ' + e.discount + '%'], ['제품 원가', won(u.cogs), '', '순매출의 ' + pct(u.cogs, u.net)],
         ['광고 전 이익', won(u.pre), '', '실결제의 ' + pct(u.pre, u.paid)], ['개당 남는 돈', won(u.contrib), u.contrib < 0 ? 'red' : '', '광고 ' + e.adRate + '% 기준 · 실결제의 ' + pct(u.contrib, u.paid)],
         ['월 고정비', F.man(fx.total), '', fx.rows.length + '개 항목 · 시뮬레이션과 공유'], ['손익분기', bepNow ? bepNow.toLocaleString('ko-KR') + '개/월' : '불가', bepNow ? '' : 'red', bepNow ? '월 실결제 ' + F.man(bepNow * u.paid) : '광고비를 낮춰야 함']]),
-      ui.panel('Inputs · 입력 세트 (자사몰 단품 기준 가정값 — 실제 계약 조건으로 고쳐 주세요)', null, h('div', { class: 'stack fin-econ' }, inputs),
-        h('p', { class: 'meta', text: '제품 원가는 재고 탭 품목(제품 1개당 사용량 × 공급가 매입 단가)에서 자동으로 옵니다. 택배 · 출고 작업 · 박스는 주문 1건 단위 비용이라 「주문당 평균 수량」으로 나눕니다.' })),
+      ui.panel('Inputs · 입력 세트', h('span', { class: 'meta', text: '자사몰 단품 기준 가정값 — 실제 계약 조건으로 고쳐 주세요 · 값을 바꾸면 바로 저장 · 다시 계산' }),
+        h('div', { class: 'table-wrap flat' }, inputs)),
+      actualPanel(u, e, fx),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Waterfall · 1개 팔면', null, h('div', { class: 'table-wrap flat' }, wf)),
         h('div', { class: 'stack' },
