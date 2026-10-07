@@ -214,3 +214,11 @@ a.map-card:hover { border-color: var(--black); }
 .fin-calc td input.fin-cell[type="text"] { min-width: 84px; }
 .fin-calc select.fin-cell { min-width: 64px; }
 .fin-calc th, .fin-calc td { padding-left: 6px; padding-right: 6px; font-size: 12px; }
+
+/* ⓪ 1개 팔면 — 손익 식 */
+.sx-grid tr.sx-u td.sx-k { white-space: nowrap; }
+.sx-grid .sx-op { display: inline-block; width: 16px; font-weight: 700; color: var(--gray-600); }
+.sx-grid td.sx-ratio { color: var(--gray-600); font-size: 11px; }
+.sx-grid tr.sx-u-profit td { border-top: 2px solid var(--black); background: var(--gray-100); font-size: 14px; }
+.sx-grid tr.sx-u-profit td.sx-k { background: var(--gray-100); }
+.sx-grid tr.sx-u-profit td.sx-unitnote { font-size: 12px; }

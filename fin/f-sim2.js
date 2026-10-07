@@ -115,17 +115,30 @@
     var m = function (v) { return v ? F.man(v) : ''; };
     var n = function (v) { return v ? Math.round(v).toLocaleString('ko-KR') : ''; };
 
-    sec('⓪ 1개당 기준값', '개당 손익에서 가져온 값 · 고치면 이 시트에만 적용');
-    var uo = c.unitOver || {};
-    [['net', '1개당 순매출', '실결제 − 부가세 (정가 ' + F.won(u.price) + ' · 할인 ' + u.e.discount + '%)'], ['vari', '1개당 변동비', '물류 · 수수료 · 반품 · 리뷰 · 광고 ' + u.e.adRate + '%'], ['cogs', '1개당 제품 원가', '재고 품목 단가 합계 (공급가)']].forEach(function (k) {
+    // ⓪ 1개 팔면: 순매출 − 변동비 − 원가 = 순익 (1개당 손익 구조를 한눈에)
+    var uo = c.unitOver || {}, uv = X.uv, pnet = uv.net || 1;
+    var unitProfit = uv.net - uv.vari - uv.cogs;
+    sec('⓪ 1개 팔면 — 순매출 − 변동비 − 원가 = 순익', '개당 손익에서 가져온 값 · 고치면 이 시트에만 적용 (굵게)');
+    var vb = u.e ? [['물류', u.logi], ['결제 · 반품 · 리뷰', u.pg + u.ret + u.review], ['광고 ' + u.e.adRate + '%', u.ad]] : [];
+    var UROWS = [
+      ['net', '순매출', '', '정가 ' + F.won(u.price) + ' − 할인 ' + u.e.discount + '% − 부가세 → 회사에 실제 들어오는 돈'],
+      ['vari', '변동비', '−', '1개 팔 때마다 나가는 돈: ' + vb.map(function (x) { return x[0] + ' ' + F.won(Math.round(x[1])); }).join(' · ')],
+      ['cogs', '제품 원가', '−', '본품 · 튜브 · 단상자 · 원료 · 샘플 등 (공급가) — 현금은 발주 때(②) 나감']
+    ];
+    UROWS.forEach(function (k) {
       var own = uo[k[0]] != null, v = own ? +uo[k[0]] : X.base[k[0]];
-      var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell sx-unit' + (own ? ' sx-own' : ''), value: Math.round(v).toLocaleString('ko-KR'), 'aria-label': k[1], disabled: ed ? null : true });
+      var i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell sx-unit' + (own ? ' sx-own' : ''), value: Math.round(v).toLocaleString('ko-KR'), 'aria-label': '1개당 ' + k[1], disabled: ed ? null : true });
       i.addEventListener('focus', function () { i.select(); });
-      i.addEventListener('change', function () { var o = Object.assign({}, c.unitOver || {}), n = F.parseWon(i.value); if (i.value.trim() === '' || n === Math.round(X.base[k[0]])) delete o[k[0]]; else o[k[0]] = n; save({ unitOver: o }); });
-      body.appendChild(h('tr', { class: 'sx-input' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: k[1] }), h('div', { class: 'meta', text: own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) : k[2] })),
-        h('td', { class: 'num' }, i, own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null),
-        h('td', { colspan: String(cols.length - 1), class: 'meta sx-unitnote', text: k[0] === 'cogs' ? '남는 돈(1개) = ' + F.won(Math.round(X.uv.net - X.uv.vari - X.uv.cogs)) + ' · 원가는 판매 때가 아니라 발주 대금(②)으로 현금에 반영' : '' })));
+      i.addEventListener('change', function () { var o = Object.assign({}, c.unitOver || {}), n = F.parseWon(i.value); if (n === Math.round(X.base[k[0]])) delete o[k[0]]; else o[k[0]] = n; save({ unitOver: o }); });
+      var ratio = k[0] === 'net' ? '100%' : (v / pnet * 100).toFixed(1) + '%';
+      body.appendChild(h('tr', { class: 'sx-input sx-u sx-u-' + k[0] }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: k[2] }), h('span', { class: 'strong', text: '1개당 ' + k[1] })),
+        h('td', { class: 'num' }, i), h('td', { class: 'num sx-ratio', text: ratio }),
+        h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote' }, own ? '직접 입력 · 가져온 값 ' + F.won(Math.round(X.base[k[0]])) + ' ' : k[3] + ' ',
+          own && ed ? ui.btn('되돌리기', function () { var o = Object.assign({}, c.unitOver || {}); delete o[k[0]]; save({ unitOver: o }); }, 'btn-line btn-xs') : null)));
     });
+    body.appendChild(h('tr', { class: 'sx-u sx-u-profit' }, h('td', { class: 'sx-k' }, h('span', { class: 'sx-op', text: '=' }), h('span', { class: 'strong', text: '1개당 순익' })),
+      h('td', { class: 'num strong' + (unitProfit < 0 ? ' red' : '') }, F.won(Math.round(unitProfit))), h('td', { class: 'num sx-ratio strong', text: (unitProfit / pnet * 100).toFixed(1) + '%' }),
+      h('td', { colspan: String(Math.max(1, cols.length - 2)), class: 'meta sx-unitnote', text: '순매출의 ' + (unitProfit / pnet * 100).toFixed(1) + '% · 고정비(③) 전 금액 → 1,000개 팔면 ' + F.man(unitProfit * 1000) + ', 고정비를 넘기려면 월 ' + (unitProfit > 0 && R[1] ? Math.ceil(R[R.length - 1].fixed / unitProfit).toLocaleString('ko-KR') + '개 (27.03 고정비 기준)' : '-') })));
     sec('① 판매', '런칭 2026.11.12');
     inputRow('예상 판매량 (개)', 'units', '개', '월별로 직접 입력');
     row('실제 판매 가능', function (r) { return { t: n(r.sold) + (r.lost ? ' (−' + n(r.lost) + ')' : ''), c: r.lost ? 'red' : '' }; });
