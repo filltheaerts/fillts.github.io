@@ -221,7 +221,12 @@
     if (!/^\d+$/.test(VER)) return;
     fetch(location.pathname + '?vc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
       var m = t.match(/mkt\.js\?v=(\d+)/);
-      if (m && +m[1] > +VER) { if (typing() || $('mkModal')) setTimeout(checkVersion, 30000); else location.reload(); }
+      // 자동 새로고침은 하지 않는다(화면 튐 · 캐시 무한 반복) — 「↻ 새 버전」 버튼만 띄우고, 누르면 캐시를 건너뛰어 연다
+      if (m && +m[1] > +VER && !$('mxNew')) {
+        var right = document.querySelector('.nav-right');
+        if (right) right.insertBefore(h('button', { type: 'button', id: 'mxNew', class: 'mx-newver', text: '↻ 새 버전', title: '눌러서 새 버전으로 열기',
+          onclick: function () { location.href = location.pathname + '?r=' + m[1] + location.hash; } }), right.firstChild);
+      }
     }).catch(function () { /* 오프라인 등 — 다음에 다시 */ });
   }
   setTimeout(checkVersion, 3000);
