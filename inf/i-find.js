@@ -61,7 +61,7 @@
   }
   function doneText(r) {
     var sk = r.skipped || {}, ch = r.cache || {}, t = '후보 ' + r.count + '명을 찾았습니다 · ' + (r.units || 0) + '포인트' + (ch.s || ch.c ? ' (캐시 재사용: 검색 ' + (ch.s || 0) + ' · 채널 ' + (ch.c || 0) + ')' : '') + '.';
-    var ex = [sk.known ? '리스트 ' + sk.known : '', sk.seen ? '지난 탐색 ' + sk.seen : '', sk.money ? '재테크 · 절약 ' + sk.money : '', sk.topic ? '제외 주제 ' + sk.topic : '', sk.blocked ? '제외 유튜버 ' + sk.blocked : ''].filter(Boolean);
+    var ex = [sk.known ? '리스트 ' + sk.known : '', sk.seen ? '지난 탐색 ' + sk.seen : '', sk.money ? '재테크 · 절약 ' + sk.money : '', sk.topic ? '제외 주제 ' + sk.topic : '', sk.blocked ? '제외 유튜버 ' + sk.blocked : '', sk.noted ? '비고 제외 ' + sk.noted : ''].filter(Boolean);
     if (ex.length) t += ' (뺀 채널: ' + ex.join(' · ') + ')';
     return t;
   }
@@ -341,6 +341,7 @@
       if (V.onlyBeauty && !I.beauty(c).on) return false;
       if (V.hideMoney !== false && I.isMoney(c)) return false;
       if (I.isBlocked(c)) return false;
+      if (!V.showNoted && I.isNoted(c)) return false;   // 비고로 「제외」한 채널은 기본으로 숨김
       if (V.ag) { var ap = I.agency(c).p; if (V.ag === 'agency' ? ap === 0 : V.ag === 'a100' ? ap !== 100 : V.ag === 'a50' ? ap !== 50 : ap !== 0) return false; }
       if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -355,7 +356,7 @@
   // 소속 / 개인 필터 (메일 도메인 · 설명란 회사 정보 기준)
   var WNAME = { kw: '키워드 일치', sub: '구독자 규모', tone: '댓글 톤', topic: '주제', eng: '참여율', growth: '조회 추세', cmt: '댓글 활발', reach: '구독 대비 조회' };
   var WDEF = { similar: { kw: 32, sub: 22, tone: 20, topic: 14, eng: 12 }, rising: { kw: 30, growth: 25, cmt: 20, reach: 15, tone: 10 }, cond: { kw: 35, growth: 30, cmt: 25, reach: 10 } };
-  function wText(s, mode) { var w = s.weights || WDEF[mode]; return Object.keys(w).map(function (k) { return WNAME[k] + ' ' + w[k] + '%'; }).join(' · '); }
+  function wText(s, mode) { var w = s.weights || WDEF[mode]; return Object.keys(w).filter(function (k) { return +w[k]; }).sort(function (a, b) { return w[b] - w[a]; }).map(function (k) { return WNAME[k] + ' ' + w[k] + '%'; }).join(' · '); }
   function agBar(s) {
     var n = { all: 0, a100: 0, a50: 0, solo: 0 };
     (s.cands || []).forEach(function (c) { var p = I.agency(c).p; n.all++; n[p === 100 ? 'a100' : p === 50 ? 'a50' : 'solo']++; });
@@ -386,7 +387,7 @@
     var rows = [];
     list.forEach(function (c) {
       var inP = I.creator(c.id), open = V.open[c.id], ag = I.agency(c);
-      var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP, 'aria-label': c.title + ' 선택',
+      var cb = h('input', { type: 'checkbox', checked: !!sel[c.id] || !!inP, disabled: !!inP || I.isNoted(c), 'aria-label': c.title + ' 선택',
         onclick: function (e) { e.stopPropagation(); }, onchange: function () { sel[c.id] = this.checked; HR.refresh(); } });
       var kws = (c.matched || []).concat((c.shared || []).filter(function (w) { return (c.matched || []).indexOf(w) < 0; })).slice(0, 5);
       // 구독 / 조회 / 댓글수 / 톤 일치 / 주기
@@ -401,14 +402,14 @@
         h('div', { class: 'in-r-score' }, h('b', { text: String(c.score || 0) }), h('span', { class: 'in-score-track' }, (function () { var f = h('span', { class: 'in-score-fill' }); f.style.width = Math.min(100, c.score || 0) + '%'; return f; })())),
         h('div', { class: 'in-r-ch' }, I.thumb(c, 'sm'), h('div', { class: 'in-r-t' },
           h('div', { class: 'in-r-nm' }, h('span', { class: 'in-r-name', title: c.title + (c.handle ? ' ' + c.handle : ''), text: c.title.length > 14 ? c.title.slice(0, 13) + '…' : c.title }), I.ytBtn(c)),
-          h('div', { class: 'in-r-tags' }, I.beautyTag(c), I.agencyTag(c), I.mailTag(c.email), inP ? I.stTag(inP.stage) : null,
+          h('div', { class: 'in-r-tags' }, I.inactiveTag(c), I.beautyTag(c), I.agencyTag(c), I.mailTag(c.email), inP ? I.stTag(inP.stage) : null,
             h('span', { class: 'meta', text: c.last ? '최근 ' + fmt.dot(c.last).slice(2) : '' })),
           I.noteEl(c))),
         h('div', { class: 'in-r-stats' }, stats),
         h('div', { class: 'in-r-why' }, kws.length ? kws.map(function (k, i) { return h('span', { class: 'in-chip ' + (i < (c.matched || []).length ? 'on' : 'light'), text: k }); }) : h('span', { class: 'meta', text: '키워드 겹침 적음' }))));
       if (open) rows.push(h('div', { class: 'in-row-detail' }, h('div', { class: 'in-r-agwhy meta', text: '소속 근거: ' + ag.why }), candDetail(c, s, inP)));
     });
-    var avail = list.filter(function (c) { return !I.creator(c.id); });
+    var avail = list.filter(function (c) { return !I.creator(c.id) && !I.isNoted(c); });
     var allOn = avail.length > 0 && avail.every(function (c) { return sel[c.id]; });
     var all = h('input', { type: 'checkbox', checked: allOn, 'aria-label': '보이는 후보 전체 선택', title: '보이는 후보 전체 선택 / 해제',
       onchange: function () { var on = this.checked; avail.forEach(function (c) { sel[c.id] = on; }); HR.refresh(); } });
@@ -435,7 +436,7 @@
       ui.panel(s.seed ? '씨드 · 컨셉' : '조건 · 키워드', h('span', { class: 'meta', text: '검색 ' + (s.queries || []).join(' / ') + ' · ' + HR.name(s.by) }),
         s.seed ? seedCard(s.seed) : condCard(s), h('div', { class: 'label in-sub', text: '컨셉 키워드' }), s.mode === 'rising' ? h('p', { class: 'meta', text: '알고리즘: 라이징 — 구독 ' + I.cnt((s.opts || {}).maxSubs || 100000) + ' 미만 · 조회 추세 · 댓글 활발' + ((s.opts || {}).preset === 'baby' ? ' · 카테고리 임신 · 육아' : '') }) : null, reSearch(s)),
       agBar(s),
-      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), chk('뷰티 이력 있는 채널만', 'onlyBeauty'),
+      h('div', { class: 'toolbar in-toolbar' }, seg, chk('메일 있는 채널만', 'onlyMail'), chk('파이프라인에 없는 채널만', 'onlyNew'), chk('뷰티 이력 있는 채널만', 'onlyBeauty'), chk('비고로 제외한 채널도 보기', 'showNoted'),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: V.hideMoney !== false, onchange: function () { V.hideMoney = this.checked; HR.refresh(); } }), ' 재테크 · 절약 숨기기'), q,
         h('span', { class: 'meta grow in-right', text: list.length + ' / ' + (s.cands || []).length + '명 · 행을 누르면 자세히' }),
         ui.btn('메일 있는 채널 모두 선택', function () { list.forEach(function (c) { if (c.email && !I.creator(c.id)) sel[c.id] = true; }); HR.refresh(); }, 'btn-line btn-sm')),

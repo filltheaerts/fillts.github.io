@@ -195,6 +195,8 @@
       }).catch(function (e) { M.busy = false; setMsg(e.message, true); });
     }, 'btn-sm');
     if (M.busy) send.disabled = true;
+    var nx = I.noteOf(c.id);
+    if (nx && nx.x) { send.disabled = true; send.textContent = '⛔ 비고로 제외된 채널'; send.title = '비고: ' + nx.t + ' — 리스트 · 탐색에서 비고를 지우면 다시 보낼 수 있습니다'; }
     var gmail = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(M.to) + '&su=' + encodeURIComponent(M.subject) + '&body=' + encodeURIComponent(M.body) + (M.cc ? '&cc=' + encodeURIComponent(M.cc) : '');
     return ui.panel('메일 문의', h('span', { class: 'meta', text: (c.mails ? '보낸 메일 ' + c.mails + '통 · 마지막 ' + fmt.ts(c.lastMailAt) : '아직 보낸 메일 없음') }),
       h('div', { class: 'stack sm in-form' },
@@ -318,7 +320,10 @@
         h('div', { class: 'row in-hero-meta' }, I.stTag(c.stage), I.beautyTag(ch), I.agencyTag(ch), I.mailTag(c.email || ch.email), h('span', { class: 'meta', text: (d != null ? d + '일째 · ' : '') + '구독자 ' + I.cnt(ch.subs) + ' · 점수 ' + (c.score || 0) + ' · 담당 ' + ownerName(c) }),
           I.ytBtn(ch), c.insta ? I.extLink('https://instagram.com/' + c.insta, '인스타 ↗', 'meta') : null)),
       ui.btn('← 파이프라인', function () { HR.go('pipe'); }, 'btn-line btn-sm'));
-    ui.put(view, head, stepper(c),
+    var nn = I.noteOf(c.id);
+    ui.put(view, head, nn && nn.x ? h('p', { class: 'in-xwarn', text: '⛔ 비고로 제외된 채널 — 「' + nn.t + '」 (' + HR.name(nn.by) + '). 컨택 · 메일을 보내지 마세요.' }) : null,
+      I.inactive(ch) ? h('p', { class: 'in-xwarn soft', text: '✕ 활동 안 함 — 마지막 업로드 ' + fmt.dot(ch.last) + ' (3개월 넘음)' }) : null,
+      I.noteEl(c), stepper(c),
       todos.length ? h('ul', { class: 'in-alerts' }, todos.map(function (t) { return h('li', { class: t.red ? 'red' : '', text: t.t }); })) : null,
       h('div', { class: 'in-detail-grid' },
         h('div', { class: 'stack' }, contactPanel(c), nextPanel(c), mailPanel(c), dealPanel(c), seedPanel(c), contentPanel(c)),

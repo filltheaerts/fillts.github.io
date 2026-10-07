@@ -402,3 +402,10 @@ td.in-ell { display: table-cell; }
 .in-note-edit { margin-top: 4px; display: flex; flex-direction: column; gap: 4px; cursor: default; }
 .in-note-in { width: 100%; font-size: 12px; padding: 4px 8px; }
 .in-note-edit .in-chip { font-size: 10px; padding: 0 6px; }
+
+/* 비고 제외 · 활동 안 함 */
+.in-note.has.x { color: #b91c1c; background: #fef2f2; border-left-color: var(--red); font-weight: 600; }
+.in-note-x { font-size: 11px; color: #b91c1c; }
+.tag.in-inactive { color: var(--white); background: #6b7280; border-color: #6b7280; }
+.in-xwarn { margin: 0 0 10px; padding: 10px 14px; background: #fef2f2; border-left: 3px solid var(--red); color: #b91c1c; font-size: 13px; font-weight: 600; }
+.in-xwarn.soft { background: #f3f4f6; border-left-color: #6b7280; color: #374151; }

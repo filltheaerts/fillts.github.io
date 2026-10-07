@@ -153,7 +153,7 @@
       st: V, sideHead: ['stage', '단계'], metaHead: ['at', '추가일'],
       tags: function (c) {
         var ch = c.ch || {};
-        return [I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }), true), I.mailTag(c.email || ch.email), I.stTag(c.stage)].concat([I.beautyTag(ch)]).sort(function (a, b) { return (b && /in-beauty/.test(b.className) ? 1 : 0) - (a && /in-beauty/.test(a.className) ? 1 : 0); });
+        return [I.agencyTag(Object.assign({}, ch, { email: c.email || ch.email }), true), I.mailTag(c.email || ch.email), I.stTag(c.stage), I.inactiveTag(ch)].concat([I.beautyTag(ch)]).sort(function (a, b) { return (b && /in-beauty/.test(b.className) ? 1 : 0) - (a && /in-beauty/.test(a.className) ? 1 : 0); });
       },
       side: function (c) { return h('div', { class: 'in-r-src' }, h('div', { class: 'meta in-ell', title: c.seedTitle || '', text: c.seedTitle || '—' }), h('div', { class: 'meta', text: '추가 ' + (c.at && c.at.toDate ? dayOf(c.at.toDate().getTime()) : '—') + ' · 최신 ' + dayOf((c.ch || {}).at) })); },
       acts: function (c) {

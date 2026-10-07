@@ -159,34 +159,41 @@
     var bl = I.cfg.blockCh || [], hd = String(c.handle || '').toLowerCase();
     return bl.some(function (x) { return (x.id && x.id === c.id) || (x.handle && hd && x.handle.toLowerCase() === hd); });
   };
-  /* ---------- 비고 한 줄 — 채널마다 팀 공용 (inf_config/main.notes.{채널ID} = { t, by, at }) ----------
-     탐색 결과 · 리스트 어디서든 같은 메모가 보인다. 누르면 그 자리에서 입력 → Enter 저장 · Esc 취소 */
-  I.NOTE_QUICK = ['저격 유튜버로 보임', '광고 너무 많음', '톤 좋음 · 우선 컨택', '육아만 함 (뷰티 약함)', '남성 시청자 위주', '이미 경쟁사 협찬'];
+  /* ---------- 비고 한 줄 — 채널마다 팀 공용 (inf_config/main.notes.{채널ID} = { t, x, by, at }) ----------
+     x(제외) = true면: 다음 탐색에서 서버가 뺌 · 기존 결과에서 숨김 · 바구니(디벨롭) 추가 막음 · 메일 보내기 잠금 */
+  I.NOTE_QUICK = [['저격 유튜버로 보임', 1], ['광고 너무 많음', 1], ['이미 경쟁사 협찬', 1], ['남성 시청자 위주', 1], ['육아만 함 (뷰티 약함)', 1], ['톤 좋음 · 우선 컨택', 0], ['나중에 다시 보기', 0]];
   I.noteOf = function (id) { return ((I.cfg.notes || {})[id]) || null; };
-  I.saveNote = function (id, t) {
-    var p = {}; p[id] = t ? { t: String(t).slice(0, 120), by: S.mid, at: Date.now() } : FV.delete();
-    return db.doc('inf_config/main').set({ notes: p }, { merge: true }).catch(ui.fail);
+  I.isNoted = function (c) { var n = I.noteOf(c && c.id); return !!(n && n.x); };
+  I.saveNote = function (id, t, x) {
+    var p = {}; p[id] = t ? { t: String(t).slice(0, 120), x: !!x, by: S.mid, at: Date.now() } : FV.delete();
+    return db.doc('inf_config/main').set({ notes: p }, { merge: true }).then(function () { if (t && x) ui.toast('「' + t + '」 — 이 채널은 다음 탐색 · 컨택에서 빠집니다.'); }).catch(ui.fail);
   };
   I.noteEl = function (c) {
     var id = c.id, n = I.noteOf(id), ed = I.V.noteEdit === id;
     var stop = function (e) { e.stopPropagation(); };
     if (!ed) {
-      return h('div', { class: 'in-note' + (n ? ' has' : ''), title: n ? '비고 — ' + HR.name(n.by) + ' · 누르면 고치기' : '누르면 비고 한 줄 적기',
-        onclick: function (e) { stop(e); I.V.noteEdit = id; HR.refresh(); setTimeout(function () { var x = document.querySelector('.in-note-in'); if (x) x.focus(); }, 50); } },
-        n ? [h('span', { class: 'in-note-ic', text: '✎' }), h('span', { class: 'in-note-t', text: n.t }), h('span', { class: 'in-note-by', text: HR.name(n.by) })] : h('span', { class: 'in-note-ic', text: '✎ 비고' }));
+      return h('div', { class: 'in-note' + (n ? ' has' : '') + (n && n.x ? ' x' : ''), title: n ? (n.x ? '제외 비고 — 다음 탐색 · 컨택에서 빠짐 · ' : '비고 — ') + HR.name(n.by) + ' · 누르면 고치기' : '누르면 비고 한 줄 적기',
+        onclick: function (e) { stop(e); I.V.noteEdit = id; I.V.noteX = !!(n && n.x); HR.refresh(); setTimeout(function () { var x = document.querySelector('.in-note-in'); if (x) x.focus(); }, 50); } },
+        n ? [h('span', { class: 'in-note-ic', text: n.x ? '⛔ 제외' : '✎' }), h('span', { class: 'in-note-t', text: n.t }), h('span', { class: 'in-note-by', text: HR.name(n.by) })] : h('span', { class: 'in-note-ic', text: '✎ 비고' }));
     }
+    var xBox = h('input', { type: 'checkbox', checked: !!I.V.noteX, onclick: stop, onchange: function () { I.V.noteX = this.checked; } });
     var inp = h('input', { type: 'text', class: 'in-note-in', maxlength: '120', value: n ? n.t : '', placeholder: '비고 한 줄 — Enter 저장 · Esc 취소 · 비우고 Enter면 지움', onclick: stop,
       onkeydown: function (e) {
         e.stopPropagation();
-        if (e.key === 'Enter') { var v = this.value.trim(); I.V.noteEdit = ''; I.saveNote(id, v); HR.refresh(); }
+        if (e.key === 'Enter') { var v = this.value.trim(); I.V.noteEdit = ''; I.saveNote(id, v, xBox.checked); HR.refresh(); }
         if (e.key === 'Escape') { I.V.noteEdit = ''; HR.refresh(); }
       } });
     return h('div', { class: 'in-note-edit', onclick: stop }, inp,
+      h('label', { class: 'check in-note-x', onclick: stop }, xBox, ' 다음 탐색 · 컨택에서 빼기 (제외)'),
       h('div', { class: 'in-chips' }, I.NOTE_QUICK.map(function (q) {
-        return h('button', { type: 'button', class: 'in-chip light', text: q, onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, q); HR.refresh(); } });
-      }), n ? h('button', { type: 'button', class: 'in-chip in-ex-chip', text: '지우기', onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, ''); HR.refresh(); } }) : null,
+        return h('button', { type: 'button', class: 'in-chip ' + (q[1] ? 'in-ex-chip' : 'light'), title: q[1] ? '저장하면 이 채널은 제외됩니다' : '메모만', text: (q[1] ? '⛔ ' : '') + q[0],
+          onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, q[0], !!q[1]); HR.refresh(); } });
+      }), n ? h('button', { type: 'button', class: 'in-chip', text: '지우기', onclick: function (e) { stop(e); I.V.noteEdit = ''; I.saveNote(id, ''); HR.refresh(); } }) : null,
         h('button', { type: 'button', class: 'in-chip', text: '닫기', onclick: function (e) { stop(e); I.V.noteEdit = ''; HR.refresh(); } })));
   };
+  // 활동 안 함 — 마지막 업로드가 3개월(90일)보다 오래되면 경고
+  I.inactive = function (ch) { var d = ch && ch.last; return !!d && (Date.now() - Date.parse(d)) > 90 * 86400000; };
+  I.inactiveTag = function (ch) { return I.inactive(ch) ? h('span', { class: 'tag in-inactive', title: '최근 3개월 업로드 없음', text: '✕ 활동 안 함 · 마지막 ' + fmt.dot(ch.last).slice(2) }) : null; };
   I.agencyTag = function (c, short) {
     var a = I.agency(c);
     return h('span', { class: 'tag in-ag p' + a.p, title: a.why, text: a.p === 100 ? '소속 100%' : a.p === 50 ? '소속 50%' : a.none && !short ? '개인 · 정보 없음' : '개인' });
@@ -222,7 +229,7 @@
   I.addToPipe = function (cands, scan) {
     var b = db.batch(), n = 0, skip = 0;
     cands.forEach(function (c) {
-      if (I.creator(c.id)) { skip++; return; }
+      if (I.creator(c.id) || I.isNoted(c)) { skip++; return; }   // 이미 있음 · 비고로 제외한 채널은 바구니에 안 넣는다
       b.set(db.doc('inf_creators/' + c.id), {
         ch: I.snap(c), stage: 'review', stageAt: I.now(), owner: S.mid, score: c.score || 0,
         scanId: scan ? scan.id : '', seedTitle: scan ? I.scanTitle(scan) : '',
