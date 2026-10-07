@@ -60,7 +60,7 @@
     }).catch(function (e) { V.busy = ''; setMsg(e.message, true); });
   }
   function doneText(r) {
-    var sk = r.skipped || {}, t = '후보 ' + r.count + '명을 찾았습니다.';
+    var sk = r.skipped || {}, ch = r.cache || {}, t = '후보 ' + r.count + '명을 찾았습니다 · ' + (r.units || 0) + '포인트' + (ch.s || ch.c ? ' (캐시 재사용: 검색 ' + (ch.s || 0) + ' · 채널 ' + (ch.c || 0) + ')' : '') + '.';
     if (sk.known || sk.seen) t += ' (중복 제외: 리스트 ' + (sk.known || 0) + '명' + (sk.seen ? ' · 지난 탐색 ' + sk.seen + '명' : '') + ')';
     return t;
   }
@@ -327,7 +327,10 @@
     var k = V.sort, list = (s.cands || []).slice();
     var key = { score: function (c) { return c.score; }, subs: function (c) { return c.subs; }, median: function (c) { return c.median; },
       tone: function (c) { return c.parts ? c.parts.tone : 0; }, engage: function (c) { return c.engage; },
-      growth: function (c) { return c.growth || 0; }, cmt: function (c) { return c.cpk || 0; } }[k] || function (c) { return c.score; };
+      growth: function (c) { return c.growth || 0; }, cmt: function (c) { return c.cmtAvg != null ? c.cmtAvg : c.cmtMed || 0; },
+      title: function (c) { return (c.title || '').toLowerCase(); }, gap: function (c) { return c.gapDays || (c.perWeek ? 7 / c.perWeek : 9999); },
+      beauty: function (c) { var b = c.beauty || {}; return (b.adBeauty || 0) * 100 + (b.n || 0) + (b.self ? 50 : 0); } }[k] || function (c) { return c.score; };
+    var dir = V.dir || -1;
     var q = V.q.trim().toLowerCase();
     return list.filter(function (c) {
       if (V.onlyMail && !c.email) return false;
@@ -336,7 +339,13 @@
       if (V.ag) { var ap = I.agency(c).p; if (V.ag === 'agency' ? ap === 0 : V.ag === 'a100' ? ap !== 100 : V.ag === 'a50' ? ap !== 50 : ap !== 0) return false; }
       if (q && (c.title + ' ' + c.handle + ' ' + (c.keywords || []).join(' ')).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).sort(function (a, b) { return key(b) - key(a); });
+    }).sort(function (a, b) { var x = key(a), y = key(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; });
+  }
+  // 결과 머리줄 — 누르면 그 기준으로 정렬, 한 번 더 누르면 반대로 (▼ 내림 · ▲ 오름)
+  function sortHead(key, label) {
+    var on = V.sort === key;
+    return h('button', { type: 'button', class: 'in-sorth' + (on ? ' on' : ''), title: '눌러서 정렬 — 한 번 더 누르면 반대로', text: label + (on ? ((V.dir || -1) < 0 ? ' ▼' : ' ▲') : ''),
+      onclick: function () { if (V.sort === key) V.dir = -(V.dir || -1); else { V.sort = key; V.dir = key === 'title' || key === 'gap' ? 1 : -1; } HR.refresh(); } });
   }
   // 소속 / 개인 필터 (메일 도메인 · 설명란 회사 정보 기준)
   var WNAME = { kw: '키워드 일치', sub: '구독자 규모', tone: '댓글 톤', topic: '주제', eng: '참여율', growth: '조회 추세', cmt: '댓글 활발', reach: '구독 대비 조회' };
@@ -398,8 +407,9 @@
     var all = h('input', { type: 'checkbox', checked: allOn, 'aria-label': '보이는 후보 전체 선택', title: '보이는 후보 전체 선택 / 해제',
       onchange: function () { var on = this.checked; avail.forEach(function (c) { sel[c.id] = on; }); HR.refresh(); } });
     var table = h('div', { class: 'in-rows' },
-      h('div', { class: 'in-row in-row-head' }, h('label', { class: 'in-r-cb in-all' }, all, h('span', { text: '전체' })), h('div', { class: 'in-r-score', text: '점수' }), h('div', { class: 'in-r-ch', text: '채널 · 소속' }),
-        h('div', { class: 'in-r-stats', text: '구독 · 조회 · 댓글수 · 톤 · 주기' }), h('div', { class: 'in-r-why', text: '찾은 이유 · 일치 키워드 (행을 누르면 전체)' })),
+      h('div', { class: 'in-row in-row-head' }, h('label', { class: 'in-r-cb in-all' }, all, h('span', { text: '전체' })), h('div', { class: 'in-r-score' }, sortHead('score', '점수')), h('div', { class: 'in-r-ch in-hcells' }, sortHead('title', '채널'), sortHead('beauty', '뷰티')),
+        h('div', { class: 'in-r-stats in-hstats' }, sortHead('subs', '구독'), sortHead('median', '조회'), sortHead('cmt', '댓글수'), sortHead('tone', '톤'), sortHead('gap', '주기')),
+        h('div', { class: 'in-r-why in-hcells' }, sortHead('growth', '조회 추세'), h('span', { class: 'meta', text: '· 찾은 이유 (행을 누르면 전체)' }))),
       rows.length ? rows : h('p', { class: 'empty', text: '조건에 맞는 후보가 없습니다.' }));
 
     var bar = h('div', { class: 'in-actionbar' + (nSel ? ' show' : '') },

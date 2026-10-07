@@ -325,3 +325,7 @@ td.in-ell { display: table-cell; }
 .tag.in-beauty.guess { border-style: dashed; font-weight: 500; }
 .tag.in-mail-p { color: var(--gray-800); }
 .tag.in-mail-c { color: var(--gray-800); border-color: var(--gray-800); }
+.tag.in-adx { color: var(--gray-600); border: 1px dashed var(--gray-400); }
+.in-row-head .in-hstats { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.in-row-head .in-hcells { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.in-row-head .in-sorth { font-size: 10px; }
