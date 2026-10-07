@@ -336,7 +336,12 @@
             h('span', { class: 'meta', text: p.subs.filter(function (x) { return x.done; }).length + ' / ' + p.subs.length + ' 완료' })),
           h('ol', null, orderedSubs(p).map(function (o, i) { var x = o.x;
             return h('li', { class: 'ws-subitem' + (x.done ? ' done' : '') }, h('div', { class: 'ws-sub-top' }, h('span', { class: 'ws-sub-no', text: 'SUB ' + (i + 1) }), h('b', { text: x.t }),
-                x.done ? ui.tag('완료', 'ok') : null, h('span', { class: 'ws-sub-period', text: subPeriod(x) })),
+                x.done ? ui.tag('완료', 'ok') : null, h('span', { class: 'ws-sub-period', text: subPeriod(x) }),
+                canEditProject(p) ? ui.confirmBtn('삭제', function () {   // 서브 하나만 지운다 (두 번 눌러 확정)
+                  var subs = (p.subs || []).slice(); subs.splice(o.i, 1);
+                  db.doc('hr_ws_posts/' + p.id).update({ subs: cleanSubs(subs), updatedAt: FV.serverTimestamp() })
+                    .then(function () { HR.invalidate('ws_posts'); ui.toast('「' + x.t + '」 서브를 삭제했습니다.'); }).catch(ui.fail);
+                }) : null),
               x.body ? h('div', { class: 'ws-sub-body' }, String(x.body).split('\n').map(function (l) { return l.trim() ? h('p', { text: l }) : null; })) : null,
               (x.links || []).length ? h('div', { class: 'ws-links small' }, x.links.map(linkChip)) : null);
           }))) : null,
