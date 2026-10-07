@@ -1,16 +1,15 @@
 /* fillts Finance — 런웨이 시뮬레이션 (엑셀형 월별 한 장)
    위에서 아래로: ① 예상 판매량 → ② 발주 시점 · 수량 → (재고 · 매출 · 변동비 자동) → ③ 판매와 무관한 고정비(지출 흐름 고정비 + 채용 예정)
-   → ④ 현금 리스크 구간 · 대표 차입금. 기간은 2027-12까지, 2027-06을 첫 체크포인트로.
+   → ④ 현금 리스크 구간 · 대표 차입금. 기간은 2026-10 ~ 2027-03 (6개월).
    저장: fin_config/main.sim2 — 칸을 바꾸면 바로 저장. 개당 값은 개당 손익(F.unitPnl), 고정비는 지출 흐름(fin_sched 매월 반복)을 그대로 쓴다. */
 (function () {
   'use strict';
   var HR = window.HR, F = HR.F, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt;
-  var CHECK = '2027-06', END = '2027-12';
+  var END = '2027-03', CHECK = END;
   var SIM2 = {
     start: '2026-10', end: END, minCash: 10000000, lead: 2, upfront: 50, cash0: null, committed: true,
-    units: { '2026-11': 300, '2026-12': 400, '2027-01': 500, '2027-02': 600, '2027-03': 700, '2027-04': 800, '2027-05': 900, '2027-06': 1000,
-      '2027-07': 1100, '2027-08': 1200, '2027-09': 1300, '2027-10': 1400, '2027-11': 1600, '2027-12': 1800 },
-    orders: { '2027-03': 5000, '2027-07': 10000 },
+    units: { '2026-11': 300, '2026-12': 400, '2027-01': 500, '2027-02': 600, '2027-03': 700 },
+    orders: {},
     owner: {}, fund: {},
     hires: [
       { role: '브랜드 디자인 리더', monthly: 4000000, from: '2027-02' },
@@ -90,18 +89,18 @@
     // 엑셀형 표: 행 = 항목, 열 = 월
     var cols = R.map(function (r) { return r.ym; });
     var head = h('tr', null, h('th', { class: 'sx-k', text: '' }), cols.map(function (ym) {
-      return h('th', { class: 'num' + (ym === CHECK ? ' sx-check' : '') + (ym <= CHECK ? '' : ' sx-late'), text: F.ymLabel(ym) + (ym === CHECK ? ' ★' : '') });
+      return h('th', { class: 'num', text: F.ymLabel(ym) });
     }));
     var body = h('tbody');
     var sec = function (title, note) { body.appendChild(h('tr', { class: 'sx-sec' }, h('td', { class: 'sx-k' }, h('span', { text: title }), note ? h('span', { class: 'meta', text: '  ' + note }) : null), cols.map(function () { return h('td'); }))); };
-    var cell = function (ym, val, cls) { return h('td', { class: 'num' + (ym === CHECK ? ' sx-check' : '') + (cls ? ' ' + cls : ''), text: val }); };
+    var cell = function (ym, val, cls) { return h('td', { class: 'num' + '' + (cls ? ' ' + cls : ''), text: val }); };
     var row = function (label, f, cls, rowCls) { body.appendChild(h('tr', { class: rowCls || '' }, h('td', { class: 'sx-k', text: label }), R.map(function (r) { var v = f(r); return cell(r.ym, v.t != null ? v.t : v, v.c || cls); }))); };
     var inputRow = function (label, key, unitText, guide) {
       body.appendChild(h('tr', { class: 'sx-input' }, h('td', { class: 'sx-k' }, h('div', { class: 'strong', text: label }), h('div', { class: 'meta', text: guide })), cols.map(function (ym) {
         var v = c[key][ym], i = h('input', { type: 'text', inputmode: 'numeric', class: 'sx-cell', value: v ? Number(v).toLocaleString('ko-KR') : '', 'aria-label': ym + ' ' + label, disabled: ed ? null : true });
         i.addEventListener('focus', function () { i.select(); });
         i.addEventListener('change', function () { var o = Object.assign({}, c[key]); var n = F.parseWon(i.value); if (n) o[ym] = n; else delete o[ym]; var p = {}; p[key] = o; save(p); });
-        return h('td', { class: 'num' + (ym === CHECK ? ' sx-check' : '') }, i);
+        return h('td', { class: 'num' + '' }, i);
       })));
     };
     var m = function (v) { return v ? F.man(v) : ''; };
@@ -156,13 +155,12 @@
         ui.confirmBtn('차입 비우기', function () { save({ owner: {} }); }, 'btn-line btn-sm'),
         ui.confirmBtn('기본값으로', function () { F.cfgSet({ sim2: JSON.parse(JSON.stringify(SIM2)) }).catch(ui.fail); }, 'btn-line btn-sm')) : null,
       F.kpi([['시작 현금', F.man(X.start), '', c.cash0 != null && c.cash0 !== '' ? '직접 입력' : '법인 통장 잔액'],
-        ['★ 27.06 월말 현금', F.man(c6.cash || 0), (c6.cash || 0) < +c.minCash ? 'red' : '', '누적 판매 ' + R.filter(function (r) { return r.ym <= CHECK; }).reduce(function (a, r) { return a + r.sold; }, 0).toLocaleString('ko-KR') + '개'],
-        ['27.12 월말 현금', F.man(c12.cash || 0), (c12.cash || 0) < +c.minCash ? 'red' : ''],
+        ['27.03 월말 현금', F.man(c12.cash || 0), (c12.cash || 0) < +c.minCash ? 'red' : '', '누적 판매 ' + R.reduce(function (a, r) { return a + r.sold; }, 0).toLocaleString('ko-KR') + '개 · 남은 재고 ' + (c12.stock || 0).toLocaleString('ko-KR') + '개'],
         ['현금 리스크 구간', risk.length ? risk.length + '개월' : '없음', risk.length ? 'red' : '', risk.length ? F.ymLabel(risk[0].ym) + ' ~ ' + F.ymLabel(risk[risk.length - 1].ym) + ' · 최저 ' + F.man(low.cash) + ' (' + F.ymLabel(low.ym) + ')' : '최소 보유액 위'],
         ['대표 차입 (입력)', F.man(ownerSum), ownerLimit && ownerSum > ownerLimit ? 'red' : '', ownerLimit ? '한도 ' + F.man(ownerLimit) + ' (자금조달 계획)' : ''],
-        ['영업 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.12까지 없음', opPlus ? '' : 'red', '매출 − 변동비 − 고정비 ≥ 0' + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
-      h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다. ★ = 첫 체크포인트 2027년 6월.' }),
-      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.12)', h('span', { class: 'meta', text: '1개당 순매출 ' + F.won(Math.round(u.net)) + ' · 변동비 ' + F.won(Math.round(u.varNoAd + u.ad)) + ' · 원가 ' + F.won(Math.round(u.cogs)) + ' (개당 손익 메뉴)' }),
+        ['영업 흑자 전환', opPlus ? F.ymLabel(opPlus.ym) : '27.03까지 없음', opPlus ? '' : 'red', '매출 − 변동비 − 고정비 ≥ 0' + (firstLost ? ' · ⚠ ' + F.ymLabel(firstLost.ym) + ' 재고 부족' : '')]]),
+      h('p', { class: 'note sx-how', text: '위에서 아래로: ① 월별 예상 판매량을 적고 → ② 재고가 빨갛게 바닥나기 전에 발주 수량을 적고 → ③ 판매와 무관하게 나가는 고정비를 확인하고 → ④ 「월말 현금」이 빨간 달에 대표 차입금을 넣습니다(오른쪽 위 버튼으로 자동 채우기). 노란 칸만 입력, 바꾸면 바로 저장 · 계산됩니다.' }),
+      ui.panel('Sheet · 월별 흐름 (2026.10 ~ 2027.03)', h('span', { class: 'meta', text: '1개당 순매출 ' + F.won(Math.round(u.net)) + ' · 변동비 ' + F.won(Math.round(u.varNoAd + u.ad)) + ' · 원가 ' + F.won(Math.round(u.cogs)) + ' (개당 손익 메뉴)' }),
         h('div', { class: 'table-wrap flat sx-wrap' }, grid)),
       h('div', { class: 'two-col fin-two' },
         ui.panel('Hires · 채용 계획 (③ 인건비 채용 예정에 들어감)', null, hires,
