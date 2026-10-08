@@ -24,7 +24,6 @@
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
   // 공개할 때 '' 로 비우고 firestore.rules의 isOwner() 조건도 같이 뺀다
   var OWNER_ONLY = 'kjw@fillts.com';
-  HR.OWNER_ONLY = OWNER_ONLY;   // /map 권한 표시가 잠금 상태를 알 수 있게
   function ownerLocked() { return !!OWNER_ONLY && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }
   var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
@@ -32,7 +31,7 @@
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
   var SNAP = { serverTimestamps: 'estimate' };
 
-  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {}, APP: APP, APPS: APPS };
+  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {}, APP: APP, APPS: APPS, OWNER_ONLY: OWNER_ONLY }   // OWNER_ONLY: /map 권한 표시가 잠금 상태를 알 수 있게;
   var S = HR.S = {
     user: null, mid: null, role: 'employee', isAdmin: false, isLead: false,
     cfg: Object.assign({}, L.DEFAULT_CONFIG), hmap: L.holidayMap(L.DEFAULT_CONFIG),
