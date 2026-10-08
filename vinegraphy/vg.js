@@ -300,7 +300,8 @@
   function row(prod, kind, list, x, i) {
     var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
     if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
-    var who = (S.members[x.by] || {}).name || '';
+    var isCopy = kind === 'copy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
+    var who = isCopy ? '' : (S.members[x.by] || {}).name || '';
     var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
       onpointerdown: function (e) { dragStart(e, list); },
       onkeydown: function (e) {
@@ -308,15 +309,15 @@
         e.preventDefault(); move(list, i, e.key === 'ArrowUp' ? -1 : 1);
         var id = x.id; setTimeout(function () { var g = document.querySelector('.vg-pt[data-id="' + id + '"] .vg-pt-grip'); if (g) g.focus(); }, 400);
       } }, '⠿');
-    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), 'data-id': x.id, title: canEditPt(x) ? '더블클릭하면 바로 고칩니다' : null,
+    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), 'data-id': x.id, title: (isCopy && x.proof ? x.proof + (canEditPt(x) ? ' · ' : '') : '') + (canEditPt(x) ? '더블클릭하면 바로 고칩니다' : ''),
       ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip')) return; startEdit(x.id); } : null },
       grip, no,
       h('div', { class: 'vg-pt-main' },
         h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
           x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
-        x.proof || who ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
-      h('div', { class: 'vg-pt-act' + (kind === 'copy' ? ' keep' : '') },
-        kind === 'copy' ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-xs') : null,
+        !isCopy && (x.proof || who) ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
+      h('div', { class: 'vg-pt-act' },
+        kind === 'copy' ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-line btn-xs vg-copy-btn') : null,
         canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
         canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
   }
