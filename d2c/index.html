@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../hr/hr.css?v=2610073600">
   <link rel="stylesheet" href="../hr/hr-v2.css?v=2610081100">
-  <link rel="stylesheet" href="d2c.css?v=2610085000">
+  <link rel="stylesheet" href="d2c.css?v=2610087500">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -94,15 +94,20 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
-        <li><a href="#home" data-menu="home">한판</a></li>
+        <li class="nav-grp" aria-hidden="true">[매출]</li>
+        <li><a href="#store" data-menu="store">자사몰</a></li>
+        <li><a href="#aov" data-menu="aov">크로스셀</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[CRM]</li>
         <li><a href="#retain" data-menu="retain">재구매</a></li>
-        <li><a href="#cs" data-menu="cs">CS</a></li>
-        <li><a href="#aov" data-menu="aov">크로스 · 업셀</a></li>
-        <li><a href="#cohort" data-menu="cohort">코호트 · 지표</a></li>
-        <li><a href="#crm" data-menu="crm">CRM</a></li>
-        <li><a href="#store" data-menu="store">자사몰 · 전환</a></li>
+        <li><a href="#crm" data-menu="crm">메시지</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[CS]</li>
+        <li><a href="#cs" data-menu="cs">CS 운영</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[핵심]</li>
+        <li><a href="#home" data-menu="home">한판</a></li>
         <li><a href="#plan" data-menu="plan">로드맵</a></li>
-        <li><a href="#kpi" data-menu="kpi">LTV 계산</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[지표]</li>
+        <li><a href="#cohort" data-menu="cohort">코호트</a></li>
+        <li><a href="#kpi" data-menu="kpi">LTV</a></li>
         <li class="nav-sep"><a href="/hr/" target="_blank" rel="opener" class="nav-ext">HR ↗</a></li>
         <li><a href="/map/" target="_blank" rel="opener" class="nav-ext">Map ↗</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
@@ -120,6 +125,6 @@
   <script src="../hr/firebase-config.js?v=2610071600"></script>
   <script src="../hr/labor.js?v=2610071600"></script>
   <script src="../hr/core.js?v=2610086000"></script>
-  <script src="d2c.js?v=2610085000"></script>
+  <script src="d2c.js?v=2610087500"></script>
 </body>
 </html>

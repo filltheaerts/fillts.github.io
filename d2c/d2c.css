@@ -101,3 +101,27 @@
   .dc-flow li:first-child { border-top: none; }
 }
 .tab-head + .dc-lead { margin-top: 10px; }
+
+/* 메뉴 묶음 [매출] | [CRM] | [CS] | [핵심] | [지표] — 묶음 이름은 굵게, 하위 메뉴는 보통 굵기 */
+.nav-links li.nav-grp { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--black, #0a0a0a); white-space: nowrap; align-self: center; margin-right: -12px; }
+.nav-links a[data-menu] { font-weight: 400; }
+@media (max-width: 900px) { .nav-links li.nav-grp { margin-right: 0; padding-bottom: 2px; } }
+@media (min-width: 901px) {
+  .nav-links { gap: 18px; }
+  .nav-links a { white-space: nowrap; }
+  .nav-links li.nav-grp { margin-right: -6px; }
+  .nav-links li.nav-sep { padding-left: 16px; }
+}
+@media (min-width: 901px) and (max-width: 1279px) {
+  .nav-links { gap: 10px; }
+  .nav-links a { font-size: 12px; letter-spacing: 0; }
+  .nav-links li.nav-grp { font-size: 11px; margin-right: -2px; }
+  .nav-links li.nav-sep { padding-left: 10px; }
+  .nav .logo-sub { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1179px) {
+  .nav-links li:has(> .nav-ext) { display: none; }   /* 좁은 화면: HR ↗ · Map ↗ 숨김 (Map에서 들어오므로) */
+}
+@media (min-width: 901px) and (max-width: 1059px) {
+  .nav-links li.nav-user { display: none; }   /* 아주 좁을 때만 — 로그아웃은 HR에서 */
+}
