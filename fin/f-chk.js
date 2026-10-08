@@ -143,16 +143,16 @@
       h('tbody', null, refs.length ? refs.map(function (r) {
         return h('tr', null, h('td', { class: 'strong nowrap', text: (r.art || '') + (r.title ? ' ' + r.title : '') }), h('td', { class: 'jg-body', text: r.body || '' }), h('td', { class: 'jg-note', text: r.note || '' }));
       }) : h('tr', null, h('td', { colspan: '3', class: 'empty', text: '정관 요약이 아직 없습니다.' }))));
-    ui.put(view, ui.head('[행정] 정관', '정관 변경 계획 — 하려면 언제까지',
+    ui.put(view, ui.head('[행정] 정관', '정관 신설 · 변경 조항',
         h('div', { class: 'row' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
-          ed ? ui.btn('+ 일정 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
-      F.kpi([['계획', live.length + '건', '', '필수 아님 · 하기로 하면 이 날짜까지'], ['임박 · 지남', live.filter(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }).length + '건', live.some(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }) ? 'red' : '', '항목별 알림 기간 안'],
+          ed ? ui.btn('+ 조항 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
+      F.kpi([['신설 · 변경', live.length + '건', '', '필수 아님 · 하기로 하면 이 날짜까지'], ['임박 · 지남', live.filter(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }).length + '건', live.some(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }) ? 'red' : '', '항목별 알림 기간 안'],
         ['다음 마감', next ? dLabel(next.s.d) : '—', '', next ? next.c.title : '날짜 있는 항목 없음']], 'three'),
-      ui.panel('하려는 것 · 언제까지 (선택)', null, list(live, '등록된 정관 변경 계획이 없습니다.')),
+      ui.panel('신설 · 변경할 조항 (선택)', null, list(live, '등록된 정관 변경 계획이 없습니다.')),
       done.length ? ui.panel('완료 ' + done.length + '건', null, list(done, '')) : null,
       ui.panel('지금 정관 · 날짜와 절차가 걸린 조항', url ? h('span', { class: 'meta', text: '원본 기준 요약' }) : null, h('div', { class: 'table-wrap flat' }, refTb)),
       F.readOnlyNote(),
-      h('p', { class: 'note', text: '여기는 하고 싶을 때 하는 정관 변경 계획입니다. 꼭 해야 하는 신고 · 등기 · 정기주총은 [행정] 체크일정에 있습니다. 정관 변경은 주주총회 특별결의 사항이지만, 자본금 10억 미만이라 주주 전원 서면결의로 갈음할 수 있습니다(정관 제23조④). 등기할 사항은 결의일부터 2주 안에 등기해야 하며, 여러 건을 한 번에 묶으면 등기 비용이 한 번만 듭니다.' }));
+      h('p', { class: 'note', text: '정관에 새로 넣거나 바꿀 조항 목록입니다. 필수가 아니며, 하기로 한 것만 날짜까지 정하면 됩니다. 조문 문구 · 결의서 · 등기 · 공고는 법무대리인이 처리합니다. 꼭 해야 하는 신고 · 정기주총은 [행정] 체크일정에 있습니다.' }));
   }
   HR.register('jg', { render: bylaw });
 })();
