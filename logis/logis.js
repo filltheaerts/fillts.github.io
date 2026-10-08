@@ -6,7 +6,7 @@
   'use strict';
   var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, L = HR.L;
   var FV = firebase.firestore.FieldValue;
-  var G = { items: [], moves: [], vendors: [], specs: [], doc: null, specDoc: null, basicsDoc: null, loaded: 0 };
+  var G = { items: [], moves: [], vendors: [], specs: [], doc: null, specDoc: null, basicsDoc: null, wkDoc: null, loaded: 0 };
   HR.APP.onStart = function (sub) {
     var done = function () { G.loaded++; };
     sub(db.collection('logis_items'), function (s) { G.items = HR.rows(s).sort(bySort); done(); });
@@ -15,6 +15,7 @@
     sub(db.collection('logis_specs'), function (s) { G.specs = HR.rows(s).sort(bySort); });
     sub(db.doc('logis_docs/spec'), function (s) { G.specDoc = s.exists ? s.data() : null; });
     sub(db.doc('logis_docs/basics'), function (s) { G.basicsDoc = s.exists ? s.data() : null; });
+    sub(db.doc('logis_docs/wekeep'), function (s) { G.wkDoc = s.exists ? s.data() : null; });
     sub(db.doc('logis_docs/main'), function (s) { try { G.doc = s.exists ? JSON.parse(s.data().json || '{}') : {}; } catch (e) { G.doc = {}; } });
   };
   function bySort(a, b) { return (a.sort || 999) - (b.sort || 999) || String(a.name || a.label || '').localeCompare(String(b.name || b.label || '')); }
@@ -120,7 +121,7 @@
       h('div', { class: 'lg-grid' },
         ui.panel('① 재고 · 재발주 시점', h('a', { class: 'link', href: '#stock', text: '재고 실사 →' }),
           ps.length ? stockMini(ps) : ui.empty('품목이 없습니다. 「재고 · 재발주」에서 추가하세요.')),
-        curGroups()[0] ? specBlock(curGroups()[0].id, { fixedTitle: true, title: '② ' + curGroups()[0].name + ' — 고치고 바로 복사', link: h('a', { class: 'link', href: '#spec', text: '위킵 전체 →' }) }) : ui.panel('② 위킵 사양', null, ui.empty('「위킵 사양」에 묶음을 추가하세요.')),
+        curGroups()[0] ? specBlock(curGroups()[0].id, { fixedTitle: true, title: '② ' + curGroups()[0].name + ' — 고치고 바로 복사', link: h('a', { class: 'link', href: '#wekeep', text: '위킵 메뉴 →' }) }) : ui.panel('② 위킵 사양', null, ui.empty('「위킵 사양」에 묶음을 추가하세요.')),
         ui.panel('③ 발주 메일', h('a', { class: 'link', href: '#mail', text: '메일 쓰기 →' }),
           urgent.length ? h('ul', { class: 'list' }, urgent.map(function (p) {
             var v = vendor(p.it.vendorId);
@@ -481,6 +482,72 @@
       out, h('p', { class: 'note', text: '박스마다 위킵 입하라벨(FBW › 입고 › 입하 라벨 출력)과 이 표기 라벨을 함께 붙입니다. 마지막 박스는 남은 수량으로 계산됩니다.' }));
   }
 
+
+  /* ================= [wekeep] 위킵 — 할 일 · 입고 순서 · 등록 · 라벨 =================
+     할 일: logis_docs/wekeep.tasks [{id, t, due, phase, done, doneAt, note}] — 체크 · 글 · 날짜를 그 자리에서 고치면 바로 저장 */
+  var WK_PHASE = [['ready', '① 입고 전 준비 (1회)'], ['inbound', '② 첫 입고'], ['launch', '③ 출고 · 런칭'], ['etc', '기타']];
+  var wkTasks = function () { return ((G.wkDoc && G.wkDoc.tasks) || []).slice(); };
+  function wkSave(tasks) {
+    G.wkDoc = { tasks: tasks };
+    return db.doc('logis_docs/wekeep').set({ tasks: tasks, updatedAt: FV.serverTimestamp(), updatedBy: S.mid || '' }).catch(function (e) { ui.toast('저장하지 못했습니다 — ' + (e.code || e.message)); });
+  }
+  function wkPatch(id, patch, redraw) {
+    var ts = wkTasks().map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; });
+    var pr = wkSave(ts); if (redraw) pr.then(HR.refresh); return pr;
+  }
+  function wkRow(t) {
+    var ed = canEdit();
+    var cb = h('input', { type: 'checkbox', 'aria-label': '완료', class: 'lg-wk-cb' }); cb.checked = !!t.done; cb.disabled = !ed;
+    cb.addEventListener('change', function () { wkPatch(t.id, { done: cb.checked, doneAt: cb.checked ? today() : '' }, true); });
+    var txt = h('textarea', { class: 'lg-wk-t', rows: 1, spellcheck: 'false', 'aria-label': '할 일' }); txt.value = t.t || ''; txt.readOnly = !ed;
+    var note = h('textarea', { class: 'lg-wk-n', rows: 1, spellcheck: 'false', placeholder: '메모 · 방법', 'aria-label': '메모' }); note.value = t.note || ''; note.readOnly = !ed;
+    [txt, note].forEach(function (ta) { ta.addEventListener('input', function () { grow(ta); }); setTimeout(function () { grow(ta); }, 0); });
+    txt.addEventListener('change', function () { wkPatch(t.id, { t: txt.value }); });
+    note.addEventListener('change', function () { wkPatch(t.id, { note: note.value }); });
+    var due = h('input', { type: 'date', class: 'lg-wk-d', value: t.due || '', 'aria-label': '기한' }); due.disabled = !ed;
+    due.addEventListener('change', function () { wkPatch(t.id, { due: due.value }, true); });
+    var ph = ui.select([['ready', '준비'], ['inbound', '첫 입고'], ['launch', '출고 · 런칭'], ['etc', '기타']], t.phase || 'etc', { class: 'lg-wk-p', 'aria-label': '단계' }); ph.disabled = !ed;
+    ph.addEventListener('change', function () { wkPatch(t.id, { phase: ph.value }, true); });
+    return h('li', { class: 'lg-wk' + (t.done ? ' done' : '') }, cb,
+      h('div', { class: 'lg-wk-body' }, txt, note),
+      h('div', { class: 'lg-wk-side' }, t.done ? h('span', { class: 'meta', text: '완료 ' + fmt.dot(t.doneAt || '') }) : (t.due ? dueTag(t.due) : null), due, ph,
+        ed ? ui.confirmBtn('삭제', function () { wkSave(wkTasks().filter(function (x) { return x.id !== t.id; })).then(HR.refresh); }) : null));
+  }
+  function wekeep(view) {
+    if (wait(view)) return;
+    var ts = wkTasks(), left = ts.filter(function (t) { return !t.done; });
+    var next = left.slice().sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; })[0];
+    var card = curGroups('basics').filter(function (g) { return g.where === 'wekeep'; })[0];
+    var inb = G.items.filter(function (i) { return i.where === 'wekeep'; });
+    head(view, '위킵 화성센터 — 해야 할 일', h('a', { class: 'btn btn-line btn-sm', href: '#order', text: '다른 창고 →' }));
+    ui.put(view,
+      h('dl', { class: 'summary four' },
+        sumBox('남은 할 일', left.length + '건', left.length ? 'red' : ''),
+        sumBox('완료', (ts.length - left.length) + '건'),
+        sumBox('다음 기한', next && next.due ? fmt.dot(next.due).slice(5) + ' · ' + (L.daysBetween(today(), next.due) >= 0 ? 'D-' + L.daysBetween(today(), next.due) : 'D+' + (-L.daysBetween(today(), next.due))) : '—', next && next.due && L.daysBetween(today(), next.due) <= 7 ? 'red' : ''),
+        sumBox('위킵 보관 품목', inb.length + '종')),
+      ui.panel('할 일 — 런칭(11/12)까지 위킵 쪽에서 끝낼 것', canEdit() ? ui.btn('+ 할 일', function () {
+        var a = wkTasks(); a.push({ id: 't' + Date.now().toString(36), t: '', due: '', phase: 'etc', done: false, note: '' }); wkSave(a).then(HR.refresh);
+      }, 'btn-line btn-xs') : null,
+        ts.length ? WK_PHASE.map(function (p) {
+          var list = ts.filter(function (t) { return (t.phase || 'etc') === p[0]; }).sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || ((a.due || '9999') < (b.due || '9999') ? -1 : 1); });
+          if (!list.length) return null;
+          return h('div', { class: 'lg-wk-grp' }, h('div', { class: 'lg-wk-gh' }, p[1], h('span', { class: 'meta', text: list.filter(function (t) { return t.done; }).length + ' / ' + list.length })), h('ul', { class: 'lg-wk-list' }, list.map(wkRow)));
+        }) : ui.empty('할 일이 없습니다.'),
+        h('p', { class: 'note', text: '체크하면 완료 날짜가 남습니다. 글 · 메모는 칸을 벗어나면 저장, 날짜 · 단계는 바꾸는 즉시 저장됩니다.' })),
+      h('div', { class: 'lg-whs-grid' },
+        card ? docBlock('basics', card.id, { cls: 'lg-wh-card', fixedTitle: true, title: '창고 정보', extra: (function () {
+          if (!inb.length) return null;
+          return h('div', { class: 'lg-wh-items' }, h('div', { class: 'meta', text: '보관 품목 ' + inb.length }), h('table', { class: 'lg-wh-t' }, h('tbody', null, inb.map(function (it) {
+            var p = plan(it);
+            return h('tr', null, h('td', null, h('a', { href: '#stock/edit/' + it.id, text: it.name })), h('td', { class: 'num', text: n0(p.stock) }), h('td', { class: 'num meta', text: p.onOrder ? '+' + n0(p.onOrder) + (it.order.eta ? ' · ' + it.order.eta.slice(5).replace('-', '/') : '') : '' }));
+          }))));
+        })() }) : null,
+        curGroups('spec').map(function (x) { return specBlock(x.id); })),
+      canEdit() ? h('div', { class: 'lg-actions' }, ui.btn('+ 위킵 정리 묶음', function () { addGroup('spec', '새 묶음'); }, 'btn-line btn-xs')) : null,
+      labelMaker());
+  }
+
   /* ================= [order] 창고 · 발주 현황 ================= */
   // 창고별 카드: logis_docs/basics 묶음(where = wekeep · oem · office · 없음=공통). 카드 아래에 그 창고에 있는 품목 · 재고 · 입고 대기를 자동으로 붙인다
   function warehouses() {
@@ -500,12 +567,12 @@
     // 창고마다 한 구역: 창고 카드(+ 보관 품목). 위킵 구역에는 위킵 사양(입고 정보 · FBW 순서 · 상품 등록 …)과 박스 라벨 만들기를 함께 둔다
     return gs.map(function (g) {
       var card = docBlock('basics', g.id, { cls: 'lg-wh-card', title: '창고 정보', sub: wn[g.where] || '공통', extra: g.where ? stockList(g.where) : null });
-      var specs = g.where === 'wekeep' ? curGroups('spec').map(function (x) { return specBlock(x.id); }) : [];
+      var specs = [];
       return h('section', { class: 'lg-whs lg-wh-' + (g.where || 'common'), id: 'wh-' + (g.where || g.id) },
         h('div', { class: 'lg-whs-h' }, h('h2', { text: g.name }), h('span', { class: 'meta', text: wn[g.where] || '공통' }),
-          g.where === 'wekeep' && canEdit() ? ui.btn('+ 위킵 사양 묶음', function () { addGroup('spec', '새 묶음'); }, 'btn-line btn-xs') : null),
+          g.where === 'wekeep' ? h('a', { class: 'btn btn-xs', href: '#wekeep', text: '위킵 할 일 · 입고 순서 →' }) : null),
         h('div', { class: 'lg-whs-grid' + (specs.length ? '' : ' one') }, card, specs),
-        g.where === 'wekeep' ? labelMaker() : null);
+        null);
     });
   }
 
@@ -537,6 +604,7 @@
   HR.register('home', { render: home });
   HR.register('stock', { render: stock });
   HR.register('mail', { render: mail });
-  HR.register('spec', { render: function (view) { order(view); setTimeout(function () { var el = document.getElementById('wh-wekeep'); if (el) el.scrollIntoView(); }, 30); } });
+  HR.register('spec', { render: function (view) { wekeep(view); } });
+  HR.register('wekeep', { render: wekeep });
   HR.register('order', { render: order });
 })();

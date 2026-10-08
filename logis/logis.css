@@ -177,3 +177,21 @@
 .lg-docp .panel-head .lg-btns { justify-content: flex-end; }
 .lg-docp .lg-doc-title { width: 100%; min-width: 0; font-size: 12px; }
 .lg-docp .lg-save-st { margin-right: auto; text-align: left; }
+
+/* 위킵 할 일 */
+.lg-wk-grp + .lg-wk-grp { margin-top: 18px; }
+.lg-wk-gh { display: flex; gap: 10px; align-items: baseline; font-size: 13px; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--gray-400); }
+.lg-wk-list { list-style: none; margin: 0; padding: 0; }
+.lg-wk { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+.lg-wk-cb { width: 17px; height: 17px; margin-top: 5px; accent-color: var(--red); cursor: pointer; }
+.lg-wk-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lg-wk-t, .lg-wk-n { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; resize: none; overflow: hidden; font: inherit; padding: 3px 6px; line-height: 1.55; }
+.lg-wk-t { font-size: 14px; font-weight: 600; }
+.lg-wk-n { font-size: 12.5px; color: var(--gray-600); }
+.lg-wk-t:hover, .lg-wk-n:hover { border-color: var(--gray-200); }
+.lg-wk-t:focus, .lg-wk-n:focus { outline: none; border-color: var(--ink, #0a0a0a); background: #fffdf4; }
+.lg-wk.done .lg-wk-t { text-decoration: line-through; color: var(--gray-400); font-weight: 400; }
+.lg-wk-side { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.lg-wk-d { height: 28px; font-size: 12px; padding: 0 6px; width: auto !important; }
+.lg-wk-p { height: 28px; font-size: 12px; padding: 0 4px; width: auto !important; }
+@media (max-width: 760px) { .lg-wk { grid-template-columns: 22px 1fr; } .lg-wk-side { grid-column: 2; justify-content: flex-start; } }
