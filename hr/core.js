@@ -43,7 +43,7 @@
   HR.appInfo = function (id) { return APPS.filter(function (a) { return a.id === id; })[0] || null; };
   HR.appLevel = function (app) {
     var a = HR.appInfo(app);
-    if (app !== 'hr' && ownerLocked()) return '';
+    if (app !== 'hr' && (ownerLocked() || S.viewAsStaff)) return '';   // 「사원처럼 보기」 = 앱 권한 없는 일반 구성원 화면
     if (S.realAdmin || (a && a.open) || app === 'map') return 'edit';
     return (S.apps || {})[app] || '';
   };
@@ -533,25 +533,37 @@
     unsubs.push(q.onSnapshot(function (s) { fn(s); changed(); }, function (e) { console.warn('subscription', e.code, e.message); }));
   }
 
-  // 관리자 전용: 「사용자 모드」로 일반 구성원 화면을 미리 본다 (화면만 바뀌고 권한·데이터는 그대로)
-  function applyView(asUser) {
-    S.viewAsUser = !!(S.realAdmin && asUser);
+  // 관리자 전용 화면 미리보기 (화면만 바뀌고 권한·데이터는 그대로)
+  //  '' 관리자 · 'user' 사용자 = 관리자 기능만 숨긴 내 화면 · 'staff' 사원처럼 보기 = 앱 권한도 없는 일반 구성원 화면 (HR만 보임)
+  function viewMode() { var m = ''; try { m = localStorage.getItem('hrViewAs'); if (m == null) m = localStorage.getItem('hrViewAsUser') === '1' ? 'user' : ''; } catch (e) { /* 무시 */ } return m === 'user' || m === 'staff' ? m : ''; }
+  function setViewMode(mode) {
+    try { localStorage.setItem('hrViewAs', mode); localStorage.removeItem('hrViewAsUser'); } catch (e) { /* 무시 */ }
+    applyView(mode); HR.cache = {};
+    if (mode && current.menu === 'admin') HR.go('info'); else render(true);
+    ui.toast({ '': '관리자 모드로 돌아왔습니다.', user: '사용자 모드 — 관리자 기능을 숨긴 내 화면입니다.', staff: '사원처럼 보기 — 앱 권한이 없는 일반 구성원 화면입니다. HR 말고는 아무것도 안 보입니다.' }[mode]);
+  }
+  function applyView(mode) {
+    mode = S.realAdmin ? (mode === true ? 'user' : mode || '') : '';
+    S.viewMode = mode; S.viewAsUser = !!mode; S.viewAsStaff = mode === 'staff';
     S.isAdmin = S.realAdmin && !S.viewAsUser; S.isLead = S.realLead && !S.viewAsUser;
     document.body.classList.toggle('is-admin', S.isAdmin);
     document.body.classList.toggle('is-lead', S.isLead);
     document.body.classList.toggle('view-user', S.viewAsUser);
-    var sw = $('viewSwitch');
-    if (!sw && S.realAdmin) {
-      sw = h('button', { type: 'button', id: 'viewSwitch', class: 'view-switch', role: 'switch', onclick: function () {
-        var next = !S.viewAsUser;
-        try { localStorage.setItem('hrViewAsUser', next ? '1' : ''); } catch (e) { /* 무시 */ }
-        applyView(next); HR.cache = {};
-        if (next && current.menu === 'admin') HR.go('info'); else render(true);
-        ui.toast(next ? '사용자 모드 — 일반 구성원에게 보이는 화면입니다.' : '관리자 모드로 돌아왔습니다.');
-      } }, h('span', { class: 'vs-label vs-admin', text: '관리자' }), h('span', { class: 'vs-track' }, h('span', { class: 'vs-knob' })), h('span', { class: 'vs-label vs-user', text: '사용자' }));
-      var right = document.querySelector('.nav-right'); if (right) right.insertBefore(sw, right.firstChild);
+    document.body.classList.toggle('view-staff', S.viewAsStaff);
+    var box = $('viewSwitchBox');
+    if (!box && S.realAdmin) {
+      var sw = h('button', { type: 'button', id: 'viewSwitch', class: 'view-switch', role: 'switch', onclick: function () { setViewMode(S.viewAsUser ? '' : 'user'); } },
+        h('span', { class: 'vs-label vs-admin', text: '관리자' }), h('span', { class: 'vs-track' }, h('span', { class: 'vs-knob' })), h('span', { class: 'vs-label vs-user', text: '사용자' }));
+      var st = h('button', { type: 'button', id: 'viewStaff', class: 'view-staff-btn', onclick: function () { setViewMode(S.viewAsStaff ? '' : 'staff'); } }, '사원처럼 보기');
+      box = h('div', { id: 'viewSwitchBox', class: 'view-switch-box' }, sw, st);
+      var right = document.querySelector('.nav-right'); if (right) right.insertBefore(box, right.firstChild);
     }
-    if (sw) { sw.hidden = !S.realAdmin; sw.setAttribute('aria-checked', String(S.viewAsUser)); sw.title = S.viewAsUser ? '지금 사용자 화면 — 누르면 관리자 모드' : '누르면 일반 구성원 화면으로 미리보기'; }
+    if (box) {
+      box.hidden = !S.realAdmin;
+      var s1 = $('viewSwitch'), s2 = $('viewStaff');
+      s1.setAttribute('aria-checked', String(S.viewAsUser)); s1.title = S.viewAsUser ? '지금 미리보기 화면 — 누르면 관리자 모드' : '누르면 관리자 기능을 숨긴 내 화면으로';
+      s2.setAttribute('aria-pressed', String(S.viewAsStaff)); s2.title = S.viewAsStaff ? '누르면 관리자 모드로' : '앱 권한이 없는 일반 구성원에게 보이는 화면';
+    }
   }
   function start(hu) {
     // 다른 앱(/fin · /inf 등)은 core.js 뒤에 화면 코드(큰 라이브러리 포함)를 더 불러온다. 로그인 확인이 그보다 먼저 끝나면
@@ -574,8 +586,7 @@
       $('noAccessText').textContent = S.user.email + ' 계정에는 ' + (APP.title || APP.id) + ' 접근 권한이 없습니다. HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.';
       return;
     }
-    var asUser = false; try { asUser = S.realAdmin && APP.id === 'hr' && localStorage.getItem('hrViewAsUser') === '1'; } catch (e) { /* 무시 */ }
-    applyView(asUser);
+    applyView(S.realAdmin && APP.id === 'hr' ? viewMode() : '');
     $('authView').hidden = true; $('appView').hidden = false;
     sub(db.doc('hr_users/' + S.user.uid), function (s) { if (s.exists) S.apps = s.data().apps || {}; });
     if (APP.lite) {   // 다른 앱: 이름 · 설정 · 알림만 받고 나머지는 앱이 직접 구독한다
