@@ -7,19 +7,15 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0a0a0a">
-  <title>fillts HR</title>
+  <title>fillts Logistics · 물류</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="hr.css?v=2610073600">
-  <link rel="stylesheet" href="hr-v2.css?v=2610081800">
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="fillts HR">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="stylesheet" href="../hr/hr.css?v=2610073600">
+  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610081100">
+  <link rel="stylesheet" href="logis.css?v=2610084200">
+  <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
 <body>
 
@@ -28,9 +24,9 @@
     <div class="auth-side">
       <a href="/" class="logo">fillts</a>
       <div>
-        <div class="label">Fillts HR</div>
-        <h1 class="auth-title">Work, <span class="accent">fill</span>ed<br>with clarity<span class="accent">.</span></h1>
-        <p class="auth-sub">출퇴근부터 휴가, 목표와 원온원까지.</p>
+        <div class="label">Logistics · 물류</div>
+        <h1 class="auth-title">Logistics<span class="accent">.</span></h1>
+        <p class="auth-sub">물류 — 재고 실사 · 재발주 주기 · 발주 메일 · 위킵 입고 사양. HR과 같은 계정으로 로그인합니다.</p>
       </div>
       <div class="auth-foot">&copy; 2026 fillts Inc. &nbsp;|&nbsp; 임직원 전용 &nbsp;|&nbsp; 접속 기록이 보관됩니다</div>
     </div>
@@ -52,7 +48,7 @@
         <p class="form-msg" id="loginMsg" role="alert"></p>
         <button class="btn" type="submit" id="loginBtn">로그인</button>
         <div class="auth-links">
-          <a href="#" id="toSignup">초대받은 계정 만들기</a>
+          <a href="#" id="toSignup" hidden>초대받은 계정 만들기</a>
           <a href="#" id="toReset">비밀번호 재설정</a>
         </div>
       </form>
@@ -86,7 +82,7 @@
   <!-- ============ 앱 ============ -->
   <div class="app" id="appView" hidden>
     <nav class="nav">
-      <a href="#info" class="logo">fillts <span class="logo-sub">HR</span></a>
+      <a href="#home" class="logo">fillts <span class="logo-sub">LOGIS</span></a>
       <div class="nav-right">
         <div class="bell-wrap">
           <button class="bell" id="bell" type="button" aria-label="알림">
@@ -98,20 +94,13 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
-        <li><a href="#info" data-menu="info">Info</a></li>
-        <li><a href="#notice" data-menu="notice">공지사항</a></li>
-        <li><a href="#about" data-menu="about">기본안내</a></li>
-        <li><a href="#meet" data-menu="meet">회의미팅</a></li>
-        <li><a href="#people" data-menu="people">구성원</a></li>
-        <li><a href="#work" data-menu="work">근무</a></li>
-        <li><a href="#leave" data-menu="leave">휴가</a></li>
-        <li><a href="#goals" data-menu="goals">목표관리</a></li>
-        <li class="admin-only"><a href="#admin" data-menu="admin">설정</a></li>
-        <li class="nav-sep nav-sep-blue"><a href="#ws" data-menu="ws" class="nav-blue">WORK</a></li>
-        <li class="nav-sep"><a href="#ai" data-menu="ai" class="nav-purple">+AI</a></li>
-        <li class="nav-sep"><a href="#payreq" data-menu="payreq" class="nav-red">입금요청</a></li>
-        <li class="nav-sep admin-only" data-app="fin" hidden><a href="/fin/" target="_blank" rel="opener" class="nav-ext" title="새 창에서 열기">Finance ↗</a></li>
-        <li class="nav-sep" data-app="map"><a href="/map/" target="_blank" rel="opener" class="nav-ext" title="새 창에서 열기">MAP ↗</a></li>
+        <li><a href="#home" data-menu="home">한판</a></li>
+        <li><a href="#stock" data-menu="stock">재고 · 재발주</a></li>
+        <li><a href="#mail" data-menu="mail">발주 메일</a></li>
+        <li><a href="#spec" data-menu="spec">위킵 사양</a></li>
+        <li><a href="#order" data-menu="order">발주 현황 · 기본</a></li>
+        <li class="nav-sep"><a href="/hr/" target="_blank" rel="opener" class="nav-ext">HR ↗</a></li>
+        <li><a href="/map/" target="_blank" rel="opener" class="nav-ext">Map ↗</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
       </ul>
     </nav>
@@ -123,29 +112,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="firebase-config.js?v=2610073600"></script>
-  <script src="labor.js?v=2610073600"></script>
-  <script src="core.js?v=2610084200"></script>
-  <script src="m-info.js?v=2610081900"></script>
-  <script src="m-payslip.js?v=2610073600"></script>
-  <script src="m-today.js?v=2610073600"></script>
-  <script src="m-about.js?v=2610081500"></script>
-  <script src="m-meet.js?v=2610075300"></script>
-  <script src="m-certs.js?v=2610073600"></script>
-  <script src="m-work-me.js?v=2610073600"></script>
-  <script src="m-payreq.js?v=2610073600"></script>
-  <script src="m-ws.js?v=2610081400"></script>
-  <script src="m-ai.js?v=2610074300"></script>
-  <script src="m-aiedu.js?v=2610073600"></script>
-  <script src="m-qa.js?v=2610073600"></script>
-  <script src="m-onboard.js?v=2610073600"></script>
-  <script src="m-program.js?v=2610073600"></script>
-  <script src="m-app.js?v=2610073600"></script>
-  <script src="m-notice.js?v=2610073600"></script>
-  <script src="m-people.js?v=2610073600"></script>
-  <script src="m-work.js?v=2610081800"></script>
-  <script src="m-leave.js?v=2610073600"></script>
-  <script src="m-goals.js?v=2610081900"></script>
-  <script src="m-admin.js?v=2610074700"></script>
+  <script src="app.js?v=2610084200"></script>
+  <script src="../hr/firebase-config.js?v=2610071600"></script>
+  <script src="../hr/labor.js?v=2610071600"></script>
+  <script src="../hr/core.js?v=2610084200"></script>
+  <script src="logis.js?v=2610084200"></script>
 </body>
 </html>
