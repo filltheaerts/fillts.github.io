@@ -164,16 +164,16 @@
           if (hh <= 0) return; var yy = y0 - hh, rr = round ? Math.min(4, w / 2, hh) : 0;
           el('path', { d: 'M' + x + ',' + y0 + 'V' + (yy + rr) + 'Q' + x + ',' + yy + ' ' + (x + rr) + ',' + yy + 'H' + (x + w - rr) + 'Q' + (x + w) + ',' + yy + ' ' + (x + w) + ',' + (yy + rr) + 'V' + y0 + 'Z', class: cls, 'data-i': i });
         };
-        bar(base, nh - g2 / 2, 'sa-bar', rh <= 0);
-        bar(base - nh - g2 / 2, rh - g2 / 2, 'sa-bar sa-bar-r', true);
-        if (rh >= 16 && w >= 20) el('text', { x: x + w / 2, y: base - nh - rh / 2 + 4, 'text-anchor': 'middle', class: 'sa-bar-t' }, Math.round(r.rs / r.s * 100) + '%');
+        bar(base, rh - g2 / 2, 'sa-bar', nh <= 0);   // 아래: 재구매 (검정)
+        bar(base - rh - g2 / 2, nh - g2 / 2, 'sa-bar sa-bar-r', true);   // 위: 신규 (빨강)
+        if (rh >= 16 && w >= 20) el('text', { x: x + w / 2, y: base - rh / 2 + 4, 'text-anchor': 'middle', class: 'sa-bar-t' }, Math.round(r.rs / r.s * 100) + '%');
       }
       if (i % every === 0) { var lab = gran === 'day' ? (+r.k.slice(5, 7)) + '/' + (+r.k.slice(8)) : (+r.k.slice(2, 4)) + '.' + r.k.slice(5); el('text', { x: pl + i * bw + bw / 2, y: H - 8, 'text-anchor': 'middle', class: 'sa-ax' }, lab); }
       var hit = el('rect', { x: pl + i * bw, y: pt, width: bw, height: ih, class: 'sa-hit' });
       hit.addEventListener('mouseenter', function () {
         svg.querySelectorAll('.sa-bar').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
         ui.clear(tip); ui.put(tip, h('div', { class: 'strong', text: gran === 'day' ? fmt.dot(r.k) + ' (' + WD[new Date(r.k + 'T00:00:00Z').getUTCDay()] + ')' : r.k.replace('-', '.') }),
-          h('div', { text: '순매출 ' + won(r.s) }), h('div', { class: 'red', text: '재구매 ' + won(r.rs) + ' · ' + (r.s ? Math.round(r.rs / r.s * 100) : 0) + '%' }), h('div', { text: '주문 ' + r.n + '건 · 객단가 ' + (r.n ? won(r.s / r.n) : '—') }), h('div', { class: 'meta', text: '신규 ' + Math.round(r.nw) + ' · 재구매 ' + Math.round(r.n - r.nw) + '건' }));
+          h('div', { text: '순매출 ' + won(r.s) }), h('div', { class: 'red', text: '신규 ' + won(r.s - r.rs) }), h('div', { text: '재구매 ' + won(r.rs) + ' · ' + (r.s ? Math.round(r.rs / r.s * 100) : 0) + '%' }), h('div', { text: '주문 ' + r.n + '건 · 객단가 ' + (r.n ? won(r.s / r.n) : '—') }), h('div', { class: 'meta', text: '신규 ' + Math.round(r.nw) + ' · 재구매 ' + Math.round(r.n - r.nw) + '건' }));
         tip.hidden = false; var px = (pl + i * bw + bw / 2) / W * 100; tip.style.left = Math.min(Math.max(px, 12), 84) + '%';
       });
       hit.addEventListener('mouseleave', function () { tip.hidden = true; svg.querySelectorAll('.sa-bar.on').forEach(function (b) { b.classList.remove('on'); }); });
@@ -182,7 +182,7 @@
     var tbl = h('details', { class: 'sa-table' }, h('summary', { text: '표로 보기' }), h('div', { class: 'table-wrap flat' }, h('table', { class: 'table' },
       h('thead', null, h('tr', null, ['기간', '순매출', '재구매 매출', '주문', '객단가', '신규', '재구매'].map(function (c, j) { return h('th', { class: j ? 'num' : '', text: c }); }))),
       h('tbody', null, rows.slice().reverse().filter(function (r) { return r.n; }).map(function (r) { return h('tr', null, h('td', { text: gran === 'day' ? fmt.dot(r.k) : r.k }), h('td', { class: 'num', text: won(r.s) }), h('td', { class: 'num', text: won(r.rs) + ' · ' + Math.round(r.rs / r.s * 100) + '%' }), h('td', { class: 'num', text: r.n }), h('td', { class: 'num', text: won(r.s / r.n) }), h('td', { class: 'num', text: Math.round(r.nw) }), h('td', { class: 'num', text: Math.round(r.n - r.nw) })); })))));
-    var legend = h('div', { class: 'sa-legend' }, h('span', null, h('i', { class: 'sw sw-n' }), '신규 매출'), h('span', null, h('i', { class: 'sw sw-r' }), '재구매 매출 (빨간 칸 안 숫자 = 그날 재구매 비중)'));
+    var legend = h('div', { class: 'sa-legend' }, h('span', null, h('i', { class: 'sw sw-n' }), '신규 매출 (위 · 빨강)'), h('span', null, h('i', { class: 'sw sw-r' }), '재구매 매출 (아래 · 검정, 칸 안 숫자 = 그날 재구매 비중)'));
     return h('div', null, legend, wrap, tbl);
   }
   function niceStep(x) { var p = Math.pow(10, Math.floor(Math.log10(x || 1))), f = x / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }

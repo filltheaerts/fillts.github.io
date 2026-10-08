@@ -184,8 +184,8 @@
 .sa-share-v { text-align: right; color: var(--gray-600); font-variant-numeric: tabular-nums; }
 .sa-split { display: flex; gap: 2px; height: 14px; margin: 4px 0 12px; }
 .sa-split span { display: block; height: 100%; border-radius: 4px; }
-.sa-split-n, .sw-n { background: #3a3a3a; }
-.sa-split-r, .sw-r { background: var(--red); }
+.sa-split-n, .sw-n { background: var(--red); }   /* 신규 = 빨강 (궁극적으로 어려운 쪽을 강조) */
+.sa-split-r, .sw-r { background: #3a3a3a; }   /* 재구매 = 검정 */
 .sa-split-l { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; }
 .sa-split-l dt { font-size: 11px; color: var(--gray-600); display: flex; gap: 6px; align-items: center; }
 .sa-split-l dd { margin: 2px 0 0; font-size: 16px; font-variant-numeric: tabular-nums; }
