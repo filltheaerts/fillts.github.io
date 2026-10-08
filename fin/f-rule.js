@@ -52,7 +52,7 @@
     ['한시 제도는 기한을 조문에 박는다', '여행휴가 · 탄력근무처럼 기간이 정해진 제도는 종료일을 조문과 HR 설정 둘 다에 적는다.'],
     ['소정근로시간은 건드리지 않는다', '월 209시간 · 1일 8시간은 통상시급과 연장수당의 기준이다. 일찍 보내는 것은 「유급 조기 퇴근 허용」으로 쓰고, 소정근로시간 자체를 줄이지 않는다.'],
     ['현금성 복지는 통상임금을 조심한다', '정기 · 일률 현금 지급은 통상임금에 들어갈 위험이 있다. 현물 · 선물 · 재량 방식으로 쓰고, 지급대장은 따로 둔다.'],
-    ['필수기재 13개 항목을 빠짐없이 채운다', '근로기준법 제93조 1~13호가 빠지면 신고가 보완 요구로 돌아온다. 특히 지금 내규에는 「표창과 제재(징계)」와 「재해부조」 장이 없다.'],
+    ['필수기재 14개 항목을 빠짐없이 채운다', '근로기준법 제93조 1~13호(9의2호 포함)가 빠지면 신고가 보완 요구로 돌아온다. 특히 지금 내규에는 「표창과 제재(징계)」와 「재해부조」 장이 없다.'],
     ['징계는 절차까지 쓴다', '사유 · 종류(견책 · 감급 · 정직 · 해고) · 소명 기회 · 서면 통지를 적는다. 감급은 1회 평균임금 1일분의 1/2, 총액은 월 임금의 1/10을 넘지 못한다(제95조).'],
     ['HR 시스템과 조문을 한 쌍으로 둔다', '연장근로 신청 · 재택 승인 · 휴가 정책처럼 HR이 집행하는 규칙은 조문 번호를 HR 설정 메모에 적고, 어느 한쪽을 바꾸면 다른 쪽도 같이 바꾼다.'],
     ['신고 전에 의견 청취 기록을 남긴다', '작성 · 변경 시 근로자 과반수 의견을 듣고(불리하면 동의) 서명 받은 의견서를 신고에 첨부한다. 시행 후 사업장에 게시 · 비치한다(제14조).']
@@ -114,10 +114,10 @@
           h('td', { class: 'strong nowrap' }, c[4] ? h('span', { class: 'jg-st jg-st-todo', text: '먼저' }) : null, c[4] ? ' ' : null, c[1]),
           h('td', { class: 'jg-body', text: c[2] }), h('td', { class: 'jg-note', text: c[3] }));
       })));
-    var lineTb = h('table', { class: 'table fin-table jg-table' },
+    var lineTb = h('table', { class: 'table fin-table jg-table rule-table' },
       h('thead', null, h('tr', null, ['인원', '바뀌는 것'].map(function (x) { return h('th', { text: x }); }))),
       h('tbody', null, LINES.map(function (l, i) { return h('tr', { class: i === 0 ? 'rule-now' : '' }, h('td', { class: 'strong nowrap', text: l[0] }), h('td', { class: 'jg-body', text: l[1] })); })));
-    var tocTb = h('table', { class: 'table fin-table jg-table' },
+    var tocTb = h('table', { class: 'table fin-table jg-table rule-table' },
       h('thead', null, h('tr', null, ['', '필수기재 (근로기준법 제93조)', '지금 내규', '상태', '보완할 것'].map(function (x) { return h('th', { text: x }); }))),
       h('tbody', null, TOC.map(function (t) {
         var st = ST[t[3]];
@@ -132,12 +132,12 @@
         h('div', { class: 'row' }, h('span', { class: 'rule-badge', text: '비공식 · 준비용' }))),
       h('p', { class: 'rule-lead', text: '상시 근로자 2명 — 취업규칙 작성 · 신고 의무(10명 이상)는 아직 없습니다. 지금은 내규(사내규정 2028 이전판)로 운영하고, 10명이 되는 날 그대로 신고할 수 있게 미리 맞춰 두는 화면입니다. 정리 · 효경(261008).' }),
       F.kpi([['상시 근로자', '2명', '', '대표 제외 · 추진경 · 정은'], ['먼저 볼 것', urgent + '건', urgent ? 'red' : '', '복지 · 인사 체크포인트 중 미확인'],
-        ['필수기재', TOC.filter(function (t) { return t[3] === 'ok'; }).length + ' / ' + TOC.length, '', '지금 내규에 있는 항목'], ['준비 진행', doneN(STEPS) + ' / ' + STEPS.length, '', '아래 준비 순서 체크']], 'four'),
+        ['필수기재', TOC.filter(function (t) { return t[3] === 'ok'; }).length + ' / ' + TOC.length, '', '제93조 필수기재 중 지금 내규에 있는 항목'], ['준비 진행', doneN(STEPS) + ' / ' + STEPS.length, '', '아래 준비 순서 체크']], 'four'),
       ui.panel('복지정책 · 최근 인사 체크포인트 ' + doneN(CHECKS) + ' / ' + CHECKS.length, h('span', { class: 'meta', text: 'HR 설정 · 내규 · 근로계약서 대조' }), h('div', { class: 'table-wrap flat' }, chkTb)),
       ui.panel('인원 기준선 — 몇 명이 되면 무엇이 바뀌나', null, h('div', { class: 'table-wrap flat' }, lineTb)),
       ui.panel('이렇게 쓰면 이슈가 없다 — 작성 원칙', null,
         h('dl', { class: 'jg-memo' }, RULES.map(function (r) { return h('div', null, h('dt', { text: r[0] }), h('dd', { text: r[1] })); }))),
-      ui.panel('취업규칙 목차 초안 — 필수기재 13개 ↔ 지금 내규 ' + doneN(TOC) + ' / ' + TOC.length, h('span', { class: 'meta', text: '체크 = 준비 조문 작성됨' }), h('div', { class: 'table-wrap flat' }, tocTb)),
+      ui.panel('취업규칙 목차 초안 — 필수기재 14개(1~13호 + 9의2호) ↔ 지금 내규 ' + doneN(TOC) + ' / ' + TOC.length, h('span', { class: 'meta', text: '체크 = 준비 조문 작성됨' }), h('div', { class: 'table-wrap flat' }, tocTb)),
       ui.panel('준비 순서', null, stepList),
       F.readOnlyNote(),
       h('p', { class: 'note', text: '공식 문서가 아니라 준비 메모입니다. 조문 문구 · 신고는 10명이 되는 시점에 노무사 검토를 거쳐 확정합니다. 내규 원본: OneDrive 필츠_서류 › 근로계약서 › 0. 양식 › 5 · 6번 사내규정. 휴가 정책 원본: HR 설정 › 휴가.' }));

@@ -389,6 +389,9 @@ a.map-card:hover { border-color: var(--black); }
 .rule-lead { margin: 0 0 16px; font-size: 13px; line-height: 1.7; color: var(--gray-600, #555); }
 .rule-table td:first-child, .rule-step .jg-go { width: 44px; }
 .rule-table .jg-st { margin-right: 4px; }
+.rule-table td { white-space: normal; }
+.rule-table td.nowrap { white-space: nowrap; }
+.rule-table td.jg-body, .rule-table td.jg-note { min-width: 260px; max-width: 460px; }
 tr.rule-done td, li.rule-done .grow { color: var(--gray-400); }
 tr.rule-now td { background: #fdf1f2; }
 .rule-step { display: flex; gap: 12px; align-items: flex-start; }
