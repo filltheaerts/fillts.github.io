@@ -8,7 +8,7 @@
     fin: [['#home', 'Overview'], ['#plan', '자금조달'], ['#runway', '런웨이'], ['#flow', '현금흐름'], ['#sched', '지출예정'], ['#tx', '거래내역'], ['#tax', '세무사 전달']],
     mkt: [['', '마케팅 맵']],
     inf: [['#home', 'Overview'], ['#find', '탐색'], ['#pipe', '파이프라인'], ['#mail', '메일']],
-    rnd: [['#quick', '[quick]'], ['#home', '현황'], ['#timeline', '진행'], ['#equip', '비품'], ['#tasks', '연구과제'], ['#due', '일정'], ['#renew', '27.4 연장'], ['#report', '조사표'], ['#docs', '서류'], ['#check', '검증']],
+    rnd: [['#kibo', '기보/벤처'], ['#quick', 'Quick'], ['#home', '현황'], ['#research', '연구'], ['#due', '기한'], ['#docs', '서류 · 검증']],
     vg: [['#brand', '브랜드'], ['#gel-spec', '클렌징 젤 · 사양'], ['#gel-pdp', '상세페이지'], ['#gel-points', '핵심 포인트'], ['#gel-check', '검수']]
   };
   var EXTRA = [['/', 'fillts.com', '회사 홈페이지 (공개)']];

@@ -12,10 +12,11 @@
   var today = function () { return fmt.today(); };
   var dday = function (dt) { if (!dt) return ''; var n = L.daysBetween(today(), dt); return n === 0 ? 'D-DAY' : n > 0 ? 'D-' + n : 'D+' + (-n); };
   var dot = function (dt) { return dt ? fmt.dot(dt) : ''; };
-  var head = function (view, title, right) { ui.put(view, ui.head('R&D · 연구개발전담부서', title, right)); };
+  // 묶음 화면(R.sub)에서는 각 부분의 큰 제목 대신 구분선 달린 소제목으로
+  var head = function (view, title, right) { ui.put(view, R.sub ? h('div', { class: 'rd-sec' }, h('h2', { class: 'rd-q-h', text: title }), right || null) : ui.head('R&D센터 · 연구개발전담부서', title, right)); };
   var wait = function (view) { if (R.loaded) return false; ui.put(view, ui.empty('불러오는 중…')); return true; };
   var empty = function (t) { return h('p', { class: 'empty', text: t }); };
-  var src = function () { var d = D(); return d.asOf ? h('p', { class: 'note', text: '자료 기준 ' + fmt.dot(d.asOf) + (d.source ? ' · ' + d.source : '') }) : null; };
+  var src = function () { var d = D(); return d.asOf && !R.sub ? h('p', { class: 'note', text: '자료 기준 ' + fmt.dot(d.asOf) + (d.source ? ' · ' + d.source : '') }) : null; };
   var kv = function (rows) { return h('dl', { class: 'rd-kv' }, rows.map(function (r) { return h('div', null, h('dt', { text: r[0] }), h('dd', { text: r[1] })); })); };
   var table = function (cols, rows) {
     return h('div', { class: 'table-wrap flat' }, h('table', { class: 'table rd-table' },
@@ -46,7 +47,7 @@
     if (wait(view)) return;
     var q = D().quick || {}, root = q.root || '';
     var urgent = (q.urgent || []).slice().sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
-    head(view, '[quick] 지금 가장 시급한 것', h('button', { type: 'button', class: 'btn btn-sm no-print', text: '인쇄', onclick: function () { window.print(); } }));
+    head(view, 'Quick — 지금 가장 시급한 것', h('button', { type: 'button', class: 'btn btn-sm no-print', text: '인쇄', onclick: function () { window.print(); } }));
     ui.put(view,
       h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '1. 시급한 일 ' + urgent.length + '건' }),
         h('ol', { class: 'rd-q-list' }, urgent.map(function (u) {
@@ -189,14 +190,45 @@
       }), src());
   }
 
+  /* ---------- [기보/벤처] 체크리스트 — 상태는 rnd_docs/status.checks(K번호)에 같이 저장 ---------- */
+  var KST = { ok: '충족', doing: '진행 중', todo: '해야 함', check: '확인 필요' };
+  function kibo(view) {
+    if (wait(view)) return;
+    var k = D().kibo || {}, ed = canEdit(), root = k.root || '';
+    var all = [].concat.apply([], (k.sections || []).map(function (s) { return s.items; }));
+    var stOf = function (it) { return (R.st[it.id] || {}).st || it.st; };
+    var cnt = function (x) { return all.filter(function (it) { return stOf(it) === x; }).length; };
+    ui.put(view, ui.head('기보 · 벤처', '기술평가 · 벤처확인 체크리스트', h('button', { type: 'button', class: 'btn btn-sm no-print', text: '인쇄', onclick: function () { window.print(); } })),
+      k.lead ? h('p', { class: 'rd-lead', text: k.lead }) : null,
+      h('dl', { class: 'summary' }, [['충족', 'ok'], ['진행 중', 'doing'], ['해야 함', 'todo'], ['확인 필요', 'check']].map(function (p) {
+        return h('div', null, h('dt', { text: p[0] }), h('dd', { class: p[1] === 'todo' && cnt('todo') ? 'red' : '', text: cnt(p[1]) + '건' }));
+      })),
+      (k.sections || []).map(function (sec) {
+        return h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: sec.name }), h('ul', { class: 'list rd-k' }, sec.items.map(function (it) {
+          var st = stOf(it), sel = ui.select([['ok', '충족'], ['doing', '진행 중'], ['todo', '해야 함'], ['check', '확인 필요']], st, ed ? { class: 'no-print', 'aria-label': it.t + ' 상태' } : { class: 'no-print', disabled: true });
+          sel.addEventListener('change', function () { var u = {}; u[it.id] = { st: sel.value, by: S.mid || '', at: fmt.today() }; db.doc('rnd_docs/status').set({ checks: u }, { merge: true }).then(function () { ui.toast('저장했습니다.'); }).catch(ui.fail); });
+          return h('li', { class: 'rd-k-' + st }, h('span', { class: 'rd-k-st', text: KST[st] || st }),
+            h('div', { class: 'grow' }, h('div', { class: 'rd-q-head' }, h('span', { class: 'strong', text: it.t }), it.due ? badge(it.due) : null),
+              h('div', { class: 'meta', text: it.now || '' }), it.path ? pathRow(root, it.path) : null), sel);
+        })));
+      }),
+      (k.ask || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '기보에 직접 물어볼 것' }), h('ol', { class: 'rd-now' }, k.ask.map(function (t) { return h('li', { text: t }); }))) : null);
+  }
+
+  // [R&D센터] 핵심 4화면 = 기존 화면을 한 화면에 묶음 (구분선 소제목)
+  function combo(title, parts) {
+    return function (view, p) {
+      if (wait(view)) return;
+      ui.put(view, ui.head('R&D센터 · 연구개발전담부서', title));
+      R.sub = true;
+      try { parts.forEach(function (fn) { fn(view, p || []); }); } finally { R.sub = false; }
+      ui.put(view, src());
+    };
+  }
+  HR.register('kibo', { render: kibo });
+  HR.register('home', { render: combo('현황 — 인정 정보 · 진행', [home, timeline]) });
+  HR.register('research', { render: combo('연구 — 과제 · 연구비 · 비품', [tasks, equip]) });
+  HR.register('due', { render: combo('기한 — 일정 · 27.4 연장 · 조사표', [due, renew, report]) });
+  HR.register('docs', { render: combo('서류 · 검증', [docs, check]) });
   HR.register('quick', { render: quick });
-  HR.register('home', { render: home });
-  HR.register('timeline', { render: timeline });
-  HR.register('equip', { render: equip });
-  HR.register('tasks', { render: tasks });
-  HR.register('due', { render: due });
-  HR.register('renew', { render: renew });
-  HR.register('report', { render: report });
-  HR.register('docs', { render: docs });
-  HR.register('check', { render: check });
 })();
