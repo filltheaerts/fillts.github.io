@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../hr/hr.css?v=2610073600">
   <link rel="stylesheet" href="../hr/hr-v2.css?v=2610081100">
-  <link rel="stylesheet" href="d2c.css?v=2610103000">
+  <link rel="stylesheet" href="d2c.css?v=2610104000">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -105,26 +105,27 @@
         <li><a href="#repeat" data-menu="repeat">재구매</a></li>
         <li><a href="#kpi" data-menu="kpi">LTV</a></li>
         <li class="nav-sep dc-strat" id="dcStrat">
-          <button type="button" class="dc-strat-btn" id="dcStratBtn" aria-expanded="false" aria-controls="dcStratPop">[핵심전략] <span class="dc-strat-ar">열기 ▾</span></button>
-          <div class="dc-strat-pop" id="dcStratPop" hidden>
-            <div class="dc-strat-h"><span>핵심전략 · 체크리스트</span><button type="button" class="dc-strat-x" id="dcStratX">닫기 ✕</button></div>
-            <div class="dc-strat-g">
-              <a href="#home" data-menu="home"><b>한판</b><span>북극성 · 런칭 전 필수 · 진행도</span></a>
-              <a href="#plan" data-menu="plan"><b>로드맵</b><span>런칭 전 → 첫 30일 → M+3</span></a>
-              <a href="#store" data-menu="store"><b>자사몰 전환</b><span>결제 · 가입 · 리뷰 · 첫 구매</span></a>
-              <a href="#aov" data-menu="aov"><b>크로스셀</b><span>세트 · 무료배송 · 선물 · 오일</span></a>
-              <a href="#retain" data-menu="retain"><b>재구매</b><span>정기배송 · 리마인드 · 적립금</span></a>
-              <a href="#crm" data-menu="crm"><b>CRM 메시지</b><span>알림톡 · 동의 · 시나리오</span></a>
-              <a href="#cs" data-menu="cs"><b>CS</b><span>반품 고지 · 트러블 · 채널톡</span></a>
-              <a href="#cohort" data-menu="cohort"><b>코호트 · 지표</b><span>추적 세팅 · UTM · 대시보드</span></a>
-            </div>
-          </div>
+          <button type="button" class="dc-strat-btn" id="dcStratBtn" aria-expanded="false" aria-controls="dcStratBar">[핵심전략] <span class="dc-strat-ar">펼치기 ▾</span></button>
         </li>
         <li class="nav-sep"><a href="/hr/" target="_blank" rel="opener" class="nav-ext">HR ↗</a></li>
         <li><a href="/map/" target="_blank" rel="opener" class="nav-ext">Map ↗</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
       </ul>
     </nav>
+    <div class="dc-stratbar" id="dcStratBar" hidden>
+      <div class="dc-stratbar-in">
+        <span class="dc-stratbar-g">[핵심전략]<small>전략 · 체크리스트</small></span>
+        <a href="#home" data-menu="home"><b>한판</b><span>북극성 · 런칭 전 필수</span></a>
+        <a href="#plan" data-menu="plan"><b>로드맵</b><span>런칭 전 → M+3</span></a>
+        <a href="#store" data-menu="store"><b>자사몰 전환</b><span>결제 · 가입 · 리뷰</span></a>
+        <a href="#aov" data-menu="aov"><b>크로스셀</b><span>세트 · 무료배송 · 선물</span></a>
+        <a href="#retain" data-menu="retain"><b>재구매</b><span>정기배송 · 리마인드</span></a>
+        <a href="#crm" data-menu="crm"><b>CRM 메시지</b><span>알림톡 · 동의 · 시나리오</span></a>
+        <a href="#cs" data-menu="cs"><b>CS</b><span>반품 · 트러블 · 채널톡</span></a>
+        <a href="#cohort" data-menu="cohort"><b>코호트 · 지표</b><span>추적 · UTM · 대시보드</span></a>
+        <button type="button" class="dc-stratbar-x" id="dcStratX">접기 ▴</button>
+      </div>
+    </div>
     <main class="main" id="view" tabindex="-1"></main>
   </div>
 
@@ -137,7 +138,7 @@
   <script src="../hr/firebase-config.js?v=2610071600"></script>
   <script src="../hr/labor.js?v=2610071600"></script>
   <script src="../hr/core.js?v=2610091300"></script>
-  <script src="d2c.js?v=2610102000"></script>
+  <script src="d2c.js?v=2610104000"></script>
   <script src="d2c-sales.js?v=2610098000"></script>
   <script src="d2c-ads.js?v=2610098000"></script>
   <script src="d2c-creative.js?v=2610103000"></script>

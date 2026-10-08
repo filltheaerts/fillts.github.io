@@ -218,16 +218,21 @@
   }
 
 
-  /* 상단 [핵심전략] 열기 / 닫기 — 메뉴를 고르거나 바깥을 누르면 닫힌다 */
+  /* 상단 [핵심전략] 펼치기 / 접기 — 메뉴 아래 가로 띠(화면 흐름 안). 「접기」를 누를 때까지 열려 있고 상태를 기억한다 */
   (function () {
-    var box = document.getElementById('dcStrat'), btn = document.getElementById('dcStratBtn'), pop = document.getElementById('dcStratPop'), x = document.getElementById('dcStratX');
-    if (!box || !btn || !pop) return;
-    var set = function (open) { pop.hidden = !open; btn.setAttribute('aria-expanded', String(open)); box.classList.toggle('open', open); btn.querySelector('.dc-strat-ar').textContent = open ? '닫기 ▴' : '열기 ▾'; };
-    btn.addEventListener('click', function (e) { e.stopPropagation(); set(pop.hidden); });
-    if (x) x.addEventListener('click', function (e) { e.stopPropagation(); set(false); });
-    pop.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); e.stopPropagation(); });
-    document.addEventListener('click', function () { if (!pop.hidden) set(false); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { set(false); btn.focus(); } });
+    var btn = document.getElementById('dcStratBtn'), bar = document.getElementById('dcStratBar'), x = document.getElementById('dcStratX'), li = document.getElementById('dcStrat');
+    if (!btn || !bar) return;
+    var set = function (open, keep) {
+      bar.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (li) li.classList.toggle('open', open);
+      btn.querySelector('.dc-strat-ar').textContent = open ? '접기 ▴' : '펼치기 ▾';
+      if (keep !== false) { try { localStorage.setItem('d2cStratBar', open ? '1' : ''); } catch (e) { /* 무시 */ } }
+    };
+    btn.addEventListener('click', function () { set(bar.hidden); });
+    if (x) x.addEventListener('click', function () { set(false); });
+    var isStrat = function () { var m = (location.hash || '').slice(1).split('/')[0]; return !!bar.querySelector('a[data-menu="' + m + '"]'); };
+    var saved = false; try { saved = localStorage.getItem('d2cStratBar') === '1'; } catch (e) { /* 무시 */ }
+    set(saved || isStrat(), false);
+    window.addEventListener('hashchange', function () { if (isStrat() && bar.hidden) set(true, false); });
   })();
   HR.register('home', { render: home });
   ['retain', 'cs', 'aov', 'cohort', 'crm', 'store'].forEach(function (id) { HR.register(id, { render: areaView(id) }); });
