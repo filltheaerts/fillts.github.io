@@ -107,7 +107,7 @@
         D.kpi('CTR', p1(clk, imp), '클릭 ÷ 노출 · CPC ' + (clk ? D.won(adAmt / clk) : '—'))),
       ui.panel('매출 대비 광고비 비중', goalInput(goal, D), ratioChart(P, cur, tr, R, gran, goal, D)),
       ui.panel('일별 매출 · 광고비', h('span', { class: 'meta', text: '그날 매출과 매체별로 쓴 광고비 · 인플루언서는 30일 안분액' }), dailyTable(P, cur, R, gran, goal, D)),
-      ui.panel('매체별 광고비 · 성과', h('span', { class: 'meta', text: '인플루언서는 기간 안 안분액 · 실측 = 자사몰 주문의 UTM 유입' }), mediaTable(cur.media, P.cur, adAmt, D)),
+      ui.panel('매체별 광고비 · 성과', h('span', { class: 'meta', text: '인플루언서는 기간 안 안분액 · 실측 = 자사몰 주문의 UTM 유입' }), mediaTable(cur.media, P.cur, adAmt, D, st.sales)),
       ui.panel('매출 · 유입 · 전환율 — 매출 = 세션 × 전환율 × 객단가', h('span', { class: 'meta', text: '이전 기간 대비 · 막대에 올리면 그날 공식' }), relation(P, tr, R, gran, D, st, sp, ses, sesP)),
       ui.panel('전환 퍼널', h('span', { class: 'meta', text: '이 기간 합계' }), funnel(imp, clk, ses, carts, st.orders)),
       adInput(D), trafficInput(D));
@@ -207,19 +207,19 @@
         h('td', { class: 'nowrap', text: isTot ? '합계' : gran === 'day' ? fmt.dot(r.k).slice(5) + ' (' + D.WD[new Date(r.k + 'T00:00:00Z').getUTCDay()] + ')' : r.k }),
         h('td', { class: 'num sa-dt-sales', text: D.won(r.s) }), h('td', { class: 'num', text: r.o ? r.o + '건' : '—' }),
         h('td', { class: 'num sa-dt-ad', text: D.won(r.ad) }), ratioTd(r),
-        cols.map(function (k) { var v = r.m[k] || 0; return h('td', { class: 'num' + (v ? '' : ' sa-dim'), text: v ? D.won(v) + (r.ad ? ' · ' + Math.round(v / r.ad * 100) + '%' : '') : '—' }); }));
+        cols.map(function (k) { var v = r.m[k] || 0; return h('td', { class: 'num' + (v ? '' : ' sa-dim'), text: v ? D.won(v) + (r.s ? ' · ' + (Math.round(v / r.s * 1000) / 10) + '%' : '') : '—' }); }));
     };
     return h('div', null,
       h('div', { class: 'table-wrap flat sa-dt-wrap' }, h('table', { class: 'table sa-media sa-dt' },
         h('thead', null,
-          h('tr', null, h('th', { rowspan: 2, text: gran === 'day' ? '날짜' : '월' }), h('th', { colspan: 2, class: 'sa-grp', text: '매출' }), h('th', { colspan: 2, class: 'sa-grp', text: '광고비' }), cols.length ? h('th', { colspan: cols.length, class: 'sa-grp', text: '매체별 광고비 · 그날 광고비 중 비중' }) : null),
-          h('tr', null, ['순매출', '주문', '합계', '매출 대비'].concat(cols.map(mName)).map(function (c) { return h('th', { class: 'num', text: c }); }))),
+          h('tr', null, h('th', { rowspan: 2, text: gran === 'day' ? '날짜' : '월' }), h('th', { colspan: 2, class: 'sa-grp', text: '매출' }), h('th', { colspan: 2, class: 'sa-grp', text: '광고비' }), cols.length ? h('th', { colspan: cols.length, class: 'sa-grp', text: '매체별 광고비 · 실매출 대비 %' }) : null),
+          h('tr', null, ['실매출 (순매출)', '주문', '합계', '실매출 대비'].concat(cols.map(mName)).map(function (c) { return h('th', { class: 'num', text: c }); }))),
         h('tbody', null, line(tot, true), rows.map(function (r) { return line(r); })))),
-      h('p', { class: 'meta sa-note', text: '맨 위 줄이 기간 합계입니다. 「매출 대비」가 목표(' + goal + '%)를 넘으면 빨강. 인플루언서는 업로드일부터 30일 동안 하루 1/30씩 들어갑니다.' }));
+      h('p', { class: 'meta sa-note', text: '실매출 = 카페24 주문의 순매출(취소 · 환불 · 0원 제외)이고, 모든 %는 그날 실매출 대비입니다. 맨 위 줄이 기간 합계, 「실매출 대비」가 목표(' + goal + '%)를 넘으면 빨강. 인플루언서는 업로드일부터 30일 동안 하루 1/30씩 들어갑니다.' }));
   }
 
   /* ---------- 매체별 표 ---------- */
-  function mediaTable(media, orders, adAmt, D) {
+  function mediaTable(media, orders, adAmt, D, salesTot) {
     var real = {}; orders.forEach(function (o) { var k = srcMedia(o.src); if (!k) return; if (!real[k]) real[k] = { n: 0, s: 0 }; real[k].n++; real[k].s += +o.amt; });
     var keys = Object.keys(media); Object.keys(real).forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
     var order = MEDIA.map(function (m) { return m[0]; });
@@ -231,7 +231,7 @@
       var names = Object.keys(x.names || {});
       return h('tr', { class: isTot ? 'sa-tot' : '' },
         h('td', null, h('div', { class: 'strong', text: isTot ? '합계' : mName(k) }), !isTot && names.length ? h('div', { class: 'meta', text: names.slice(0, 3).join(' · ') + (names.length > 3 ? ' 외 ' + (names.length - 3) : '') }) : null),
-        h('td', { class: 'num', text: D.won(x.amt) }), h('td', { class: 'num', text: adAmt ? Math.round(x.amt / adAmt * 100) + '%' : '—' }),
+        h('td', { class: 'num', text: D.won(x.amt) }), h('td', { class: 'num strong', text: salesTot ? (Math.round(x.amt / salesTot * 1000) / 10) + '%' : '—' }), h('td', { class: 'num', text: adAmt ? Math.round(x.amt / adAmt * 100) + '%' : '—' }),
         h('td', { class: 'num', text: n0(x.imp) }), h('td', { class: 'num', text: n0(x.clk) }), h('td', { class: 'num', text: p1(x.clk, x.imp) }), h('td', { class: 'num', text: x.clk ? D.won(x.amt / x.clk) : '—' }),
         h('td', { class: 'num', text: n0(x.conv) }), h('td', { class: 'num', text: x.amt && x.rev ? (x.rev / x.amt).toFixed(2) : '—' }),
         h('td', { class: 'num sa-real', text: r.n ? n0(r.n) + '건' : '—' }), h('td', { class: 'num sa-real', text: r.s ? D.man(r.s) + '원' : '—' }),
@@ -241,8 +241,8 @@
     var rows = keys.map(function (k) { var x = media[k], r = real[k]; if (x) ['amt', 'imp', 'clk', 'conv', 'rev'].forEach(function (f) { tot[f] += x[f]; }); if (r) { tot.n += r.n; tot.s += r.s; } return row(k, x, r); });
     return h('div', { class: 'table-wrap flat' }, h('table', { class: 'table sa-media' },
       h('thead', null,
-        h('tr', null, h('th', { rowspan: 2, text: '매체' }), h('th', { colspan: 2, class: 'sa-grp', text: '광고비' }), h('th', { colspan: 4, class: 'sa-grp', text: '트래픽 (매체 보고)' }), h('th', { colspan: 2, class: 'sa-grp', text: '전환 (매체 보고)' }), h('th', { colspan: 3, class: 'sa-grp sa-real', text: '자사몰 실측 (UTM)' }), h('th', { rowspan: 2, class: 'num', text: 'CPA (실측)' })),
-        h('tr', null, ['금액', '비중', '노출', '클릭', 'CTR', 'CPC', '전환', 'ROAS', '주문', '매출', 'ROAS'].map(function (c, j) { return h('th', { class: 'num' + (j >= 8 ? ' sa-real' : ''), text: c }); }))),
+        h('tr', null, h('th', { rowspan: 2, text: '매체' }), h('th', { colspan: 3, class: 'sa-grp', text: '광고비' }), h('th', { colspan: 4, class: 'sa-grp', text: '트래픽 (매체 보고)' }), h('th', { colspan: 2, class: 'sa-grp', text: '전환 (매체 보고)' }), h('th', { colspan: 3, class: 'sa-grp sa-real', text: '자사몰 실측 (UTM)' }), h('th', { rowspan: 2, class: 'num', text: 'CPA (실측)' })),
+        h('tr', null, ['금액', '실매출 대비', '광고비 중', '노출', '클릭', 'CTR', 'CPC', '전환', 'ROAS', '주문', '매출', 'ROAS'].map(function (c, j) { return h('th', { class: 'num' + (j >= 9 ? ' sa-real' : ''), text: c }); }))),
       h('tbody', null, rows, row('', { amt: tot.amt, imp: tot.imp, clk: tot.clk, conv: tot.conv, rev: tot.rev }, { n: tot.n, s: tot.s }, true))),
       h('p', { class: 'meta sa-note', text: '매체 보고 전환 · ROAS는 각 매체가 자기 기준(조회 · 클릭 후 n일)으로 센 값이라 실제보다 크게 나오기 쉽습니다. 판단은 오른쪽 「자사몰 실측」(카페24 주문의 utm_source)으로 합니다. 인플루언서는 링크 대신 검색으로 들어오는 경우가 많아 쿠폰코드로 따로 봅니다.' }));
   }
