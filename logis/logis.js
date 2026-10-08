@@ -584,18 +584,25 @@
       warehouses(),
       (d.flow || []).length ? h('details', { class: 'panel lg-fold' }, h('summary', { class: 'label', text: '발주 → 출고 흐름 ' + d.flow.length + '단계' }), h('ol', { class: 'lg-flow' }, d.flow.map(function (t) { return h('li', { text: t }); }))) : null,
       (d.orders || []).length ? ui.panel('품목별 발주 현황', h('span', { class: 'meta', text: d.asOf ? fmt.dot(d.asOf) + ' 기준' : '' }),
-        h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table' },
+        h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table lg-fixed' },
+          h('colgroup', null, [9, 31, 13, 10, 14, 12, 11].map(function (w) { return h('col', { style: 'width:' + w + '%' }); })),
           h('thead', null, h('tr', null, ['상태', '발주처 · 품목', '수량', '금액(VAT 포함)', '지급', '입고(예정)', '입고처'].map(function (c, i) { return h('th', { class: i === 2 || i === 3 ? 'num' : '', text: c }); }))),
           h('tbody', null, d.orders.map(function (o) {
             return h('tr', { class: o.status === '완료' ? 'lg-done' : '' }, h('td', null, h('span', { class: 'lg-st ' + ({ 완료: 'lg-st-ok', 진행: 'lg-st-soon', 미발주: 'lg-st-now', 확인필요: 'lg-st-now' }[o.status] || 'lg-st-none'), text: o.status || '' })),
               h('td', null, h('div', { class: 'strong', text: (o.vendor || '') + ' · ' + (o.item || '') }), o.note ? h('div', { class: 'meta', text: o.note }) : null),
-              h('td', { class: 'num nowrap', text: o.qty || '' }), h('td', { class: 'num nowrap', text: o.amount || '' }), h('td', { class: 'nowrap', text: o.paid || '' }), h('td', { class: 'nowrap', text: o.eta || '' }), h('td', { text: o.dest || '' }));
+              h('td', { class: 'num lg-wrap', text: o.qty || '' }), h('td', { class: 'num', text: o.amount || '' }), h('td', { class: 'lg-note', text: o.paid || '' }), h('td', { class: 'lg-note', text: o.eta || '' }), h('td', { class: 'lg-note', text: o.dest || '' }));
           }))))) : null,
-      (d.leadtimes || []).length ? ui.panel('리드타임 · MOQ (재발주 계산 근거)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table' },
+      (d.leadtimes || []).length ? ui.panel('리드타임 · MOQ (재발주 계산 근거)', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table lg-fixed' },
+        h('colgroup', null, [20, 13, 9, 15, 43].map(function (w) { return h('col', { style: 'width:' + w + '%' }); })),
         h('thead', null, h('tr', null, ['품목', '발주처', '리드타임', 'MOQ', '근거'].map(function (c) { return h('th', { text: c }); }))),
-        h('tbody', null, d.leadtimes.map(function (r) { return h('tr', null, h('td', { class: 'strong', text: r.item }), h('td', { text: r.vendor || '' }), h('td', { class: 'nowrap', text: r.lead_days ? r.lead_days + '일' : '—' }), h('td', { text: r.moq || '' }), h('td', { class: 'meta', text: r.note || '' })); }))))) : null,
+        h('tbody', null, d.leadtimes.map(function (r) { return h('tr', null, h('td', { class: 'strong', text: r.item }), h('td', { text: r.vendor || '' }), h('td', { class: 'nowrap', text: r.lead_days ? r.lead_days + '일' : '—' }), h('td', { text: r.moq || '' }), h('td', { class: 'lg-note', text: r.note || '' })); }))))) : null,
       (d.policy || []).length ? ui.panel('재발주 자금 · 결제 기준 (효경)', null, h('dl', { class: 'lg-kv' }, d.policy.map(function (r) { return h('div', null, h('dt', { text: r[0] }), h('dd', { text: r[1] })); }))) : null,
-      (d.payTerms || []).length ? ui.panel('업체별 결제 조건', null, h('ul', { class: 'list' }, d.payTerms.map(function (p) { return h('li', null, h('span', { class: 'strong', text: p.vendor }), h('span', { class: 'grow', text: p.terms }), p.note ? h('span', { class: 'meta', text: p.note }) : null); }))) : null,
+      (d.payTerms || []).length ? ui.panel('업체별 결제 조건', null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table lg-pay' },
+        h('colgroup', null, h('col', { style: 'width:22%' }), h('col', { style: 'width:22%' }), h('col')),
+        h('thead', null, h('tr', null, ['업체', '결제 조건', '1차 실적 · 메모'].map(function (c) { return h('th', { text: c }); }))),
+        h('tbody', null, d.payTerms.map(function (p) {
+          return h('tr', null, h('td', { class: 'strong', text: p.vendor }), h('td', null, h('span', { class: /확인/.test(p.terms) ? 'lg-st lg-st-now' : 'lg-pay-terms', text: p.terms })), h('td', { class: 'lg-note', text: p.note || '' }));
+        }))))) : null,
       (d.checks || []).length ? ui.panel('발주 메일 보내기 전 체크', null, h('ol', { class: 'lg-flow' }, d.checks.map(function (t) { return h('li', { text: t }); }))) : null,
       d.source ? h('p', { class: 'note', text: '출처 · ' + d.source }) : null,
       !d.orders ? ui.empty('발주 현황을 불러오는 중이거나 아직 입력되지 않았습니다.') : null);

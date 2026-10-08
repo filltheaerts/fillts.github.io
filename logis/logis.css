@@ -195,3 +195,17 @@
 .lg-wk-d { height: 28px; font-size: 12px; padding: 0 6px; width: auto !important; }
 .lg-wk-p { height: 28px; font-size: 12px; padding: 0 4px; width: auto !important; }
 @media (max-width: 760px) { .lg-wk { grid-template-columns: 22px 1fr; } .lg-wk-side { grid-column: 2; justify-content: flex-start; } }
+/* 표 글자 깨짐 · 잘림 방지: 긴 글은 줄바꿈(단어 단위), 짧은 값만 한 줄 */
+.lg-table { table-layout: auto; width: 100%; }
+.lg-table th { white-space: nowrap; }
+.lg-table td { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+.lg-table td.nowrap, .lg-table td.num { white-space: nowrap; word-break: normal; }
+.lg-table .lg-st { white-space: nowrap; }
+.lg-table td .meta, .lg-table td.lg-note { font-size: 12.5px; color: var(--gray-600); line-height: 1.6; }
+.lg-pay { table-layout: fixed; }
+.lg-pay td { padding-top: 12px; padding-bottom: 12px; }
+.lg-pay-terms { font-weight: 500; }
+.lg-fixed { table-layout: fixed; }
+.lg-table td.lg-wrap { white-space: normal; word-break: keep-all; }
+.lg-fixed td { padding-top: 10px; padding-bottom: 10px; }
+@media (max-width: 760px) { .lg-fixed { min-width: 720px; } .lg-pay { min-width: 600px; } }
