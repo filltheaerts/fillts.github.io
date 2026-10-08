@@ -138,8 +138,8 @@
       summary.appendChild(h('div', null, h('dt', { text: p[0] }), h('dd', { class: p[2] || '', text: p[1] })));
     });
 
-    var tb = h('table', { class: 'table' });
-    tb.appendChild(h('thead', null, h('tr', null, ['날짜', '구분', '형태', '출근', '퇴근', '휴게', '근로', '8h 초과', '야간', '상태', ''].map(function (x, i) { return h('th', { class: i >= 5 && i <= 8 ? 'num' : '', text: x }); }))));
+    var tb = h('table', { class: 'table wk-table' });
+    tb.appendChild(h('thead', null, h('tr', null, ['날짜', '구분', '형태', '출근', '퇴근', '휴게', '근로', '8h 초과', '야간', '상태', ''].map(function (x) { return h('th', { text: x }); }))));
     var body = h('tbody');
     M.md.forEach(function (d) {
       var r = M.days[d], c = r && r.calc, hol = L.holidayName(d, S.cfg, S.hmap), sat = L.weekday(d) === 6, lv = A.leaveOn(M.leaves, d);
@@ -150,7 +150,7 @@
         : pf ? ui.tag('정정 대기', 'warn') : r && r.src === 'fix' ? ui.tag('정정됨', 'ok')
         : r && r.open && d < t ? ui.tag('퇴근 누락', 'red') : r && r.open ? ui.tag('근무 중', 'ok')
         : (!r && !hol && !sat && d < t && !S.hmap[d]) ? ui.tag('기록 없음', 'mute') : null;
-      body.appendChild(h('tr', { class: (hol || S.hmap[d] ? 'hol ' : '') + (d === t ? 'today' : '') },
+      body.appendChild(h('tr', { class: (hol || S.hmap[d] ? 'hol off ' : sat ? 'off ' : '') + (d === t ? 'today' : '') },
         h('td', { text: fmt.date(d) }), h('td', { class: 'muted', text: S.hmap[d] || hol || (sat ? '휴무일' : '') }),
         h('td', { class: 'muted', text: r ? A.modeName(r.mode) : '' }),
         h('td', { text: r ? r.inHM : '' }), h('td', { text: r ? r.outHM : '' }),
@@ -163,8 +163,11 @@
           self ? otButtons(view, d, t) : null)));
       if (L.weekday(d) === 0 || d === M.md[M.md.length - 1]) {
         var w = M.weeks.filter(function (x) { return x.monday === L.mondayOf(d); })[0];
-        if (w) body.appendChild(h('tr', { class: 'weekrow' + (w.over52 ? ' bad' : '') }, h('td', { colspan: '11',
-          text: '주간 ' + fmt.date(w.monday) + ' – ' + fmt.date(L.addDays(w.monday, 6)) + '  ·  총 ' + L.minToHM(w.total) + '  ·  연장 ' + L.minToHM(w.ot) + '  ·  휴일 ' + L.minToHM(w.hol8 + w.holOver) + (w.over52 ? '  ·  주 52시간 초과' : '') + (!w.count ? '  ·  다음 달 정산' : '') })));
+        if (w) body.appendChild(h('tr', { class: 'weekrow' + (w.over52 ? ' bad' : '') }, h('td', { colspan: '11' },
+          h('span', { class: 'wk-range', text: '주간 ' + fmt.date(w.monday) + ' – ' + fmt.date(L.addDays(w.monday, 6)) }),
+          [['총', w.total], ['연장', w.ot], ['휴일', w.hol8 + w.holOver]].map(function (p) { return h('span', { class: 'wk-stat' }, p[0] + ' ', h('b', { text: L.minToHM(p[1]) })); }),
+          w.over52 ? h('span', { class: 'wk-stat wk-flag', text: '주 52시간 초과' }) : null,
+          !w.count ? h('span', { class: 'wk-stat wk-note', text: '다음 달 정산' }) : null)));
       }
     });
     tb.appendChild(body);

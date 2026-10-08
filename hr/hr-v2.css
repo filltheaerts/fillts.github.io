@@ -1627,3 +1627,25 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .meet-folder .meet-list, .meet-folder .empty { padding: 0 14px 12px; }
 .meet-folder.open { border-color: var(--black); }
 .one-notes { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+
+/* 근무 기록 표 — 열 묶음 구분선 (날짜 | 출퇴근 | 시간 집계 | 상태) */
+.wk-table th, .wk-table td { padding: 10px 12px; }
+.wk-table th:nth-child(n+4):nth-child(-n+9), .wk-table td:nth-child(n+4):nth-child(-n+9) { text-align: center; font-variant-numeric: tabular-nums; }
+.wk-table td:nth-child(n+4):nth-child(-n+9) { min-width: 56px; }
+.wk-table th:nth-child(4), .wk-table td:nth-child(4),
+.wk-table th:nth-child(6), .wk-table td:nth-child(6),
+.wk-table th:nth-child(10), .wk-table td:nth-child(10) { border-left: 1px solid var(--gray-200); }
+.wk-table th:nth-child(5), .wk-table td:nth-child(5),
+.wk-table th:nth-child(n+7):nth-child(-n+9), .wk-table td:nth-child(n+7):nth-child(-n+9) { border-left: 1px solid var(--gray-100); }
+.wk-table td:nth-child(7) { font-weight: 600; }
+.wk-table td:nth-child(8):not(:empty), .wk-table td:nth-child(9):not(:empty) { color: var(--red); }
+.wk-table tr.off td { background: #fcfcfc; }
+.wk-table tr.today td { box-shadow: none; background: #fff8f8; }
+.wk-table tr.today td:first-child { box-shadow: inset 2px 0 0 var(--red); font-weight: 600; }
+.wk-table tr.off td:nth-child(2) { color: var(--red); }
+.wk-table tr.weekrow td { padding: 9px 12px; border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); }
+.wk-table tr.weekrow .wk-range { font-weight: 500; color: var(--black); margin-right: 18px; }
+.wk-table tr.weekrow .wk-stat { margin-right: 14px; }
+.wk-table tr.weekrow .wk-stat b { font-weight: 600; color: var(--black); font-variant-numeric: tabular-nums; margin-left: 2px; }
+.wk-table tr.weekrow .wk-flag { color: var(--red); font-weight: 500; }
+.wk-table tr.weekrow .wk-note { color: var(--gray-400); }
