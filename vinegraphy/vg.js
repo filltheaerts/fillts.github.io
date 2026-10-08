@@ -333,14 +333,17 @@
       } }, '⠿');
     var check = isTodo ? h('input', { type: 'checkbox', class: 'vg-chk', checked: !!x.done, 'aria-label': x.title + ' 완료', title: x.done ? doneText(x) : '끝나면 체크',
       onclick: function (e) { e.stopPropagation(); toggleDone(x, e.target.checked); } }) : null;
-    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : '') + (isTodo && x.done ? ' done' : ''), 'data-id': x.id, title: (isCopy && x.proof ? x.proof + (canEditPt(x) ? ' · ' : '') : '') + (canEditPt(x) ? '더블클릭하면 바로 고칩니다' : ''),
-      ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip, .vg-chk')) return; startEdit(x.id); } : null },
+    var ans = isTodo ? answerBlock(x) : null;
+    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : '') + (isTodo && x.done ? ' done' : '') + (isTodo ? ' clickable' : ''), 'data-id': x.id,
+      onclick: isTodo ? function (e) { if (e.target.closest('button, input, textarea, select, a, .vg-pt-grip')) return; clearTimeout(clickT); clickT = setTimeout(function () { openAnswer(x.id); }, 230); } : null, title: (isCopy && x.proof ? x.proof + (canEditPt(x) ? ' · ' : '') : '') + (canEditPt(x) ? '더블클릭하면 바로 고칩니다' : ''),
+      ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip, .vg-chk, textarea')) return; clearTimeout(clickT); startEdit(x.id); } : null },
       grip, check || no,
       h('div', { class: 'vg-pt-main' },
         h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
           x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
         !isCopy && (x.proof || who || (isTodo && x.done)) ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null,
-          isTodo && x.done ? h('span', { class: 'vg-done-by', text: doneText(x) }) : null) : null),
+          isTodo && x.done ? h('span', { class: 'vg-done-by', text: doneText(x) }) : null) : null,
+        ans),
       h('div', { class: 'vg-pt-act' },
         isCopy ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-line btn-xs vg-copy-btn') : null,
         canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
@@ -425,14 +428,16 @@
     var filter = h('div', { class: 'vg-filter' }, opts.map(function (o) {
       return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter[kind] = o[0]; HR.refresh(); } });
     }));
-    var pass = function (p) { return !f || (f === '__open' ? !p.done : f === '__done' ? !!p.done : p.tag === f); };
+    var hiding = isTodo && hideDone();
+    var pass = function (p) { return !(hiding && p.done) && (!f || (f === '__open' ? !p.done : f === '__done' ? !!p.done : p.tag === f)); };
     var section = function (t) {
       var tid = t ? t.id : '';
       var items = list.filter(function (p) { return t ? p.theme === tid : !known[p.theme || '']; });
       var shown = items.filter(pass);
       var rows = shown.map(function (x, i) {
         var r = row(prod, kind, items, x, i, list);
-        if (f) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } }
+        // 걸러 보거나 완료를 숨긴 동안에는 끌기를 끈다 (숨은 줄과 순서가 섞이지 않게)
+        if (f || (hiding && items.some(function (p) { return p.done; }))) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } }
         return r;
       });
       var newKey = 'new:' + kind + ':' + tid;
@@ -551,6 +556,36 @@
       list.length ? h('p', { class: 'vg-kw-preview', text: words.map(hashtag).join(' ') }) : null);
   }
   // DO LIST — 체크는 구성원 누구나 (규칙: done · doneBy · doneAt만 바꾸는 수정은 작성자가 아니어도 허용)
+  // 완료 항목 숨기기 — 보는 사람마다 따로 (이 브라우저에 기억)
+  var hideMem = null, clickT = null, ansOpen = null;
+  function hideDone() { if (hideMem === null) { try { hideMem = localStorage.getItem('vgHideDone') === '1'; } catch (e) { hideMem = false; } } return hideMem; }
+  // 답변 — 항목을 한 번 누르면 다음 줄에 파란 글씨 입력칸. Enter 저장 · Shift+Enter 줄바꿈 · Esc 닫기. 누구나 쓴다 (규칙: note · noteBy · noteAt만 바꾸는 수정 허용)
+  function openAnswer(id) { if (ptEdit) return; ansOpen = id; HR.refresh(); setTimeout(function () { var t = document.getElementById('vgAns'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 120); }
+  function answerBlock(x) {
+    if (ansOpen === x.id) {
+      var ta = h('textarea', { id: 'vgAns', class: 'vg-ans-in', rows: 2, maxlength: 2000, placeholder: '답변 쓰기 — Enter 저장 · Shift+Enter 줄바꿈 · Esc 닫기', 'aria-label': '답변' });
+      ta.value = x.note || '';
+      var close = function (save) {
+        if (ansOpen !== x.id) return;
+        ansOpen = null; blurNow();
+        var v = ta.value.trim();
+        if (save && v !== (x.note || '')) {
+          x.note = v;
+          savePt(x.id, v ? { note: v, noteBy: S.mid, noteAt: FV.serverTimestamp() } : { note: '', noteBy: '', noteAt: null }).then(function () { ui.toast(v ? '답변을 남겼습니다.' : '답변을 지웠습니다.'); HR.refresh(); });
+        } else HR.refresh();
+      };
+      ta.addEventListener('keydown', function (e) {
+        if (e.isComposing) return;
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); close(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(false); }
+      });
+      ta.addEventListener('blur', function () { close(true); });
+      return h('div', { class: 'vg-ans editing' }, h('span', { class: 'vg-ans-mark', text: '↳' }), ta);
+    }
+    if (!x.note) return null;
+    var who = (S.members[x.noteBy] || {}).name || '';
+    return h('div', { class: 'vg-ans' }, h('span', { class: 'vg-ans-mark', text: '↳' }), h('p', { class: 'vg-ans-text' }, lines(x.note), who ? h('span', { class: 'vg-ans-who', text: who }) : null));
+  }
   function doneText(x) {
     var who = (S.members[x.doneBy] || {}).name || '', at = x.doneAt && x.doneAt.toDate ? x.doneAt.toDate() : null;
     return '완료' + (who ? ' · ' + who : '') + (at ? ' · ' + (at.getMonth() + 1) + '/' + at.getDate() : '');
@@ -567,7 +602,11 @@
   }
   function dolist(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
-    ui.put(view, ui.head(G ? G.name : '클렌징 젤', 'DO LIST', h('span', { class: 'meta', text: '중요한 순서대로 · 체크는 누구나' })));
+    var hd = hideDone();
+    ui.put(view, ui.head(G ? G.name : '클렌징 젤', 'DO LIST', h('div', { class: 'row vg-head-r' },
+      h('span', { class: 'meta', text: '항목을 누르면 답변 · 더블클릭은 수정' }),
+      h('button', { type: 'button', class: 'btn btn-sm ' + (hd ? '' : 'btn-line'), text: hd ? '완료 항목 보이기' : '완료 항목 숨기기',
+        onclick: function () { try { localStorage.setItem('vgHideDone', hd ? '' : '1'); } catch (e) { /* 저장 불가 → 이번 화면만 */ } hideMem = !hd; HR.refresh(); } }))));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
     ui.put(view, copyGroup(prod, 'todo'));
   }

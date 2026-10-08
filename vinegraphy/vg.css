@@ -273,3 +273,15 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-prog-bar { flex: 1; height: 8px; background: var(--vg-mist); border: 1px solid var(--vg-lilac); border-radius: 4px; overflow: hidden; }
 .vg-prog-bar span { display: block; height: 100%; background: var(--vg-wine); transition: width 0.3s; }
 @media (max-width: 900px) { .vg-group-todo .vg-pt-proof { padding-left: 0; } }
+
+/* DO LIST 답변(파란 글씨) · 완료 항목 숨기기 */
+.vg-group-todo .vg-pt.clickable { cursor: pointer; }
+.vg-ans { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 0 62px; }
+.vg-ans-mark { color: #1d4ed8; font-size: 13px; line-height: 20px; flex: none; }
+.vg-ans-text { font-size: 13px; line-height: 20px; color: #1d4ed8; word-break: keep-all; white-space: normal; }
+.vg-ans-who { margin-left: 8px; font-size: 11px; color: #60a5fa; }
+.vg-ans-in { flex: 1; font: inherit; font-size: 13px; line-height: 20px; color: #1d4ed8; border: 1px solid #93c5fd; background: #f8fbff; padding: 5px 8px; resize: vertical; }
+.vg-ans-in:focus { outline: none; border-color: #1d4ed8; }
+.vg-ans-in::placeholder { color: #93c5fd; }
+.vg-group-todo .vg-pt.done .vg-ans-text { color: #60a5fa; }
+@media (max-width: 900px) { .vg-ans { margin-left: 0; } }
