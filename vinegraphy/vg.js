@@ -16,6 +16,13 @@
     ui.put(view, ui.empty(c && c.at && !c.loading ? '아직 내용이 없습니다. (hr_plan/' + id + ')' : '불러오는 중…'));
     return null;
   }
+  // 제품 묶음: hr_plan/vinegraphy.products[id] (예전 구조 = 최상위에 바로 → 클렌징 젤로 읽는다)
+  function prod(view, id) {
+    var V = need(view, 'vinegraphy'); if (!V) return null;
+    var G = V.products ? V.products[id] : Object.assign({ name: '클렌징 젤' }, V);
+    if (!G) { ui.put(view, ui.empty('이 제품의 내용이 아직 없습니다.')); return null; }
+    return { V: V, G: G };
+  }
   function lines(t) { return String(t || '').split('\n').map(function (x, i) { return [i ? h('br') : null, x]; }); }
   function copyBtn(text, label) {
     return h('button', { type: 'button', class: 'btn btn-line btn-xs', text: label || '복사', onclick: function () {
@@ -29,7 +36,7 @@
 
   /* ---------- 브랜드 — 공지 › 01 바인그라피 원본 그대로 ---------- */
   function brand(view) {
-    var V = doc('vinegraphy'), P = V && V.product;   // 두 문서를 함께 불러온다
+    var V = doc('vinegraphy');   // 두 문서를 함께 불러온다
     var B = need(view, 'brand'); if (!B) return;
     var sec = function (label, x, body) { return ui.panel(label + ' · ' + x.title, null, x.lead ? h('p', { class: 'muted small', text: x.lead }) : null, body, x.note ? h('p', { class: 'br-note', text: x.note }) : null); };
     ui.put(view,
@@ -52,9 +59,12 @@
       sec('Words', B.words, h('div', { class: 'br-words' }, B.words.items.map(function (w) { return h('span', { text: w }); }))),
       sec('Stages', B.stages, h('ol', { class: 'br-stages' }, B.stages.items.map(function (x, i) { return h('li', null, h('span', { class: 'br-no', text: ('0' + (i + 1)).slice(-2) }), h('b', { text: x.k }), h('span', { class: 'meta', text: x.d })); }))),
       sec('Tone & Manner', B.tone, h('div', { class: 'br-tone' }, B.tone.items.map(function (x) { return h('div', null, h('b', { text: '# ' + x.k }), h('p', { text: x.d })); }))),
-      P ? ui.panel('Product · 지금 파는 것', h('a', { class: 'meta', href: '#product', text: '제품 사양 →' }),
-        h('div', { class: 'vg-prod-line' }, h('span', { class: 'br-k', text: P.line }), h('b', { text: P.nameKo }), h('span', { class: 'meta', text: P.nameEn + ' · ' + P.launch })),
-        heroStats(P)) : null,
+      V ? productsOf(V).map(function (x) {
+        var P = x.G.product;
+        return ui.panel('Product · ' + x.G.name, h('a', { class: 'meta', href: '#' + x.id + '-spec', text: x.G.name + ' 제품 사양 →' }),
+          h('div', { class: 'vg-prod-line' }, h('span', { class: 'br-k', text: P.line }), h('b', { text: P.nameKo }), h('span', { class: 'meta', text: P.nameEn + ' · ' + P.launch })),
+          heroStats(P));
+      }) : null,
       V && V.lineup ? ui.panel('Line-up · 제품 출시 순서', null, lineup(V.lineup)) : null,
       B.goal ? h('section', { class: 'br-goal' }, h('span', { class: 'br-goal-label', text: B.goal.label }), h('b', { class: 'br-goal-v', text: B.goal.value }), B.goal.d ? h('p', { text: B.goal.d }) : null) : null,
       (B.logos || []).length ? ui.panel('Logo · 로고 다운로드', null, h('p', { class: 'muted small', text: '외부 전달 · 제작물에는 이 파일만 씁니다. 색 · 비율을 바꾸지 마세요.' }),
@@ -63,7 +73,16 @@
             h('b', { text: x.name }), x.d ? h('span', { class: 'meta', text: x.d }) : null,
             h('div', { class: 'row' }, (x.files || [{ t: '다운로드', src: x.src }]).map(function (f) { return h('a', { class: 'btn btn-line btn-xs', href: f.src, download: '', text: '↓ ' + f.t }); })));
         }))) : null,
-      V && V.sources ? ui.panel('Source · 원본 파일', null, h('ul', { class: 'list vg-src' }, V.sources.map(function (s) { return h('li', null, ext(s.u, s.t), h('span', { class: 'meta', text: s.d })); }))) : null);
+      V && V.sources ? ui.panel('Source · 원본 파일', null, h('ul', { class: 'list vg-src' }, allSources(V).map(function (s) { return h('li', null, ext(s.u, s.t), h('span', { class: 'meta', text: s.d })); }))) : null);
+  }
+  function productsOf(V) {
+    if (!V.products) return [{ id: 'gel', G: Object.assign({ name: '클렌징 젤' }, V) }];
+    return (V.order || Object.keys(V.products)).filter(function (id) { return V.products[id]; }).map(function (id) { return { id: id, G: V.products[id] }; });
+  }
+  function allSources(V) {
+    var out = (V.sources || []).slice();
+    if (V.products) productsOf(V).forEach(function (x) { (x.G.sources || []).forEach(function (s) { out.push({ t: '[' + x.G.name + '] ' + s.t, u: s.u, d: s.d }); }); });
+    return out;
   }
   function heroStats(P) {
     return h('div', { class: 'vg-stats' }, P.hero.map(function (x) { return h('div', { class: 'vg-stat' }, h('b', { text: x.v }), h('span', { class: 'vg-stat-k', text: x.k }), h('p', { text: x.d })); }));
@@ -75,10 +94,10 @@
   }
 
   /* ---------- 제품 사양 — 260814 확정 시트 + 상세페이지 고시정보 ---------- */
-  function product(view) {
-    var V = need(view, 'vinegraphy'); if (!V) return;
-    var P = V.product;
-    head(view, 'Product · ' + P.line, P.nameKo, V);
+  function product(view, id) {
+    var X = prod(view, id); if (!X) return;
+    var V = X.V, G = X.G, P = G.product;
+    head(view, G.name + ' · 제품 사양', P.nameKo, V);
     ui.put(view,
       h('section', { class: 'vg-hero' }, h('div', { class: 'br-kicker', text: P.brand + ' · ' + P.line }), h('h2', { text: P.nameEn }), h('p', { class: 'vg-tag', text: P.tagline }), h('p', { class: 'vg-hook', text: P.hook })),
       heroStats(P),
@@ -95,7 +114,7 @@
       h('div', { class: 'vg-2' },
         ui.panel('사용방법 · Directions', copyBtn(P.usage), h('p', { class: 'vg-body', text: P.usage }), h('p', { class: 'vg-body muted', text: P.usageEn })),
         ui.panel('사용 시 주의사항 · Caution', copyBtn(P.caution), h('p', { class: 'vg-body' }, lines(P.caution)), h('p', { class: 'vg-body muted', text: P.cautionEn }), h('p', { class: 'br-note', text: '품질보증 — ' + P.guarantee }))),
-      claims(V.claims),
+      G.claims ? claims(G.claims) : null,
       ui.panel('Line-up · 제품 출시 순서', null, lineup(V.lineup)));
   }
   function claims(C) {
@@ -109,10 +128,11 @@
   }
 
   /* ---------- 상세페이지 — 초안 슬라이드 챕터 · FAQ · 고시정보 · 레퍼런스 ---------- */
-  function pdp(view) {
-    var V = need(view, 'vinegraphy'); if (!V) return;
-    var D = V.pdp, P = V.product, src = (V.sources || [])[0];
-    head(view, 'PDP · 상세페이지', '더 바인 리저브 클렌징 젤 — 상세페이지', V);
+  function pdp(view, id) {
+    var X = prod(view, id); if (!X) return;
+    var V = X.V, G = X.G, D = G.pdp, P = G.product, src = (G.sources || V.sources || [])[0];
+    if (!D) return ui.put(view, ui.head(G.name + ' · 상세페이지', P.nameKo), ui.empty('상세페이지 내용이 아직 없습니다.'));
+    head(view, G.name + ' · 상세페이지', P.nameKo + ' — 상세페이지', V);
     var keys = ['제품명', '내용량', '피부 타입', '사용기한', '개봉 후 사용기간', '제조국', '화장품제조업자', '화장품책임판매업자', '기능성 화장품', '소비자상담'];
     var notice = keys.map(function (k) { return P.spec.filter(function (r) { return r[0] === k; })[0]; }).filter(Boolean);
     ui.put(view,
@@ -133,10 +153,11 @@
   }
 
   /* ---------- 패키지 문안 — 튜브 · 단상자 (260811 문안 시트, 260821 검토 반영) ---------- */
-  function pack(view) {
-    var V = need(view, 'vinegraphy'); if (!V) return;
-    var K = V.pack;
-    head(view, 'Package · 패키지 문안', '튜브 · 단상자 인쇄 문안', V);
+  function pack(view, id) {
+    var X = prod(view, id); if (!X) return;
+    var V = X.V, G = X.G, K = G.pack;
+    if (!K) return ui.put(view, ui.head(G.name + ' · 패키지 문안', G.product.nameKo), ui.empty('패키지 문안이 아직 없습니다.'));
+    head(view, G.name + ' · 패키지 문안', '튜브 · 단상자 인쇄 문안', V);
     var table = function (T) {
       return ui.panel(T.title, null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table vg-table' },
         h('thead', null, h('tr', null, ['면', '항목', '문안', '폰트 · 크기'].map(function (t) { return h('th', { text: t }); }))),
@@ -148,7 +169,7 @@
     ui.put(view,
       table(K.tube), table(K.box),
       ui.panel('English — 그대로 쓰는 문장', null, h('div', { class: 'vg-spec' },
-        [['Description', K.en.description], ['Distributed by', K.en.distributed], ['Manufactured by', K.en.manufactured], ['Tagline', V.product.tagline]].map(function (r) {
+        [['Description', K.en.description], ['Distributed by', K.en.distributed], ['Manufactured by', K.en.manufactured], ['Tagline', G.product.tagline]].map(function (r) {
           return h('div', null, h('dt', { text: r[0] }), h('dd', null, r[1], ' ', copyBtn(r[1])));
         }))),
       h('div', { class: 'vg-2' },
@@ -157,13 +178,14 @@
   }
 
   /* ---------- 검수 — 인쇄 · 상세페이지 전에 정할 것 ---------- */
-  function check(view) {
-    var V = need(view, 'vinegraphy'); if (!V) return;
+  function check(view, id) {
+    var X = prod(view, id); if (!X) return;
+    var V = X.V, G = X.G, C = G.check || [];
     var LV = [['red', '인쇄 · 게시 전 확정 필요', 'red'], ['warn', '판단 필요', 'warn'], ['info', '참고', 'mute']];
-    head(view, 'Check · 검수', '표기 · 카피 확인 필요 ' + V.check.length + '건', V);
+    head(view, G.name + ' · 검수', C.length ? '표기 · 카피 확인 필요 ' + C.length + '건' : '확인할 것이 없습니다', V);
     ui.put(view, h('p', { class: 'muted small', text: '문안 시트(260821 현지 검토)와 상세페이지 초안(261008)을 맞대어 본 결과입니다. 정해지면 원본 파일을 고치고 이 목록에서 지웁니다.' }),
       LV.map(function (l) {
-        var items = V.check.filter(function (x) { return x.lv === l[0]; });
+        var items = C.filter(function (x) { return x.lv === l[0]; });
         if (!items.length) return null;
         return ui.panel(l[1] + ' · ' + items.length + '건', null, h('ol', { class: 'vg-check' }, items.map(function (x) {
           return h('li', { class: 'lv-' + x.lv }, h('div', { class: 'row' }, ui.tag(l[1].split(' ')[0] === '인쇄' ? '확정 필요' : l[1], l[2]), h('b', { text: x.k })), h('span', { class: 'meta', text: x.w }), h('p', { text: x.d }));
@@ -172,8 +194,10 @@
   }
 
   HR.register('brand', { render: brand });
-  HR.register('product', { render: product });
-  HR.register('pdp', { render: pdp });
-  HR.register('pack', { render: pack });
-  HR.register('check', { render: check });
+  // 제품별 메뉴: <제품id>-spec · -pdp · -pack · -check (제품 목록은 app.js VG_PRODUCTS)
+  (window.VG_PRODUCTS || []).forEach(function (p) {
+    [['spec', product], ['pdp', pdp], ['pack', pack], ['check', check]].forEach(function (m) {
+      HR.register(p.id + '-' + m[0], { render: function (view) { m[1](view, p.id); } });
+    });
+  });
 })();

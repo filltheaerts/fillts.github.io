@@ -98,3 +98,7 @@
   .vg-spec > div { grid-template-columns: 1fr; gap: 4px; }
   .vg-ch { padding: 18px 16px; }
 }
+
+/* 메뉴 묶음 [브랜드] | [제품명] — fin.css .nav-grp와 같은 모양 */
+.nav-links li.nav-grp { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--vg-wine); white-space: nowrap; align-self: center; }
+.nav-links li.nav-grp-brand { color: var(--black); }
