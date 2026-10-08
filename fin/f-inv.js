@@ -265,7 +265,7 @@
       h('div', { class: 'two-col fin-two' }, ui.panel('Unit · 1개 팔면', null, h('div', { class: 'table-wrap flat' }, tb)),
         ui.panel('Assumptions · 가정', null, h('div', { class: 'stack fin-form' }, h('div', { class: 'row' }, field('판매가', 'price', '원'), field('배송비', 'ship', '원'), field('박스비', 'box', '원')),
           h('div', { class: 'row' }, field('결제수수료', 'pgRate', '%'), field('광고비', 'adRate', '% of 판매가'))),
-          h('p', { class: 'meta', text: '제품 원가는 품목의 「제품 1개당 사용량」 × 평균 매입 단가(부가세 포함)로 자동 계산합니다. 시트 「발주견적 체크」의 1개당 원가 5,246원과 같은 방식입니다.' }))),
+          h('p', { class: 'meta', text: '제품 원가는 품목의 「제품 1개당 사용량」 × 평균 매입 단가(부가세 포함)로 자동 계산합니다. 시트 「발주견적 체크」의 1개당 원가와 같은 방식이며, 지금 계산값은 ' + F.won(Math.round(c.uc.total)) + '입니다.' }))),
       ui.panel('Scenario · 판매 수량별', null, h('div', { class: 'table-wrap flat' }, sc)));
   }
 
