@@ -15,7 +15,7 @@
     { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 씨드 유튜버 1명으로 비슷한 채널(구독자 · 댓글 톤 · 키워드) 찾기 → 컨택 · 메일 문의 · 계약 · 시딩 · 업로드 대기 관리' },
-    { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '연구개발전담부서 — 진행 · 비품 · 연구과제 · 일정 · 27.4 연장 · 28.4 조사표 · 서류 · 검증 체크리스트' },
+    { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '연구개발전담부서 — 진행 · 비품 · 연구과제 · 일정 · 27.4 연장 · 조사표 · 서류 · 검증 체크리스트' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '바인그라피 브랜드 에셋 — 브랜드 미션 · 클렌징 젤 제품 사양 · 전성분 · 상세페이지 카피 · 패키지 문안 · 표기 검수' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
