@@ -1649,3 +1649,23 @@ button.tl-label { border: 0; border-right: 1px solid var(--gray-200); text-align
 .wk-table tr.weekrow .wk-stat b { font-weight: 600; color: var(--black); font-variant-numeric: tabular-nums; margin-left: 2px; }
 .wk-table tr.weekrow .wk-flag { color: var(--red); font-weight: 500; }
 .wk-table tr.weekrow .wk-note { color: var(--gray-400); }
+
+/* 타임라인 막대 드래그 — 끝 = 기간 조정, 가운데 = 이동, 드래그 중 눈금 · 날짜 말풍선 */
+.tl-bar.tl-drag { cursor: grab; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tl-h { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; }
+.tl-h.l { left: 0; }
+.tl-h.r { right: 0; }
+.tl-h::after { content: ''; position: absolute; top: 50%; transform: translateY(-50%); width: 2px; height: 10px; border-radius: 1px; background: rgba(255, 255, 255, 0.9); opacity: 0; transition: opacity 0.15s; }
+.tl-h.l::after { left: 3px; }
+.tl-h.r::after { right: 3px; }
+.tl-bar.tl-drag:hover .tl-h::after, .tl-bar.dragging .tl-h::after { opacity: 1; }
+.tl-bar.dragging { cursor: grabbing; filter: brightness(1.1); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); z-index: 5 !important; transition: none; }
+body.tl-dragging, body.tl-dragging * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
+body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
+.tl-ticks { position: absolute; top: 0; bottom: 0; left: 0; right: 0; pointer-events: none; z-index: 1; }
+.tl-ticks span { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid rgba(0, 0, 0, 0.06); }
+.tl-ticks span.wk { border-left-color: rgba(0, 0, 0, 0.16); }
+.tl-ticks span.mo { border-left-color: rgba(0, 0, 0, 0.32); }
+.tl-drange { position: absolute; top: 0; bottom: 0; background: rgba(200, 16, 46, 0.12); border-left: 2px solid var(--red); border-right: 2px solid var(--red); pointer-events: none; z-index: 1; }
+.tl-tip { position: fixed; z-index: 1000; transform: translate(-50%, -100%); background: #111; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .tl-h { width: 16px; } }

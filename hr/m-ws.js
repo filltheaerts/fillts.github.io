@@ -575,6 +575,133 @@
     setTimeout(function () { inputs()[0].focus(); }, 0);
   }
   var tlFold = {}, tlOpen = {};   // 프로젝트별 서브 접기 · 서브별 상세 펼치기
+  /* ---------- 타임라인 막대 드래그 — 끝을 잡으면 기간 조정, 가운데를 잡으면 통째로 이동 (하루 단위로 맞춤) ----------
+     PC = 마우스로 바로 끈다 · 휴대폰 = 길게 눌러(0.35초) 잡은 뒤 끈다(그냥 쓸면 화면 스크롤) · Esc = 취소 · Ctrl/⌘+Z = 방금 바꾼 것 되돌리기 */
+  var tlScroll = null, tlUndo = null;
+  function dstr(n) { return new Date(n * 864e5).toISOString().slice(0, 10); }
+  function tlPeriod(s, d) { return fmt.dot(s).slice(2) + ' → ' + (d ? fmt.dot(d).slice(2) + ' (' + (dnum(d) - dnum(s) + 1) + '일)' : '마감 미정'); }
+  // 저장 뒤 다시 읽기: 캐시를 지우지 않고 낡음 표시만 — 지우면 목록이 잠깐 비었다 다시 그려진다
+  function staleWs() { Object.keys(HR.cache).forEach(function (k) { if (k.indexOf('ws_posts') === 0 && HR.cache[k]) HR.cache[k].at = 0; }); HR.refresh(); }
+  // 화면에 먼저 반영하고 저장, 실패하면 원래대로
+  function tlCommit(p, mutate, msg) {
+    var snap = { start: p.start, due: p.due, subs: p.subs }, patch = mutate(), undo = {};
+    var restore = function () { p.start = snap.start; p.due = snap.due; p.subs = snap.subs; };
+    Object.keys(patch).forEach(function (k) { undo[k] = k === 'subs' ? cleanSubs(snap.subs) : snap[k] || ''; });
+    var ref = db.doc('hr_ws_posts/' + p.id);
+    HR.refresh();
+    ref.update(Object.assign({ updatedAt: FV.serverTimestamp() }, patch)).then(function () {
+      staleWs();
+      tlUndo = { at: Date.now(), fn: function () {
+        restore(); HR.refresh();
+        ref.update(Object.assign({ updatedAt: FV.serverTimestamp() }, undo)).then(function () { staleWs(); ui.toast('되돌렸습니다.'); }).catch(ui.fail);
+      } };
+      ui.toast(msg + (window.matchMedia && matchMedia('(pointer: fine)').matches ? ' · Ctrl+Z 되돌리기' : ''));
+    }).catch(function (x) { restore(); HR.refresh(); ui.fail(x); });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!tlUndo || !(e.ctrlKey || e.metaKey) || e.shiftKey || String(e.key).toLowerCase() !== 'z' || location.hash.indexOf('#ws') !== 0) return;
+    var t = e.target || {}; if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable) return;
+    var u = tlUndo; tlUndo = null;
+    if (Date.now() - u.at > 60000) return;
+    e.preventDefault(); u.fn();
+  });
+  // o = { bar, outside(막대 밖 이름표), grid, scroller, lo, total, s(시작 일번호), e(끝 다음날 일번호), open(마감 미정), save(start, due) }
+  function tlDrag(o) {
+    var bar = o.bar, st = null, tip = null, extra = [], range = null, scrollTimer = null;
+    var pct = function (d) { return (d - o.lo) / o.total * 100; };
+    bar.classList.add('tl-drag'); bar.setAttribute('draggable', 'false');
+    bar.appendChild(h('span', { class: 'tl-h l', title: '시작일 조정' })); bar.appendChild(h('span', { class: 'tl-h r', title: '마감일 조정' }));
+    bar.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    function modeAt(x, touch) {
+      var r = bar.getBoundingClientRect(), edge = Math.min(touch ? 18 : 9, r.width / 3);
+      var m = x - r.left <= edge ? 'l' : r.right - x <= edge ? 'r' : 'm';
+      return o.open && m === 'l' ? 'm' : m;   // 마감 미정 막대의 끝은 가짜(+14일) — 왼쪽 끝은 통째 이동과 같다
+    }
+    function ticks(track) {
+      var box = h('div', { class: 'tl-ticks' }), daily = st.dayPx >= 5;
+      for (var d = o.lo; d <= o.lo + o.total; d++) {
+        var dt = new Date(d * 864e5), first = dt.getUTCDate() === 1, mon = dt.getUTCDay() === 1;
+        if (daily || mon || first) box.appendChild(at(h('span', { class: first ? 'mo' : mon ? 'wk' : '' }), pct(d)));
+      }
+      track.appendChild(box); extra.push(box);
+    }
+    function begin(x, mode) {
+      var track = bar.parentNode, head = o.grid.querySelector('.tl-head .tl-track');
+      st = { x0: x, sc0: o.scroller.scrollLeft, x: x, mode: mode, dayPx: track.getBoundingClientRect().width / o.total, s: o.s, e: o.e, l0: bar.style.left, w0: bar.style.width };
+      document.body.classList.add('tl-dragging'); if (mode !== 'm') document.body.classList.add('tl-resizing');
+      bar.classList.add('dragging');
+      if (o.outside) o.outside.style.visibility = 'hidden';
+      ticks(track); if (head) { ticks(head); range = h('div', { class: 'tl-drange' }); head.appendChild(range); extra.push(range); }
+      tip = h('div', { class: 'tl-tip' }); document.body.appendChild(tip);
+      document.addEventListener('keydown', esc);
+    }
+    function esc(e) { if (e.key === 'Escape' && st) { st.s = o.s; st.e = o.e; end(); } }
+    function move(x, fromTimer) {
+      st.x = x;
+      var dd = Math.round((x + o.scroller.scrollLeft - st.x0 - st.sc0) / st.dayPx), min = o.lo, max = o.lo + o.total, s = o.s, e = o.e;
+      if (st.mode === 'm') { dd = Math.max(min - o.s, Math.min(max - o.e, dd)); s += dd; e += dd; }
+      else if (st.mode === 'l') s = Math.max(min, Math.min(o.e - 1, o.s + dd));
+      else e = Math.min(max, Math.max(o.s + 1, o.e + dd));
+      st.s = s; st.e = e;
+      at(bar, pct(s), Math.max(pct(e) - pct(s), 0.6));
+      if (range) at(range, pct(s), pct(e) - pct(s));
+      var due = o.open && st.mode !== 'r' ? '' : dstr(e - 1);
+      tip.textContent = tlPeriod(dstr(s), due);
+      var r = bar.getBoundingClientRect();
+      tip.style.left = Math.max(70, Math.min(window.innerWidth - 70, x)) + 'px';
+      tip.style.top = Math.max(34, r.top - 8) + 'px';
+      if (!fromTimer) edgeScroll();
+    }
+    // 화면 가장자리로 끌면 옆으로 자동 스크롤
+    function edgeScroll() {
+      clearInterval(scrollTimer); scrollTimer = null;
+      var sr = o.scroller.getBoundingClientRect(), lab = o.grid.querySelector('.tl-head .tl-label'), lw = lab ? lab.offsetWidth : 0;
+      var v = st.x < sr.left + lw + 30 ? -14 : st.x > sr.right - 30 ? 14 : 0;
+      if (v) scrollTimer = setInterval(function () {
+        var b = o.scroller.scrollLeft; o.scroller.scrollLeft += v;
+        if (o.scroller.scrollLeft !== b) move(st.x, true); else { clearInterval(scrollTimer); scrollTimer = null; }
+      }, 30);
+    }
+    function end() {
+      clearInterval(scrollTimer); scrollTimer = null;
+      document.removeEventListener('keydown', esc);
+      document.body.classList.remove('tl-dragging', 'tl-resizing'); bar.classList.remove('dragging');
+      extra.forEach(function (el) { if (el.parentNode) el.parentNode.removeChild(el); }); extra = []; range = null;
+      if (tip && tip.parentNode) tip.parentNode.removeChild(tip); tip = null;
+      // 드래그 직후의 클릭(막대 열기 · 서브 팝업)은 먹는다
+      var eat = function (ev) { ev.preventDefault(); ev.stopPropagation(); };
+      window.addEventListener('click', eat, true); setTimeout(function () { window.removeEventListener('click', eat, true); }, 400);
+      var s = st.s, e = st.e, mode = st.mode, l0 = st.l0, w0 = st.w0; st = null;
+      if (s === o.s && e === o.e) { bar.style.left = l0; bar.style.width = w0; if (o.outside) o.outside.style.visibility = ''; return; }
+      o.save(dstr(s), o.open && mode !== 'r' ? '' : dstr(e - 1));
+    }
+    // 마우스: 4px 이상 움직여야 드래그 — 그보다 적으면 지금처럼 클릭
+    bar.addEventListener('mousedown', function (e) {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || st) return;
+      e.preventDefault();
+      var x0 = e.clientX, mode = modeAt(x0), started = false;
+      var mm = function (ev) { if (!started) { if (Math.abs(ev.clientX - x0) < 4) return; started = true; begin(x0, mode); } move(ev.clientX); };
+      var mu = function () { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); if (started && st) end(); };
+      window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu);
+    });
+    // 터치: 길게 눌러야 잡힌다 — 그 전에 움직이면 평소처럼 스크롤
+    var holdTimer = null;
+    bar.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1 || st) return;
+      var t = e.touches[0], x0 = t.clientX, y0 = t.clientY, armed = false;
+      var off = function () { clearTimeout(holdTimer); holdTimer = null; bar.removeEventListener('touchmove', tm); bar.removeEventListener('touchend', te); bar.removeEventListener('touchcancel', te); };
+      var tm = function (ev) {
+        var q = ev.touches[0];
+        if (!armed) { if (Math.abs(q.clientX - x0) > 8 || Math.abs(q.clientY - y0) > 8) off(); return; }
+        ev.preventDefault(); move(q.clientX);
+      };
+      var te = function (ev) { off(); if (armed) { if (ev.cancelable) ev.preventDefault(); if (st) end(); } };
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(function () { armed = true; if (navigator.vibrate) navigator.vibrate(15); begin(x0, modeAt(x0, true)); move(x0); }, 350);
+      bar.addEventListener('touchmove', tm, { passive: false }); bar.addEventListener('touchend', te); bar.addEventListener('touchcancel', te);
+    }, { passive: true });
+    bar.addEventListener('contextmenu', function (e) { if (st || holdTimer) e.preventDefault(); });
+  }
   function timelineOf(list, showSpace) {
     var today = fmt.today(), T = dnum(today);
     var spanOf = function (p) {
@@ -617,6 +744,8 @@
         at(bar, left, w);
         var outside = w < 9 ? at(h('a', { class: 'tl-bar-out', href: '#ws/' + p.org + '/projects/' + p.id, text: label }), Math.min(left + w, 100)) : null;
         if (outside) bar.classList.add('short');
+        if (canEditProject(p)) tlDrag({ bar: bar, outside: outside, grid: grid, scroller: scroller, lo: lo, total: total, s: x.s, e: end, open: x.e === null,
+          save: function (s, d) { tlCommit(p, function () { p.start = s; p.due = d; return { start: s, due: d }; }, '「' + p.title + '」 ' + tlPeriod(s, d)); } });
         var over = x.e !== null && x.e < T && p.status !== 'done';
         grid.appendChild(h('div', { class: 'tl-row' },
           h('a', { class: 'tl-label', href: '#ws/' + p.org + '/projects/' + p.id }, showSpace ? spaceBadge(p.org) : null,
@@ -645,8 +774,10 @@
             var l2 = pct(a), w2 = Math.max(pct(z) - l2, 0.6);
             var sbar = at(h('button', { type: 'button', class: 'tl-bar tl-subbar st-' + (sb.done ? 'done' : (p.status || 'idea')) + (late ? ' late' : ''), title: sb.t + ' · ' + per,
               onclick: function () { subModal(p, si); } }, w2 >= 12 ? h('span', { class: 'tl-bar-t', text: sb.t + ' · ' + per }) : w2 >= 6 ? h('span', { class: 'tl-bar-t', text: sb.t }) : null), l2, w2);
-            track.appendChild(sbar);
-            if (w2 < 6) track.appendChild(at(h('span', { class: 'tl-bar-out sub', text: sb.t + ' · ' + per }), Math.min(l2 + w2, 100)));
+            var sout = w2 < 6 ? at(h('span', { class: 'tl-bar-out sub', text: sb.t + ' · ' + per }), Math.min(l2 + w2, 100)) : null;
+            track.appendChild(sbar); if (sout) track.appendChild(sout);
+            if (editable) tlDrag({ bar: sbar, outside: sout, grid: grid, scroller: scroller, lo: lo, total: total, s: a, e: z, open: false,
+              save: function (s, d) { tlCommit(p, function () { var arr = (p.subs || []).map(function (y) { return Object.assign({}, y); }); arr[si].start = s; arr[si].due = d; p.subs = arr; return { subs: cleanSubs(arr) }; }, '「' + sb.t + '」 ' + tlPeriod(s, d)); } });
           }
           grid.appendChild(h('div', { class: 'tl-row tl-subrow' + (last && !open ? ' last' : '') + (open ? ' open' : '') },
             h('button', { type: 'button', class: 'tl-label tl-sublabel' + (last ? ' last' : ''), title: '눌러서 보기 · 고치기', onclick: function () { subModal(p, si); } },
@@ -668,7 +799,13 @@
     });
     if (!list.length) grid.appendChild(h('div', { class: 'tl-row empty', text: '프로젝트가 없습니다.' }));
     scroller.appendChild(grid); wrap.appendChild(scroller);
-    setTimeout(function () { var t = scroller.querySelector('.tl-head .tl-today'); if (t && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft = Math.max(0, t.offsetLeft + 220 - scroller.clientWidth / 3); }, 0);
+    // 다시 그려도(드래그 저장 · 서브 수정) 보던 가로 위치 유지 — 처음 열 때 · 기간 버튼을 바꿀 때만 오늘로
+    var tlKey = location.hash + '|' + tlSpan;
+    scroller.addEventListener('scroll', function () { tlScroll = { key: tlKey, x: scroller.scrollLeft }; });
+    setTimeout(function () {
+      if (tlScroll && tlScroll.key === tlKey) { scroller.scrollLeft = tlScroll.x; return; }
+      var t = scroller.querySelector('.tl-head .tl-today'); if (t && scroller.scrollWidth > scroller.clientWidth) scroller.scrollLeft = Math.max(0, t.offsetLeft + 220 - scroller.clientWidth / 3);
+    }, 0);
     return wrap;
   }
   function orderToggle() { if (projView === 'timeline') return null; return h('a', { href: '#', class: 'link', text: projOrdering ? '순서 편집 끝' : '⇅ 프로젝트 순서', onclick: function (e) { e.preventDefault(); projOrdering = !projOrdering; HR.refresh(); } }); }
