@@ -1740,4 +1740,4 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   /* 페이지 전체가 좌우로 밀리지 않게 — 넓은 보드 · 표는 본문 안에서만 옆으로 넘긴다 */
   .main { overflow-x: auto; }
 }
-@media (max-width: 380px) { .nav { gap: 6px; padding-left: 14px; padding-right: 14px; } }
+@media (max-width: 380px) { .nav { gap: 5px; padding-left: 12px; padding-right: 12px; } .nav-right .nav-map { padding: 0 6px; } }
