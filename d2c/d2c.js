@@ -217,6 +217,26 @@
         h('tbody', null, d.kpis.map(function (x) { return h('tr', null, h('td', { class: 'strong', text: x.k }), h('td', { class: 'dc-f', text: x.f || '' }), h('td', { text: x.why || '' }), h('td', { class: 'meta', text: x.bench || '' })); }))))) : null);
   }
 
+
+  /* 상단 [핵심전략] 열기 / 닫기 — 메뉴를 고르거나 바깥을 누르면 닫힌다 */
+  (function () {
+    var box = document.getElementById('dcStrat'), btn = document.getElementById('dcStratBtn'), pop = document.getElementById('dcStratPop'), x = document.getElementById('dcStratX');
+    if (!box || !btn || !pop) return;
+    var set = function (open) { pop.hidden = !open; btn.setAttribute('aria-expanded', String(open)); box.classList.toggle('open', open); btn.querySelector('.dc-strat-ar').textContent = open ? '닫기 ▴' : '열기 ▾'; };
+    btn.addEventListener('click', function (e) { e.stopPropagation(); set(pop.hidden); });
+    if (x) x.addEventListener('click', function (e) { e.stopPropagation(); set(false); });
+    pop.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); e.stopPropagation(); });
+    document.addEventListener('click', function () { if (!pop.hidden) set(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { set(false); btn.focus(); } });
+  })();
+  /* 왼쪽 메뉴 [핵심전략]: 열기 / 닫기(기억) · 전략 화면을 보고 있으면 자동으로 열림 */
+  (function () {
+    var d = document.getElementById('dcSideStrat'); if (!d) return;
+    try { if (localStorage.getItem('d2cStratOpen') === '1') d.open = true; } catch (e) { /* 무시 */ }
+    d.addEventListener('toggle', function () { try { localStorage.setItem('d2cStratOpen', d.open ? '1' : ''); } catch (e) { /* 무시 */ } });
+    var sync = function () { var m = (location.hash || '').slice(1).split('/')[0]; if (d.querySelector('a[data-menu="' + m + '"]')) d.open = true; };
+    window.addEventListener('hashchange', sync); sync();
+  })();
   HR.register('home', { render: home });
   ['retain', 'cs', 'aov', 'cohort', 'crm', 'store'].forEach(function (id) { HR.register(id, { render: areaView(id) }); });
   HR.register('plan', { render: plan });
