@@ -6,13 +6,15 @@
   'use strict';
   var HR = window.HR, S = HR.S, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, L = HR.L;
   var FV = firebase.firestore.FieldValue;
-  var G = { items: [], moves: [], vendors: [], specs: [], doc: null, loaded: 0 };
+  var G = { items: [], moves: [], vendors: [], specs: [], doc: null, specDoc: null, basicsDoc: null, loaded: 0 };
   HR.APP.onStart = function (sub) {
     var done = function () { G.loaded++; };
     sub(db.collection('logis_items'), function (s) { G.items = HR.rows(s).sort(bySort); done(); });
     sub(db.collection('logis_moves'), function (s) { G.moves = HR.rows(s); });
     sub(db.collection('logis_vendors'), function (s) { G.vendors = HR.rows(s).sort(bySort); });
     sub(db.collection('logis_specs'), function (s) { G.specs = HR.rows(s).sort(bySort); });
+    sub(db.doc('logis_docs/spec'), function (s) { G.specDoc = s.exists ? s.data() : null; });
+    sub(db.doc('logis_docs/basics'), function (s) { G.basicsDoc = s.exists ? s.data() : null; });
     sub(db.doc('logis_docs/main'), function (s) { try { G.doc = s.exists ? JSON.parse(s.data().json || '{}') : {}; } catch (e) { G.doc = {}; } });
   };
   function bySort(a, b) { return (a.sort || 999) - (b.sort || 999) || String(a.name || a.label || '').localeCompare(String(b.name || b.label || '')); }
@@ -108,7 +110,6 @@
     var ps = G.items.map(plan), urgent = ps.filter(function (p) { return p.state === 'now' || p.state === 'soon' || p.state === 'gap'; });
     var d = D(), open = (d.open || []).slice().sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
     var inbound = G.items.filter(function (i) { return i.order && +i.order.qty; });
-    var quick = G.specs.filter(function (s) { return s.pin; });
     head(view, '물류 한판', h('span', { class: 'meta', text: d.asOf ? '기본사항 기준 ' + fmt.dot(d.asOf) : '' }));
     ui.put(view,
       h('dl', { class: 'summary four' },
@@ -119,8 +120,7 @@
       h('div', { class: 'lg-grid' },
         ui.panel('① 재고 · 재발주 시점', h('a', { class: 'link', href: '#stock', text: '재고 실사 →' }),
           ps.length ? stockMini(ps) : ui.empty('품목이 없습니다. 「재고 · 재발주」에서 추가하세요.')),
-        ui.panel('② 위킵 입고 — 바로 복사', h('div', { class: 'lg-btns' }, quick.length ? copyBtn(function () { return specText(quick); }, '전체 복사', 'lg-copy-main') : null, h('a', { class: 'link', href: '#spec', text: '사양 전체 →' })),
-          quick.length ? h('pre', { class: 'lg-mail lg-quick', text: specText(quick) }) : ui.empty('「위킵 사양」에서 핀(★)을 꽂은 항목이 여기 나옵니다.')),
+        curGroups()[0] ? specBlock(curGroups()[0].id, { fixedTitle: true, title: '② ' + curGroups()[0].name + ' — 고치고 바로 복사', link: h('a', { class: 'link', href: '#spec', text: '위킵 전체 →' }) }) : ui.panel('② 위킵 사양', null, ui.empty('「위킵 사양」에 묶음을 추가하세요.')),
         ui.panel('③ 발주 메일', h('a', { class: 'link', href: '#mail', text: '메일 쓰기 →' }),
           urgent.length ? h('ul', { class: 'list' }, urgent.map(function (p) {
             var v = vendor(p.it.vendorId);
@@ -359,7 +359,7 @@
   }
   function destText(w) {
     if (w === 'wekeep') {
-      var g = function (label) { var s = G.specs.filter(function (x) { return x.label === label; })[0]; return s ? s.value : ''; };
+      var g = specLine;
       return ['위킵 화성센터 — ' + (g('입고 주소') || '경기도 화성시 장안면 장안공단로 161-31 위킵주식회사 화성센터'),
         '입고 연락처: ' + (g('입고 연락처') || '화성센터 입고팀 070-7709-0623'),
         '· 입고 시간 10:00~16:00 (시간 외 하차는 사전 협의)', '· 운송기사에게 화주명 「(주)필츠」 전달 필수 (미전달 시 회송)', '· 박스 겉면 표기: (주)필츠 / 품목명 / 박스당 ○개 / ○번째 박스(1/N)'].join('\n');
@@ -386,35 +386,79 @@
   }
 
   /* ================= [spec] 위킵 사양 — 복사 ================= */
-  var SP = { edit: false };
+  /* 편집형 문서 묶음 — logis_docs/{spec | basics}.groups [{id, name, text, where?}]. 입력 0.8초 뒤 · 칸을 벗어날 때 자동 저장.
+     spec 문서가 아직 없으면 옛 사양 카드(logis_specs)를 묶음별 「항목: 값」 줄글로 바꿔 보여 주고, 처음 고칠 때 문서로 저장한다 */
   function specText(list) { return list.map(function (s) { return s.label + ': ' + (s.value || ''); }).join('\n'); }
+  var DOCS = {
+    spec: function () {
+      if (G.specDoc && (G.specDoc.groups || []).length) return G.specDoc.groups;
+      var names = [];
+      G.specs.forEach(function (s) { var g = s.group || '기타'; if (names.indexOf(g) < 0) names.push(g); });
+      return names.map(function (n, i) { return { id: 'g' + (i + 1), name: n, text: specText(G.specs.filter(function (s) { return (s.group || '기타') === n; })) }; });
+    },
+    basics: function () { return (G.basicsDoc && G.basicsDoc.groups) || []; }
+  };
+  var PEND = {};   // key → { timer, draft } 저장 대기 중인 사본 (다시 그려도 입력이 사라지지 않게)
+  var pend = function (key) { return PEND[key] || (PEND[key] = { timer: null, draft: null }); };
+  var curGroups = function (key) { key = key || 'spec'; return JSON.parse(JSON.stringify(pend(key).draft || DOCS[key]())); };
+  function docSave(key, groups, st) {
+    var P = pend(key); P.draft = groups; clearTimeout(P.timer);
+    if (st) st.textContent = '저장 중…';
+    P.timer = setTimeout(function () { docFlush(key, st); }, 800);
+  }
+  function docFlush(key, st) {
+    var P = pend(key); clearTimeout(P.timer); P.timer = null;
+    var groups = P.draft; if (!groups) return Promise.resolve();
+    P.draft = null;
+    if (key === 'spec') G.specDoc = { groups: groups }; else G.basicsDoc = { groups: groups };
+    return db.doc('logis_docs/' + key).set({ groups: groups, updatedAt: FV.serverTimestamp(), updatedBy: S.mid || '' })
+      .then(function () { if (st) st.textContent = '저장됨 ✓ ' + L.kstHM(new Date()); })
+      .catch(function (e) { if (st) st.textContent = '저장 실패 — ' + (e.code || e.message); ui.toast('저장하지 못했습니다 — ' + (e.code || e.message)); });
+  }
+  window.addEventListener('beforeunload', function () { Object.keys(PEND).forEach(function (k) { if (PEND[k].draft) docFlush(k); }); });
+  function grow(ta) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
+  // 묶음 하나 = 제목 + 전체 복사 + 편집 가능한 본문 (+ extra: 본문 아래 붙는 요소)
+  function docBlock(key, gid, opts) {
+    opts = opts || {};
+    var g = curGroups(key).filter(function (x) { return x.id === gid; })[0];
+    if (!g) return null;
+    var ed = canEdit(), st = h('span', { class: 'meta lg-save-st' });
+    var ta = h('textarea', { class: 'lg-doc', spellcheck: 'false', 'aria-label': g.name + ' 내용' });
+    ta.value = g.text || '';
+    if (!ed) ta.readOnly = true;
+    var put = function (patch) { var all = curGroups(key); all.forEach(function (x) { if (x.id === gid) Object.assign(x, patch); }); docSave(key, all, st); };
+    var flush = function () { if (pend(key).draft) docFlush(key, st); };
+    ta.addEventListener('input', function () { grow(ta); put({ text: ta.value }); });
+    ta.addEventListener('blur', flush);
+    setTimeout(function () { grow(ta); }, 0);
+    var full = ed && !opts.fixedTitle;
+    var title = full ? h('input', { type: 'text', class: 'lg-doc-title', value: g.name, 'aria-label': '묶음 이름', oninput: function () { put({ name: this.value }); }, onblur: flush })
+      : h('div', { class: 'label', text: opts.title || g.name });
+    var idx = curGroups(key).map(function (x) { return x.id; }).indexOf(gid);
+    var move = function (d) { return function () { var a = curGroups(key), j = idx + d; if (j < 0 || j >= a.length) return; var t = a[idx]; a[idx] = a[j]; a[j] = t; pend(key).draft = a; docFlush(key, st).then(HR.refresh); }; };
+    return h('section', { class: 'panel lg-docp' + (opts.cls ? ' ' + opts.cls : '') },
+      h('div', { class: 'panel-head' }, h('div', { class: 'lg-doc-h' }, title, opts.sub ? h('span', { class: 'meta', text: opts.sub }) : null),
+        h('div', { class: 'lg-btns' }, st, copyBtn(function () { return ta.value; }, '전체 복사', 'lg-copy-main'), opts.link || null,
+          full ? ui.btn('↑', move(-1), 'btn-line btn-xs') : null, full ? ui.btn('↓', move(1), 'btn-line btn-xs') : null,
+          full ? ui.confirmBtn('삭제', function () { pend(key).draft = curGroups(key).filter(function (x) { return x.id !== gid; }); docFlush(key).then(HR.refresh); }) : null)),
+      ta, opts.extra || null);
+  }
+  function addGroup(key, name) { var a = curGroups(key); a.push({ id: 'g' + Date.now().toString(36), name: name, text: '' }); pend(key).draft = a; docFlush(key).then(HR.refresh); }
+  var specBlock = function (gid, opts) { return docBlock('spec', gid, opts); };
   function spec(view) {
     if (wait(view)) return;
-    var groups = [];
-    G.specs.forEach(function (s) { var g = s.group || '기타'; if (groups.indexOf(g) < 0) groups.push(g); });
-    head(view, '위킵 사양 — 복사해서 붙여넣기', canEdit() ? ui.btn(SP.edit ? '편집 끝' : '편집', function () { SP.edit = !SP.edit; HR.refresh(); }, 'btn-line btn-sm') : null);
-    ui.put(view, h('p', { class: 'lg-lead', text: 'FBW 입고 신청 · 상품 등록 · 운송장 · 박스 라벨에 들어갈 값을 모아 두었습니다. 「복사」를 누르고 붙여넣으면 됩니다. ★은 한판에도 나옵니다.' }),
+    var groups = curGroups('spec');
+    head(view, '위킵 사양 — 고치고 복사하기', canEdit() ? ui.btn('+ 묶음 추가', function () { addGroup('spec', '새 묶음'); }, 'btn-line btn-sm') : null);
+    ui.put(view, h('p', { class: 'lg-lead', text: '본문을 그대로 고치면 자동 저장됩니다(입력 0.8초 뒤 · 칸을 벗어날 때). 묶음 이름도 바로 고칠 수 있고 ↑↓로 순서를 바꿉니다. 「전체 복사」는 지금 보이는 글 그대로 복사합니다. 맨 위 묶음이 한판에 나옵니다.' }),
       labelMaker(),
-      groups.map(function (g) {
-        var list = G.specs.filter(function (s) { return (s.group || '기타') === g; });
-        return ui.panel(g, copyBtn(function () { return specText(list); }, '전체 복사', 'lg-copy-main'),
-          SP.edit ? h('div', { class: 'lg-specs' }, list.map(specEdit)) : h('pre', { class: 'lg-mail lg-quick', text: specText(list) }));
-      }),
-      SP.edit ? specEdit({ group: groups[0] || '위킵 입고' }) : null,
-      !G.specs.length ? ui.empty('사양이 없습니다.') : null);
+      groups.map(function (g) { return specBlock(g.id); }),
+      !groups.length ? ui.empty('묶음이 없습니다. 「+ 묶음 추가」를 누르세요.') : null);
   }
-  function specEdit(s) {
-    var g = ui.input({ value: s.group || '', placeholder: '묶음', 'aria-label': '묶음' }), l = ui.input({ value: s.label || '', placeholder: '항목', 'aria-label': '항목' });
-    var v = h('textarea', { rows: 2, placeholder: '값', 'aria-label': '값' }, s.value || ''), o = ui.input({ type: 'number', value: s.sort || '', placeholder: '순서', class: 'lg-qty', 'aria-label': '순서' });
-    var pin = h('input', { type: 'checkbox', 'aria-label': '한판에 표시' }); pin.checked = !!s.pin;
-    return h('div', { class: 'lg-spec lg-spec-ed' }, h('div', { class: 'lg-spec-l' }, g, l), v,
-      h('div', { class: 'lg-btns' }, o, h('label', { class: 'check' }, pin, '★'),
-        ui.btn(s.id ? '저장' : '+ 추가', function () {
-          if (!l.value.trim()) return ui.toast('항목 이름을 넣어 주세요.');
-          var ref = s.id ? db.collection('logis_specs').doc(s.id) : db.collection('logis_specs').doc();
-          save(ref, { group: g.value.trim() || '기타', label: l.value.trim(), value: v.value, sort: o.value === '' ? null : +o.value, pin: pin.checked }, '저장했습니다.');
-        }, 'btn-xs'),
-        s.id ? ui.confirmBtn('삭제', function () { db.collection('logis_specs').doc(s.id).delete(); }) : null));
+  // 발주 메일 입고지에 쓰는 값: 사양 글에서 「항목: 값」 줄을 찾는다
+  function specLine(label) {
+    var re = new RegExp('^\\s*' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:：]\\s*(.+)$', 'm');
+    for (var gs = curGroups('spec'), i = 0; i < gs.length; i++) { var m = re.exec(gs[i].text || ''); if (m) return m[1].trim(); }
+    return '';
   }
   // 박스 겉면 표기 라벨: 총 수량 · 박스당 개수 → 박스마다 「○번째 박스(1/N)」 문구
   var LB = { name: '', per: '', total: '' };
@@ -437,14 +481,41 @@
       out, h('p', { class: 'note', text: '박스마다 위킵 입하라벨(FBW › 입고 › 입하 라벨 출력)과 이 표기 라벨을 함께 붙입니다. 마지막 박스는 남은 수량으로 계산됩니다.' }));
   }
 
-  /* ================= [order] 발주 현황 · 기본사항 ================= */
+  /* ================= [order] 창고 · 발주 현황 ================= */
+  // 창고별 카드: logis_docs/basics 묶음(where = wekeep · oem · office · 없음=공통). 카드 아래에 그 창고에 있는 품목 · 재고 · 입고 대기를 자동으로 붙인다
+  function warehouses() {
+    var gs = curGroups('basics');
+    if (!gs.length) return ui.empty('창고별 기본사항이 없습니다. 「+ 창고 · 묶음」으로 추가하세요.');
+    var stockList = function (w) {
+      var its = G.items.filter(function (i) { return (i.where || '') === w; });
+      if (!its.length) return null;
+      return h('div', { class: 'lg-wh-items' }, h('div', { class: 'meta', text: '보관 품목 ' + its.length }),
+        h('table', { class: 'lg-wh-t' }, h('tbody', null, its.map(function (it) {
+          var p = plan(it);
+          return h('tr', null, h('td', null, h('a', { href: '#stock/edit/' + it.id, text: it.name })), h('td', { class: 'num', text: n0(p.stock) + (it.unit && it.unit !== '개' ? it.unit : '') }),
+            h('td', { class: 'num meta', text: p.onOrder ? '+' + n0(p.onOrder) + (it.order.eta ? ' · ' + it.order.eta.slice(5).replace('-', '/') : '') : '' }));
+        }))));
+    };
+    var wn = { wekeep: '3PL · 보관 · 출고', oem: 'OEM · 사급 입고 · 충전', office: '사무실 보관' };
+    // 창고마다 한 구역: 창고 카드(+ 보관 품목). 위킵 구역에는 위킵 사양(입고 정보 · FBW 순서 · 상품 등록 …)과 박스 라벨 만들기를 함께 둔다
+    return gs.map(function (g) {
+      var card = docBlock('basics', g.id, { cls: 'lg-wh-card', title: '창고 정보', sub: wn[g.where] || '공통', extra: g.where ? stockList(g.where) : null });
+      var specs = g.where === 'wekeep' ? curGroups('spec').map(function (x) { return specBlock(x.id); }) : [];
+      return h('section', { class: 'lg-whs lg-wh-' + (g.where || 'common'), id: 'wh-' + (g.where || g.id) },
+        h('div', { class: 'lg-whs-h' }, h('h2', { text: g.name }), h('span', { class: 'meta', text: wn[g.where] || '공통' }),
+          g.where === 'wekeep' && canEdit() ? ui.btn('+ 위킵 사양 묶음', function () { addGroup('spec', '새 묶음'); }, 'btn-line btn-xs') : null),
+        h('div', { class: 'lg-whs-grid' + (specs.length ? '' : ' one') }, card, specs),
+        g.where === 'wekeep' ? labelMaker() : null);
+    });
+  }
+
   function order(view) {
     if (wait(view)) return;
     var d = D();
-    head(view, '발주 현황 · 물류 기본사항');
+    head(view, '창고별 정리 · 발주 현황', canEdit() ? ui.btn('+ 창고', function () { addGroup('basics', '새 창고'); }, 'btn-line btn-sm') : null);
     ui.put(view,
-      (d.basics || []).length ? ui.panel('물류 기본사항', null, h('dl', { class: 'lg-kv' }, d.basics.map(function (r) { return h('div', null, h('dt', { text: r[0] }), h('dd', { text: r[1] })); }))) : null,
-      (d.flow || []).length ? ui.panel('발주 → 출고 흐름', null, h('ol', { class: 'lg-flow' }, d.flow.map(function (t) { return h('li', { text: t }); }))) : null,
+      warehouses(),
+      (d.flow || []).length ? h('details', { class: 'panel lg-fold' }, h('summary', { class: 'label', text: '발주 → 출고 흐름 ' + d.flow.length + '단계' }), h('ol', { class: 'lg-flow' }, d.flow.map(function (t) { return h('li', { text: t }); }))) : null,
       (d.orders || []).length ? ui.panel('품목별 발주 현황', h('span', { class: 'meta', text: d.asOf ? fmt.dot(d.asOf) + ' 기준' : '' }),
         h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table' },
           h('thead', null, h('tr', null, ['상태', '발주처 · 품목', '수량', '금액(VAT 포함)', '지급', '입고(예정)', '입고처'].map(function (c, i) { return h('th', { class: i === 2 || i === 3 ? 'num' : '', text: c }); }))),
@@ -460,12 +531,12 @@
       (d.payTerms || []).length ? ui.panel('업체별 결제 조건', null, h('ul', { class: 'list' }, d.payTerms.map(function (p) { return h('li', null, h('span', { class: 'strong', text: p.vendor }), h('span', { class: 'grow', text: p.terms }), p.note ? h('span', { class: 'meta', text: p.note }) : null); }))) : null,
       (d.checks || []).length ? ui.panel('발주 메일 보내기 전 체크', null, h('ol', { class: 'lg-flow' }, d.checks.map(function (t) { return h('li', { text: t }); }))) : null,
       d.source ? h('p', { class: 'note', text: '출처 · ' + d.source }) : null,
-      !d.basics && !d.orders ? ui.empty('기본사항을 불러오는 중이거나 아직 입력되지 않았습니다.') : null);
+      !d.orders ? ui.empty('발주 현황을 불러오는 중이거나 아직 입력되지 않았습니다.') : null);
   }
 
   HR.register('home', { render: home });
   HR.register('stock', { render: stock });
   HR.register('mail', { render: mail });
-  HR.register('spec', { render: spec });
+  HR.register('spec', { render: function (view) { order(view); setTimeout(function () { var el = document.getElementById('wh-wekeep'); if (el) el.scrollIntoView(); }, 30); } });
   HR.register('order', { render: order });
 })();
