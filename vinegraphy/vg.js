@@ -198,14 +198,23 @@
 
   HR.register('brand', { render: brand });
 
-  /* ---------- 핵심 소구점 — vg_points (구성원 누구나 추가 · 순서, 수정 · 삭제는 작성자 · 관리자) + MKT 소구점 보드에서 가져오기 ---------- */
+  /* ---------- 핵심 소구점 · 타겟 소비자 — vg_points (kind appeal | target, 없으면 appeal)
+     구성원 누구나 추가 · 순서(끌어서), 내용 수정 · 삭제는 작성자 · 관리자. 소구점은 MKT 소구점 보드에서 가져오기 ---------- */
   var S = HR.S, FV = HR.FV, VG = { points: [], loaded: false, mkt: [], mktOk: false };
-  var TAGS = ['컨셉', '성분', '효과', '신뢰', '감성'];
-  var ptEdit = null;
+  var KINDS = {
+    appeal: { label: 'Appeal', title: '핵심 소구점', tags: ['컨셉', '성분', '효과', '신뢰', '감성'], def: '효과',
+      lead: '한 문장 약속 + 믿게 만드는 근거. 상세페이지 · 광고 · 인플루언서 브리프는 이 목록에서 고릅니다. 쓰지 않는 말은 제품 사양 › Claims를 확인하세요.',
+      ph: '한 문장 소구점 — 예) 씻고 나서도 당기지 않는 약산성 젤', ph2: '근거 — 성분 · 수치 · 시험 · 원본 문서 (선택)' },
+    target: { label: 'Target', title: '타겟 소비자', tags: ['핵심', '피부', '상황', '심리'], def: '피부',
+      lead: '누구의 어떤 순간을 잡을까. 위 소구점이 가장 크게 들리는 사람부터 적습니다.',
+      ph: '한 줄 타겟 — 예) 세안 후 당김이 고민인 30대 수부지', ph2: '설명 — 지금 쓰는 것 · 불만 · 사는 순간 (선택)' }
+  };
+  var ptEdit = null, mktOpen = false;   // ptEdit = 문서 id | 'new:<kind>'
   HR.APP.onStart = function (sub) {
     sub(db.collection('vg_points'), function (s) { VG.points = HR.rows(s); VG.loaded = true; });
     if (HR.canApp('mkt')) sub(db.collection('mkt_items').where('board', '==', 'appeal'), function (s) { VG.mkt = HR.rows(s); VG.mktOk = true; });
   };
+  function kindOf(p) { return p.kind || 'appeal'; }
   function canEditPt(x) { return S.isAdmin || x.by === S.mid; }
   function savePt(id, data) {
     var base = { updatedBy: S.mid, updatedAt: FV.serverTimestamp() };
@@ -214,39 +223,29 @@
     return q.catch(function (e) { ui.fail(e); throw e; });
   }
   function nextOrder(list) { return list.reduce(function (m, p) { return Math.max(m, p.order || 0); }, 0) + 10; }
-  function ptForm(prod, list, x, done) {
-    var t = ui.input({ value: x ? x.title : '', maxlength: 120, placeholder: '한 문장 소구점 — 예) 씻고 나서도 당기지 않는 약산성 젤' });
-    var pr = h('textarea', { rows: 2, maxlength: 1000, placeholder: '근거 — 성분 · 수치 · 시험 · 원본 문서 (선택)' }); pr.value = x ? x.proof || '' : '';
-    var tg = ui.select(TAGS.map(function (k) { return [k, k]; }), x ? x.tag : '효과');
-    var go = function () {
-      var title = t.value.trim(); if (!title) { t.focus(); return; }
-      var data = { product: prod, title: title, proof: pr.value.trim(), tag: tg.value };
-      if (!x) data.order = nextOrder(list);
-      savePt(x && x.id, data).then(function () { ui.toast(x ? '고쳤습니다.' : '추가했습니다.'); if (!x) { t.value = ''; pr.value = ''; } done(); });
-    };
-    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) go(); });
-    return h('div', { class: 'vg-pt-form' }, h('div', { class: 'row' }, ui.field('분류', tg, 'vg-pt-tag'), ui.field('소구점', t)), ui.field('근거', pr),
-      h('div', { class: 'row' }, ui.btn(x ? '저장' : '+ 추가', go, 'btn-sm'), x ? ui.btn('취소', function () { ptEdit = null; HR.refresh(); }, 'btn-line btn-sm') : null));
-  }
   function move(list, i, d) {
     var a = list[i], b = list[i + d]; if (!a || !b) return;
     var oa = a.order || 0, ob = b.order || 0; if (oa === ob) ob = oa + d;
     savePt(a.id, { order: ob }); savePt(b.id, { order: oa });
   }
-  // 더블클릭(또는 「수정」) → 그 칸에서 바로 소구점 · 근거 · 분류를 고친다. Enter 저장(근거는 Ctrl+Enter) · Esc 취소
+
+  // 더블클릭 · 「수정」 · 「+ 추가」 → 그 자리에서 분류 · 한 줄 · 근거를 쓴다. Enter 저장(근거 칸은 Ctrl+Enter) · Esc 취소
   function startEdit(id) {
     ptEdit = id; HR.refresh();
     setTimeout(function () { var t = document.getElementById('vgEditT'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 120);
   }
-  function inlineEdit(x) {
-    var tg = ui.select(TAGS.map(function (k) { return [k, k]; }), x.tag, { class: 'vg-ie-tag', 'aria-label': '분류' });
-    var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x.title, maxlength: 120, 'aria-label': '소구점' });
-    var pr = h('textarea', { class: 'vg-ie-proof', rows: 2, maxlength: 1000, placeholder: '근거 (선택)', 'aria-label': '근거' }); pr.value = x.proof || '';
+  function inlineEdit(prod, kind, list, x) {
+    var K = KINDS[kind];
+    var tg = ui.select(K.tags.map(function (k) { return [k, k]; }), x ? x.tag : K.def, { class: 'vg-ie-tag', 'aria-label': '분류' });
+    var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x ? x.title : '', maxlength: 120, placeholder: K.ph, 'aria-label': K.title });
+    var pr = h('textarea', { class: 'vg-ie-proof', rows: 2, maxlength: 1000, placeholder: K.ph2, 'aria-label': '근거' }); pr.value = x ? x.proof || '' : '';
     var cancel = function () { ptEdit = null; HR.refresh(); };
     var save = function () {
       var title = t.value.trim(); if (!title) { t.focus(); return; }
-      if (title === x.title && pr.value.trim() === (x.proof || '') && tg.value === x.tag) return cancel();
-      savePt(x.id, { product: x.product, title: title, proof: pr.value.trim(), tag: tg.value }).then(function () { ptEdit = null; ui.toast('고쳤습니다.'); HR.refresh(); });
+      if (x && title === x.title && pr.value.trim() === (x.proof || '') && tg.value === x.tag) return cancel();
+      var data = { product: prod, kind: kind, title: title, proof: pr.value.trim(), tag: tg.value };
+      if (!x) data.order = nextOrder(list);
+      savePt(x && x.id, data).then(function () { ptEdit = null; ui.toast(x ? '고쳤습니다.' : '추가했습니다.'); HR.refresh(); });
     };
     var keys = function (e) {
       if (e.isComposing) return;
@@ -257,50 +256,100 @@
     return h('div', { class: 'vg-pt-main' },
       h('div', { class: 'vg-pt-top' }, tg, t),
       pr,
-      h('div', { class: 'vg-ie-act' }, ui.btn('저장', save, 'btn-xs'), ui.btn('취소', cancel, 'btn-line btn-xs'),
+      h('div', { class: 'vg-ie-act' }, ui.btn(x ? '저장' : '추가', save, 'btn-xs'), ui.btn('취소', cancel, 'btn-line btn-xs'),
         h('span', { class: 'meta', text: 'Enter 저장 (근거 칸은 Ctrl+Enter) · Esc 취소' })));
+  }
+
+  // 끌어서 순서 바꾸기 — 손잡이(⠿)를 잡고 위아래로. 끄는 동안 줄이 실시간으로 자리를 바꾸고, 놓으면 바뀐 줄만 order를 다시 매겨 한 번에 저장
+  function dragStart(e, list) {
+    if (e.button && e.button !== 0) return;
+    e.preventDefault();
+    var li = e.currentTarget.closest('.vg-pt'), ol = li.parentNode, before = ids();
+    li.classList.add('dragging'); ol.classList.add('sorting'); document.body.classList.add('vg-dragging');
+    function ids() { return Array.prototype.map.call(ol.querySelectorAll('.vg-pt[data-id]'), function (n) { return n.dataset.id; }); }
+    function renumber() { Array.prototype.forEach.call(ol.querySelectorAll('.vg-pt-no'), function (n, k) { n.textContent = ('0' + (k + 1)).slice(-2); }); }
+    function onMove(ev) {
+      var y = ev.clientY;
+      if (y < 70) window.scrollBy(0, -12); else if (y > window.innerHeight - 70) window.scrollBy(0, 12);
+      var rows = Array.prototype.filter.call(ol.children, function (n) { return n !== li; });
+      var next = null;
+      for (var k = 0; k < rows.length; k++) { var r = rows[k].getBoundingClientRect(); if (y < r.top + r.height / 2) { next = rows[k]; break; } }
+      if (next !== li.nextSibling) { ol.insertBefore(li, next); renumber(); }
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp);
+      li.classList.remove('dragging'); ol.classList.remove('sorting'); document.body.classList.remove('vg-dragging');
+      var after = ids();
+      if (after.join() === before.join()) return;
+      var byId = {}; list.forEach(function (p) { byId[p.id] = p; });
+      var batch = db.batch(), n = 0;
+      after.forEach(function (id, k) {
+        var o = (k + 1) * 10, p = byId[id];
+        if (p && p.order !== o) { batch.update(db.collection('vg_points').doc(id), { order: o, updatedBy: S.mid, updatedAt: FV.serverTimestamp() }); p.order = o; n++; }
+      });
+      if (n) batch.commit().then(function () { ui.toast('순서를 바꿨습니다.'); }, function (err) { ui.fail(err); HR.refresh(); });
+    }
+    document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
+  }
+
+  function row(prod, kind, list, x, i) {
+    var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
+    if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
+    var who = (S.members[x.by] || {}).name || '';
+    var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
+      onpointerdown: function (e) { dragStart(e, list); },
+      onkeydown: function (e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault(); move(list, i, e.key === 'ArrowUp' ? -1 : 1);
+        var id = x.id; setTimeout(function () { var g = document.querySelector('.vg-pt[data-id="' + id + '"] .vg-pt-grip'); if (g) g.focus(); }, 400);
+      } }, '⠿');
+    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), 'data-id': x.id, title: canEditPt(x) ? '더블클릭하면 바로 고칩니다' : null,
+      ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip')) return; startEdit(x.id); } : null },
+      grip, no,
+      h('div', { class: 'vg-pt-main' },
+        h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
+          x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
+        x.proof || who ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
+      h('div', { class: 'vg-pt-act' },
+        canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
+        canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
+  }
+  function group(prod, kind) {
+    var K = KINDS[kind];
+    var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === kind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var adding = ptEdit === 'new:' + kind;
+    var rows = list.map(function (x, i) { return row(prod, kind, list, x, i); });
+    if (adding) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (list.length + 1)).slice(-2) }), inlineEdit(prod, kind, list, null)));
+    return h('section', { class: 'vg-group' },
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개' })),
+      h('p', { class: 'muted small', text: K.lead }),
+      rows.length ? h('ol', { class: 'vg-pts' }, rows) : null,
+      h('div', { class: 'vg-add-row' },
+        adding ? null : h('button', { type: 'button', class: 'vg-add', text: '+ 추가', onclick: function () { startEdit('new:' + kind); } }),
+        kind === 'appeal' && HR.canApp('mkt') ? h('button', { type: 'button', class: 'vg-add ghost', text: mktOpen ? 'MKT 가져오기 닫기' : 'MKT 소구점 보드에서 가져오기',
+          onclick: function () { mktOpen = !mktOpen; HR.refresh(); } }) : null),
+      kind === 'appeal' && mktOpen ? mktPanel(prod, list) : null);
   }
   function points(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
     var name = G ? G.name : '클렌징 젤';
-    ui.put(view, ui.head(name + ' · 핵심 소구점', '왜 우리여야 하나', h('span', { class: 'meta', text: '구성원 누구나 추가 · 순서 변경' })));
+    ui.put(view, ui.head(name, '핵심 소구점', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
-    var list = VG.points.filter(function (p) { return p.product === prod; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    ui.put(view,
-      h('p', { class: 'muted small', text: '한 문장 약속 + 믿게 만드는 근거. 상세페이지 · 광고 · 인플루언서 브리프는 이 목록에서 고릅니다. 쓰지 않는 말은 제품 사양 › Claims를 확인하세요.' }),
-      list.length ? h('ol', { class: 'vg-pts' }, list.map(function (x, i) {
-        var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
-        if (ptEdit === x.id) return h('li', { class: 'vg-pt editing' }, no, inlineEdit(x));
-        var who = (S.members[x.by] || {}).name || '';
-        return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), title: canEditPt(x) ? '더블클릭하면 소구점 · 근거를 바로 고칩니다' : null,
-          ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button')) return; startEdit(x.id); } : null },
-          no,
-          h('div', { class: 'vg-pt-main' },
-            h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
-              x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
-            x.proof || who ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
-          h('div', { class: 'vg-pt-act' },
-            h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', title: '위로', disabled: !i, onclick: function () { move(list, i, -1); } }),
-            h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', title: '아래로', disabled: i === list.length - 1, onclick: function () { move(list, i, 1); } }),
-            canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
-            canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
-      })) : ui.empty('아직 소구점이 없습니다. 아래에서 추가하세요.'),
-      ui.panel('Add · 소구점 추가', null, ptForm(prod, list, null, function () { HR.refresh(); })),
-      mktPanel(prod, list));
+    ui.put(view, group(prod, 'appeal'), group(prod, 'target'));
   }
   function mktPanel(prod, list) {
-    if (!HR.canApp('mkt')) return h('p', { class: 'note', text: 'MKT 소구점 보드에서 가져오기는 MKT 열람 권한이 있으면 보입니다.' });
     var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });
     var rank = { pick: 0, review: 1, idea: 2, hold: 3 }, LB = { pick: '확정', review: '검토', idea: '아이디어', hold: '보류' };
     var items = VG.mkt.slice().sort(function (a, b) { return (rank[a.status] == null ? 9 : rank[a.status]) - (rank[b.status] == null ? 9 : rank[b.status]); });
-    return ui.panel('From MKT · 소구점 보드에서 가져오기', h('a', { class: 'meta', href: '/mkt/', target: '_blank', rel: 'opener', text: 'MKT 열기 ↗' }),
+    return h('div', { class: 'vg-mkt' },
+      h('div', { class: 'row between' }, h('span', { class: 'label', text: 'From MKT · 소구점 보드' }), h('a', { class: 'meta', href: '/mkt/', target: '_blank', rel: 'opener', text: 'MKT 열기 ↗' })),
       !VG.mktOk ? ui.empty('불러오는 중…') : !items.length ? ui.empty('MKT 소구점 보드가 아직 비어 있습니다. MKT에서 적으면 여기서 골라 가져올 수 있습니다.')
         : h('ul', { class: 'list' }, items.map(function (m) {
           return h('li', null, h('div', { class: 'grow' }, ui.tag(LB[m.status] || m.status, m.status === 'pick' ? 'red' : 'mute'), ' ', h('b', { text: m.title }),
             m.body ? h('p', { class: 'vg-pt-proof', text: m.body.slice(0, 160) }) : null),
             taken[m.id] ? h('span', { class: 'meta', text: '가져옴' }) : ui.btn('가져오기', function () {
-              savePt(null, { product: prod, title: m.title.slice(0, 120), proof: (m.body || '').slice(0, 1000), tag: '효과', order: nextOrder(list), src: 'mkt', mktId: m.id })
-                .then(function () { ui.toast('가져왔습니다. 분류는 수정에서 바꿀 수 있습니다.'); });
+              savePt(null, { product: prod, kind: 'appeal', title: m.title.slice(0, 120), proof: (m.body || '').slice(0, 1000), tag: '효과', order: nextOrder(list), src: 'mkt', mktId: m.id })
+                .then(function () { ui.toast('가져왔습니다. 분류는 더블클릭으로 바꿀 수 있습니다.'); });
             }, 'btn-line btn-xs'));
         })));
   }
