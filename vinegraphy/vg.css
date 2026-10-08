@@ -246,3 +246,13 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-group-tcopy .vg-th-name { font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
 .vg-th-tag { font-size: 10px; font-weight: 500; padding: 1px 6px; color: var(--vg-wine); background: var(--vg-mist); border: 1px solid var(--vg-lilac); }
 .vg-group-tcopy .vg-pts { border-color: var(--vg-mist); }
+
+/* 마케팅 전략 — 카피 묶음 구조 + 설명 줄은 보이게 */
+.vg-group-strat { background: #fff; border: 1px solid var(--gray-200); }
+.vg-group-strat .vg-pt { align-items: flex-start; padding: 8px 12px 8px 8px; }
+.vg-group-strat .vg-pt-top { align-items: baseline; }
+.vg-group-strat .vg-pt-title { font-size: 14px; font-weight: 600; }
+.vg-group-strat .vg-pt-proof { display: block; font-size: 12px; color: var(--gray-600); padding-left: 62px; margin-top: 1px; }
+.vg-group-strat .vg-th-name { font-size: 15px; }
+.vg-group-strat .vg-themes { gap: 18px; }
+@media (max-width: 900px) { .vg-group-strat .vg-pt-proof { padding-left: 0; } }

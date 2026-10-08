@@ -208,6 +208,9 @@
     copy: { label: 'Copy', title: '핵심 카피라이팅', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
       lead: '그대로 가져다 쓰는 확정 문장. 줄 오른쪽 「복사」로 바로 복사합니다. 아래는 쓰는 곳 · 메모.',
       ph: '카피 문장 — 예) Born of the vineyard. Reserved for your skin.', ph2: '쓰는 곳 · 메모 — 상세 Hero · 단상자 · 광고 (선택)' },
+    strat: { label: 'Strategy', title: '마케팅 전략', tags: ['목표', '지표', '채널', '콘텐츠', '광고', '가격', 'CRM', '운영'], def: '채널', max: 300,
+      lead: '런칭부터 매출 3억까지 필요한 것. 항목은 왼쪽 ⠿로 끌어서 다른 전략 묶음으로 옮기고, 묶음은 [이름] 앞 ⠿로 순서를 바꿉니다. 이름 · 항목은 더블클릭으로 고칩니다.',
+      ph: '해야 할 것 한 줄', ph2: '근거 · 숫자 · 담당 (선택)' },
     tcopy: { label: 'Target Copy', title: '타겟 전용 카피', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
       lead: '핵심 카피를 타겟별 피부 고민 · 상황에 맞춰 바꾼 문장. 묶음 이름은 위 타겟 소비자 목록을 따르고, 카피는 끌어서 다른 타겟으로 옮깁니다.',
       ph: '이 타겟에게 하는 한 문장', ph2: '어떤 핵심 카피 · 고민에서 왔는지 (선택)' },
@@ -316,7 +319,7 @@
     var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
     if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
     var isCopy = kind === 'copy' || kind === 'tcopy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
-    var who = isCopy ? '' : (S.members[x.by] || {}).name || '';
+    var who = isCopy || kind === 'strat' ? '' : (S.members[x.by] || {}).name || '';
     var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
       onpointerdown: function (e) { dragStart(e, all || list); },
       onkeydown: function (e) {
@@ -387,13 +390,13 @@
     }
     document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
   }
-  function themeInput(prod, themes, t) {
+  function themeInput(prod, themes, t, themeKind) {
     var inp = ui.input({ id: 'vgThEdit', class: 'vg-th-in', value: t ? t.title : '', maxlength: 30, placeholder: '소구 주제 — 예) 권위', 'aria-label': '소구 주제' });
     var done = function (save) {
       var v = inp.value.replace(/^\[|\]$/g, '').trim(); thEdit = null; blurNow();
       if (!save || !v || (t && v === t.title)) return HR.refresh();
-      (t ? savePt(t.id, { title: v }) : savePt(null, { product: prod, kind: 'theme', title: v, tag: '주제', theme: '', order: nextOrder(themes) }))
-        .then(function () { ui.toast(t ? '주제 이름을 바꿨습니다.' : '「' + v + '」 주제를 만들었습니다.'); HR.refresh(); });
+      (t ? savePt(t.id, { title: v }) : savePt(null, { product: prod, kind: themeKind || 'theme', title: v, tag: '주제', theme: '', order: nextOrder(themes) }))
+        .then(function () { ui.toast(t ? '주제 이름을 바꿨습니다.' : '「' + v + '」 묶음을 만들었습니다.'); HR.refresh(); });
     };
     inp.addEventListener('keydown', function (e) { if (e.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') { e.preventDefault(); done(false); } });
     inp.addEventListener('blur', function () { if (thEdit !== null) done(true); });
@@ -404,8 +407,9 @@
   function copyGroup(prod, kind) {
     kind = kind || 'copy';
     var K = KINDS[kind], f = tagFilter[kind] || '', byTarget = kind === 'tcopy';
+    var themeKind = byTarget ? 'target' : kind === 'strat' ? 'stheme' : 'theme', tk = function (id) { return kind + ':' + id; };   // 이름 수정 상태는 묶음 종류별로
     var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === kind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === (byTarget ? 'target' : 'theme'); }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === themeKind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     var known = {}; themes.forEach(function (t) { known[t.id] = 1; });
     var counts = {}; list.forEach(function (p) { counts[p.tag] = (counts[p.tag] || 0) + 1; });
     var filter = h('div', { class: 'vg-filter' }, [['', '전체 ' + list.length]].concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; })).map(function (o) {
@@ -423,26 +427,26 @@
       var newKey = 'new:' + kind + ':' + tid;
       if (ptEdit === newKey) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (items.length + 1)).slice(-2) }), inlineEdit(prod, kind, list, null, tid)));
       var mine = t && !byTarget && canEditPt(t);
-      var name = thEdit === tid && t ? themeInput(prod, themes, t)
-        : h('b', { class: 'vg-th-name', title: mine ? '더블클릭하면 이름을 고칩니다' : null, ondblclick: mine ? function () { thEdit = tid; HR.refresh(); focusSoon('vgThEdit'); } : null },
+      var name = thEdit === tk(tid) && t ? themeInput(prod, themes, t, themeKind)
+        : h('b', { class: 'vg-th-name', title: mine ? '더블클릭하면 이름을 고칩니다' : null, ondblclick: mine ? function () { thEdit = tk(tid); HR.refresh(); focusSoon('vgThEdit'); } : null },
           byTarget && t ? [h('span', { class: 'vg-th-tag', text: t.tag }), t.title] : t ? '[' + t.title + ']' : byTarget ? '[타겟 없음]' : '[주제 없음]');
       return h('section', { class: 'vg-theme' + (t ? '' : ' none'), 'data-tid': t ? tid : null },
         h('div', { class: 'vg-th-head' },
           t && !byTarget ? h('span', { class: 'vg-th-grip', title: '끌어서 주제 순서 바꾸기', onpointerdown: function (e) { themeDrag(e, themes); } }, '⠿') : h('span', { class: 'vg-th-grip off' }),
           name, h('span', { class: 'vg-th-n', text: String(items.length) }),
           h('span', { class: 'grow' }),
-          ptEdit === newKey ? null : h('button', { type: 'button', class: 'vg-th-add', text: '+ 카피', onclick: function () { startEdit(newKey); } }),
-          mine && !items.length ? ui.confirmBtn('주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
+          ptEdit === newKey ? null : h('button', { type: 'button', class: 'vg-th-add', text: kind === 'strat' ? '+ 항목' : '+ 카피', onclick: function () { startEdit(newKey); } }),
+          mine && !items.length ? ui.confirmBtn(kind === 'strat' ? '묶음 삭제' : '주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
         h('ol', { class: 'vg-pts' + (rows.length ? '' : ' empty'), 'data-theme': tid }, rows));
     };
     var none = list.filter(function (p) { return !known[p.theme || '']; });
     return h('section', { class: 'vg-group vg-group-copy vg-group-' + kind },
-      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · ' + (byTarget ? '타겟 ' : '주제 ') + themes.length })),
-      h('p', { class: 'muted small', text: byTarget ? K.lead : '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · ' + (byTarget ? '타겟 ' : kind === 'strat' ? '묶음 ' : '주제 ') + themes.length })),
+      h('p', { class: 'muted small', text: byTarget || kind === 'strat' ? K.lead : '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
       list.length > 8 ? filter : null,
       h('div', { class: 'vg-themes' }, themes.map(section), none.length || ptEdit === 'new:' + kind + ':' ? section(null) : null),
-      byTarget ? null : h('div', { class: 'vg-add-row' }, thEdit === 'new' ? themeInput(prod, themes, null)
-        : h('button', { type: 'button', class: 'vg-add', text: '+ 소구 주제', onclick: function () { thEdit = 'new'; HR.refresh(); focusSoon('vgThEdit'); } })));
+      byTarget ? null : h('div', { class: 'vg-add-row' }, thEdit === tk('new') ? themeInput(prod, themes, null, themeKind)
+        : h('button', { type: 'button', class: 'vg-add', text: kind === 'strat' ? '+ 전략 묶음' : '+ 소구 주제', onclick: function () { thEdit = tk('new'); HR.refresh(); focusSoon('vgThEdit'); } })));
   }
 
   /* 핵심 키워드 — 칩 모양. 쉼표로 여러 개 한 번에 추가, 칩을 누르면 #해시태그 복사, 전체는 해시태그 · 쉼표 목록으로 복사
@@ -534,6 +538,12 @@
       h('div', { class: 'vg-kws' }, chips, input),
       list.length ? h('p', { class: 'vg-kw-preview', text: words.map(hashtag).join(' ') }) : null);
   }
+  function strategy(view, prod) {
+    var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
+    ui.put(view, ui.head(G ? G.name : '클렌징 젤', '마케팅 전략', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 이동 · 더블클릭 수정' })));
+    if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
+    ui.put(view, copyGroup(prod, 'strat'));
+  }
   function points(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
     var name = G ? G.name : '클렌징 젤';
@@ -561,7 +571,7 @@
 
   // 제품별 메뉴: <제품id>-spec · -pdp · -points · -check (+ -pack: 메뉴에는 없고 제품 사양에서 바로가기) (제품 목록은 app.js VG_PRODUCTS)
   (window.VG_PRODUCTS || []).forEach(function (p) {
-    [['spec', product], ['pdp', pdp], ['points', points], ['pack', pack], ['check', check]].forEach(function (m) {
+    [['spec', product], ['pdp', pdp], ['points', points], ['strat', strategy], ['pack', pack], ['check', check]].forEach(function (m) {
       HR.register(p.id + '-' + m[0], { render: function (view) { m[1](view, p.id); } });
     });
   });
