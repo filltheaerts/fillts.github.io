@@ -168,7 +168,7 @@
       var xs = F.filter(function (f) { return f.stage === sg; }); if (!xs.length) return;
       ui.put(view, h('h3', { class: 'cm-stage', text: sg }), h('div', { class: 'cm-msgs' }, xs.map(function (f) {
         var saved = R.msgs[f.id], text = saved && saved.text ? saved.text : draft(f, A), bad = banned(text);
-        var ta = h('textarea', { class: 'cm-ta', rows: Math.min(Math.max(text.split('\n').length + 1, 6), 16), disabled: !ed }); ta.value = text;
+        var ta = h('textarea', { class: 'cm-ta', rows: Math.min(Math.max(text.split('\n').length + 3, 7), 18), disabled: !ed }); ta.value = text;
         var cnt = h('span', { class: 'meta', text: text.length + '자' + (f.ch === '알림톡' ? ' / 1,000' : '') });
         ta.addEventListener('input', function () { cnt.textContent = ta.value.length + '자' + (f.ch === '알림톡' ? ' / 1,000' : ''); });
         ta.addEventListener('change', function () { db.collection('d2c_msgs').doc(f.id).set({ text: ta.value, by: S.mid || '', at: FV.serverTimestamp() }, { merge: true }).then(function () { ui.toast('문안을 저장했습니다.'); }); });
