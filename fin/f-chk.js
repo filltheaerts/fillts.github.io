@@ -8,7 +8,7 @@
   var prevStart = HR.APP.onStart;
   HR.APP.onStart = function (sub) {
     prevStart && prevStart(sub);
-    sub(db.collection('fin_admin'), function (s) { var all = HR.rows(s); F.chk = all.filter(function (c) { return !c.kind; }); F.jgRef = all.filter(function (c) { return c.kind === 'ref'; }); F.jgGoal = all.filter(function (c) { return c.kind === 'goal'; }); F.jgMemo = all.filter(function (c) { return c.kind === 'memo'; }); });
+    sub(db.collection('fin_admin'), function (s) { var all = HR.rows(s); F.chk = all.filter(function (c) { return !c.kind; }); F.jgRef = all.filter(function (c) { return c.kind === 'ref'; }); F.jgGoal = all.filter(function (c) { return c.kind === 'goal'; }); F.jgMemo = all.filter(function (c) { return c.kind === 'memo'; }); F.profile = all.filter(function (c) { return c.kind === 'profile'; }); });
   };
 
   var CATS = ['화장품법', '연구개발', '세무 · 회계', '인사 · 노무', '법인 · 등기', '정관', '특허', '기타'];
@@ -91,6 +91,45 @@
         }, 'btn-line btn-xs') : null));
   }
 
+  /* 회사 기준 정보 (kind 'profile' {label, value, note, calc, order}) — 체크일정 맨 위
+     calc: 'since:날짜' 업력 · 'age:생일' 만 나이 · 'until:날짜:이름' 남은 날 · 'hr' HR 구성원 수(대표 제외), '|'로 여러 개 */
+  var V2 = { profEdit: null };
+  function calcChips(calc, t) {
+    return String(calc || '').split('|').filter(Boolean).map(function (c) {
+      var a = c.split(':'), k = a[0], dt = a[1], txt = '', hot = false;
+      if (k === 'since') { var m = (+t.slice(0, 4) - +dt.slice(0, 4)) * 12 + (+t.slice(5, 7) - +dt.slice(5, 7)) - (t.slice(8) < dt.slice(8) ? 1 : 0); txt = '업력 ' + Math.floor(m / 12) + '년 ' + (m % 12) + '개월'; }
+      else if (k === 'age') { var y = +t.slice(0, 4) - +dt.slice(0, 4) - (t.slice(5) < dt.slice(5) ? 1 : 0); txt = '만 ' + y + '세'; }
+      else if (k === 'until') { var d = L.daysBetween(t, dt); txt = (a[2] || '') + ' ' + fmt.dot(dt) + ' · ' + (d >= 0 ? 'D-' + d : '지남'); hot = d >= 0 && d <= 180; }
+      else if (k === 'hr') { var n = HR.memberList().filter(function (m) { return !/대표/.test(m.title || m.position || '') && m.role !== 'owner'; }).length; txt = 'HR 등록 ' + n + '명 (대표 제외)'; }
+      return txt ? h('span', { class: 'prof-chip' + (hot ? ' hot' : ''), text: txt }) : null;
+    });
+  }
+  function profilePanel(ed, t) {
+    var rows = (F.profile || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    if (!rows.length) return null;
+    if (V2.profEdit) {
+      var msg = ui.msg(), inputs = rows.map(function (r) {
+        var v = h('textarea', { rows: '2', maxlength: '300' }); v.value = r.value || '';
+        var n = h('textarea', { rows: '2', maxlength: '400' }); n.value = r.note || '';
+        return { r: r, v: v, n: n };
+      });
+      return ui.panel('회사 기준 정보 · 편집', null, h('div', { class: 'stack' }, inputs.map(function (x) {
+        return h('div', { class: 'row prof-edit' }, h('div', { class: 'strong prof-label', text: x.r.label }), ui.field('현재', x.v, 'grow'), ui.field('기준 · 영향', x.n, 'grow'));
+      }), msg, h('div', { class: 'row' }, ui.btn('저장', function () {
+        var b = db.batch();
+        inputs.forEach(function (x) { b.update(db.doc('fin_admin/' + x.r.id), { value: x.v.value.trim(), note: x.n.value.trim(), updatedAt: FV.serverTimestamp() }); });
+        b.commit().then(function () { V2.profEdit = null; ui.toast('저장했습니다.'); HR.refresh(); }).catch(function (e) { ui.fail(e, msg); });
+      }, 'btn-sm'), ui.btn('취소', function () { V2.profEdit = null; HR.refresh(); }, 'btn-line btn-sm'))));
+    }
+    var tb = h('table', { class: 'table fin-table prof-table' }, h('thead', null, h('tr', null, ['항목', '현재', '기준 · 영향'].map(function (x) { return h('th', { text: x }); }))),
+      h('tbody', null, rows.map(function (r) {
+        return h('tr', null, h('td', { class: 'strong nowrap', text: r.label }),
+          h('td', null, h('div', { class: 'prof-val', text: r.value || '' }), h('div', { class: 'prof-chips' }, calcChips(r.calc, t))),
+          h('td', { class: 'prof-note', text: r.note || '' }));
+      })));
+    return ui.panel('회사 기준 정보', ed ? ui.btn('편집', function () { V2.profEdit = true; HR.refresh(); }, 'btn-line btn-xs') : null, h('div', { class: 'table-wrap flat' }, tb));
+  }
+
   function render(view, parts) {
     var ed = F.canEdit(), t = fmt.today();
     if (parts[0] === 'new' || parts[0] === 'edit') {
@@ -112,7 +151,7 @@
     var within = function (n) { return all.filter(function (x) { return x.s.d != null && x.s.d >= 0 && x.s.d <= n; }).length; };
     var list = function (xs, empty) { return h('ul', { class: 'list chk-list' }, xs.length ? xs.map(function (x) { return row(x.c, x.s, ed); }) : h('li', { class: 'empty', text: empty })); };
     var next = hot.concat(plan)[0];
-    ui.put(view, ui.head('[행정] 체크일정', '법인 행정 체크리스트', ed ? ui.btn('+ 항목 추가', function () { HR.go('chk/new'); }, 'btn-sm') : null), tabs,
+    ui.put(view, ui.head('[행정] 체크일정', '법인 행정 체크리스트', ed ? ui.btn('+ 항목 추가', function () { HR.go('chk/new'); }, 'btn-sm') : null), tab ? null : profilePanel(ed, t), tabs,
       F.kpi([['지남', String(pick(['over']).length) + '건', pick(['over']).length ? 'red' : '', '마감일이 지났는데 완료 안 함'],
         ['임박', String(pick(['near']).length) + '건', pick(['near']).length ? 'red' : '', '항목별 알림 기간 안'],
         ['90일 안', String(within(90)) + '건', '', next ? '다음: ' + next.c.title + ' ' + dLabel(next.s.d) : '예정 없음'],
