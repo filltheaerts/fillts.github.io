@@ -94,7 +94,7 @@
     var st = stats(cur, all.filter(function (o) { return inR(o, R[0], R[1]); })), sp = stats(prev, all.filter(function (o) { return inR(o, P[0], P[1]); }));
     var total = stats(valid).sales, goal = +G.cfg.goal || 300000000;
 
-    ui.put(view, ui.head('D2C · 매출', '자사몰 현황', h('span', { class: 'meta', text: ds.demo ? '예시 데이터 · 저장 안 됨' : '마지막 주문 ' + fmt.dot(last) + ' · ' + G.orders.length.toLocaleString() + '건' })));
+    ui.put(view, ui.head('D2C · 데이터', '자사몰 현황', h('span', { class: 'meta', text: ds.demo ? '예시 데이터 · 저장 안 됨' : '마지막 주문 ' + fmt.dot(last) + ' · ' + G.orders.length.toLocaleString() + '건' })));
     if (ds.demo) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 데이터입니다.' }),
       ' 정가 38,000원 · 상시 10% 할인(34,200원)으로 11/12 오픈 후 40일을 가정한 가짜 주문입니다. 아래 「주문 데이터 올리기」로 카페24 주문 엑셀을 올리면 실제 데이터로 바뀌고, 이 예시는 사라집니다.'));
     ui.put(view,

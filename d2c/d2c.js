@@ -17,13 +17,13 @@
   var D = function () { return G.doc || {}; };
   var today = function () { return fmt.today(); };
   var wait = function (view) { if (G.loaded) return false; ui.put(view, ui.empty('불러오는 중…')); return true; };
-  var head = function (view, title, right) { ui.put(view, ui.head('D2C · 자사몰 성장', title, right)); };
+  var head = function (view, title, right) { ui.put(view, ui.head('D2C · 핵심전략', title, right)); };
   var won = function (v) { return Math.round(+v || 0).toLocaleString('ko-KR') + '원'; };
 
   var PHASE = [['pre', '런칭 전', '~ 11/11'], ['launch', '런칭 직후', '첫 30일'], ['m1', 'M+1~3', '2~4개월'], ['m3', 'M+3 이후', '5개월~']];
   var STATUS = [['', '검토 전'], ['doing', '진행 중'], ['done', '완료'], ['hold', '보류'], ['skip', '안 함']];
   var phaseName = function (k) { var p = PHASE.filter(function (x) { return x[0] === k; })[0]; return p ? p[1] : '상시'; };
-  var ORDER = ['store', 'aov', 'retain', 'crm', 'cs', 'cohort'];   // 메뉴 묶음 순서: 매출 > CRM > CS > 지표
+  var ORDER = ['store', 'aov', 'crm', 'cs', 'cohort', 'retain'];   // 메뉴 묶음 순서: 데이터 > CRM > CS > 지표(코호트 · 재구매)
   var areas = function () { return (D().areas || []).slice().sort(function (a, b) { return ORDER.indexOf(a.id) - ORDER.indexOf(b.id); }); };
   var area = function (id) { return areas().filter(function (a) { return a.id === id; })[0] || null; };
   // 원고 항목 + 직접 추가한 항목 (상태는 d2c_state 또는 자기 문서)

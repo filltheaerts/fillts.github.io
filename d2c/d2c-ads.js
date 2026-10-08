@@ -92,7 +92,7 @@
     for (d = P.P[0]; d <= P.P[1]; d = D.addDays(d, 1)) if (tr[d]) sesP += +tr[d].sessions || 0;
     var goal = D.G.cfg.adGoal != null && D.G.cfg.adGoal !== '' ? +D.G.cfg.adGoal : 30, ratio = st.sales ? adAmt / st.sales * 100 : null;
 
-    ui.put(view, ui.head('D2C · 매출', '광고 · 퍼포먼스', h('span', { class: 'meta', text: (demoAds || demoTr ? '예시 데이터 · 저장 안 됨 · ' : '') + fmt.dot(R[0]) + ' ~ ' + fmt.dot(R[1]) })));
+    ui.put(view, ui.head('D2C · 데이터', '퍼포먼스 — 유입 · 전환', h('span', { class: 'meta', text: (demoAds || demoTr ? '예시 데이터 · 저장 안 됨 · ' : '') + fmt.dot(R[0]) + ' ~ ' + fmt.dot(R[1]) })));
     if (demoAds || demoTr) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 데이터입니다.' }),
       ' 매출은 현황 예시와 같고, 광고비는 매일 그날 매출의 20~50%를 무작위로 썼다고 가정했습니다(유튜버 2건 9만 · 12만원 30일 안분분 포함, 나머지는 Meta · 네이버 검색 · 카카오), 트래픽은 전환율 약 2.4%로 가정했습니다. 아래 입력란에 실제 값을 넣으면 사라집니다.'));
     ui.put(view, D.filters(),
