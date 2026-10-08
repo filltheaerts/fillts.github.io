@@ -66,7 +66,8 @@
       if (!media[k]) media[k] = { k: k, amt: 0, imp: 0, clk: 0, conv: 0, rev: 0, inf: 0, perf: 0, names: {} };
       var x = media[k]; x.amt += (+a.amt || 0) * f; x.imp += (+a.imp || 0) * f; x.clk += (+a.clk || 0) * f; x.conv += (+a.conv || 0) * f; x.rev += (+a.rev || 0) * f;
       x[a.kind === 'inf' ? 'inf' : 'perf'] += (+a.amt || 0) * f; if (a.name) x.names[a.name] = 1;
-      if (!day[d]) day[d] = { perf: 0, inf: 0, imp: 0, clk: 0 };
+      if (!day[d]) day[d] = { perf: 0, inf: 0, imp: 0, clk: 0, m: {} };
+      day[d].m[k] = (day[d].m[k] || 0) + (+a.amt || 0) * f;
       day[d][a.kind === 'inf' ? 'inf' : 'perf'] += (+a.amt || 0) * f; day[d].imp += (+a.imp || 0) * f; day[d].clk += (+a.clk || 0) * f;
     };
     list.forEach(function (a) { if (!a.date) return; if (a.kind === 'inf') { for (var k = 0; k < 30; k++) add(D.addDays(a.date, k), a, 1 / 30); } else add(a.date, a, 1); });
@@ -105,10 +106,10 @@
         D.kpi('구매 전환율', p1(st.orders, ses), '주문 ÷ 세션 · 이전 ' + p1(sp.orders, sesP)),
         D.kpi('CTR', p1(clk, imp), '클릭 ÷ 노출 · CPC ' + (clk ? D.won(adAmt / clk) : '—'))),
       ui.panel('매출 대비 광고비 비중', goalInput(goal, D), ratioChart(P, cur, tr, R, gran, goal, D)),
+      ui.panel('일별 매출 · 광고비', h('span', { class: 'meta', text: '그날 매출과 매체별로 쓴 광고비 · 인플루언서는 30일 안분액' }), dailyTable(P, cur, R, gran, goal, D)),
       ui.panel('매체별 광고비 · 성과', h('span', { class: 'meta', text: '인플루언서는 기간 안 안분액 · 실측 = 자사몰 주문의 UTM 유입' }), mediaTable(cur.media, P.cur, adAmt, D)),
-      h('div', { class: 'sa-grid' },
-        ui.panel('전환 퍼널', h('span', { class: 'meta', text: '이 기간 합계' }), funnel(imp, clk, ses, carts, st.orders)),
-        ui.panel('트래픽 · 전환율 추이', h('span', { class: 'meta', text: '세션 막대 · 막대에 올리면 전환율' }), trafficChart(P, tr, R, gran, D))),
+      ui.panel('매출 · 유입 · 전환율 — 매출 = 세션 × 전환율 × 객단가', h('span', { class: 'meta', text: '이전 기간 대비 · 막대에 올리면 그날 공식' }), relation(P, tr, R, gran, D, st, sp, ses, sesP)),
+      ui.panel('전환 퍼널', h('span', { class: 'meta', text: '이 기간 합계' }), funnel(imp, clk, ses, carts, st.orders)),
       adInput(D), trafficInput(D));
   }
   function goalInput(goal, D) {
@@ -180,6 +181,41 @@
           return h('tr', null, h('td', { text: gran === 'day' ? fmt.dot(p.k) : p.k }), h('td', { class: 'num', text: D.won(p.s) }), h('td', { class: 'num', text: D.won(p.perf) }), h('td', { class: 'num', text: D.won(p.inf) }), h('td', { class: 'num', text: D.won(p.ad) }),
             h('td', { class: 'num' + (p.r != null && p.r > goal ? ' red' : ''), text: p.r == null ? '—' : (Math.round(p.r * 10) / 10) + '%' }), gran === 'day' ? h('td', { class: 'num', text: p.r7 == null ? '—' : (Math.round(p.r7 * 10) / 10) + '%' }) : null);
         }))))));
+  }
+
+  /* ---------- 일별(월별) 매출 · 광고비 표: 매출 | 광고비 합계 · 비중 | 매체별 광고비 ---------- */
+  function dailyTable(P, cur, R, gran, goal, D) {
+    var sales = {}, ord = {}; P.valid.forEach(function (o) { sales[o.date] = (sales[o.date] || 0) + +o.amt; ord[o.date] = (ord[o.date] || 0) + 1; });
+    var used = {}; Object.keys(cur.day).forEach(function (d) { Object.keys(cur.day[d].m).forEach(function (k) { used[k] = (used[k] || 0) + cur.day[d].m[k]; }); });
+    var cols = MEDIA.map(function (m) { return m[0]; }).filter(function (k) { return used[k]; });
+    var rows = [];
+    var mk = function (k) { return { k: k, s: 0, o: 0, ad: 0, m: {} }; };
+    if (gran === 'day') {
+      for (var d = R[0]; d <= R[1]; d = D.addDays(d, 1)) { var x = mk(d), cd = cur.day[d]; x.s = sales[d] || 0; x.o = ord[d] || 0; if (cd) { x.ad = cd.perf + cd.inf; x.m = cd.m; } rows.push(x); }
+    } else {
+      var mm = {}, get = function (k) { return mm[k] || (mm[k] = mk(k)); };
+      Object.keys(sales).forEach(function (dd) { if (dd >= R[0] && dd <= R[1]) { var x = get(dd.slice(0, 7)); x.s += sales[dd]; x.o += ord[dd]; } });
+      Object.keys(cur.day).forEach(function (dd) { var x = get(dd.slice(0, 7)), cd = cur.day[dd]; x.ad += cd.perf + cd.inf; Object.keys(cd.m).forEach(function (k) { x.m[k] = (x.m[k] || 0) + cd.m[k]; }); });
+      rows = Object.keys(mm).sort().map(function (k) { return mm[k]; });
+    }
+    rows = rows.filter(function (r) { return r.s || r.ad; }).reverse();
+    if (!rows.length) return ui.empty('이 기간에 매출 · 광고비가 없습니다.');
+    var tot = rows.reduce(function (t, r) { t.s += r.s; t.o += r.o; t.ad += r.ad; cols.forEach(function (k) { t.m[k] = (t.m[k] || 0) + (r.m[k] || 0); }); return t; }, mk('합계'));
+    var ratioTd = function (r) { var v = r.s ? r.ad / r.s * 100 : null; return h('td', { class: 'num strong' + (v != null && v > goal ? ' red' : ''), text: v == null ? (r.ad ? '매출 0' : '—') : (Math.round(v * 10) / 10) + '%' }); };
+    var line = function (r, isTot) {
+      return h('tr', { class: isTot ? 'sa-tot' : '' },
+        h('td', { class: 'nowrap', text: isTot ? '합계' : gran === 'day' ? fmt.dot(r.k).slice(5) + ' (' + D.WD[new Date(r.k + 'T00:00:00Z').getUTCDay()] + ')' : r.k }),
+        h('td', { class: 'num sa-dt-sales', text: D.won(r.s) }), h('td', { class: 'num', text: r.o ? r.o + '건' : '—' }),
+        h('td', { class: 'num sa-dt-ad', text: D.won(r.ad) }), ratioTd(r),
+        cols.map(function (k) { var v = r.m[k] || 0; return h('td', { class: 'num' + (v ? '' : ' sa-dim'), text: v ? D.won(v) + (r.ad ? ' · ' + Math.round(v / r.ad * 100) + '%' : '') : '—' }); }));
+    };
+    return h('div', null,
+      h('div', { class: 'table-wrap flat sa-dt-wrap' }, h('table', { class: 'table sa-media sa-dt' },
+        h('thead', null,
+          h('tr', null, h('th', { rowspan: 2, text: gran === 'day' ? '날짜' : '월' }), h('th', { colspan: 2, class: 'sa-grp', text: '매출' }), h('th', { colspan: 2, class: 'sa-grp', text: '광고비' }), cols.length ? h('th', { colspan: cols.length, class: 'sa-grp', text: '매체별 광고비 · 그날 광고비 중 비중' }) : null),
+          h('tr', null, ['순매출', '주문', '합계', '매출 대비'].concat(cols.map(mName)).map(function (c) { return h('th', { class: 'num', text: c }); }))),
+        h('tbody', null, line(tot, true), rows.map(function (r) { return line(r); })))),
+      h('p', { class: 'meta sa-note', text: '맨 위 줄이 기간 합계입니다. 「매출 대비」가 목표(' + goal + '%)를 넘으면 빨강. 인플루언서는 업로드일부터 30일 동안 하루 1/30씩 들어갑니다.' }));
   }
 
   /* ---------- 매체별 표 ---------- */
@@ -259,6 +295,90 @@
     return wrap;
   }
 
+  /* ---------- 매출 · 유입 · 전환율 관계 — 매출 = 세션 × 전환율 × 객단가 ----------
+     위: 이전 기간 대비 매출 변화를 세 요인으로 나눈 기여(로그 분해) · 아래: 같은 날짜 축의 작은 차트 3개(매출 · 세션 · 전환율), 호버가 셋을 함께 가리킨다 */
+  function relation(P, tr, R, gran, D, st, sp, ses, sesP) {
+    var cr = ses ? st.orders / ses : 0, crP = sesP ? sp.orders / sesP : 0, aov = st.aov, aovP = sp.aov;
+    var tiles = [['유입 (세션)', n0(ses), sesP ? ses / sesP : null, '방문 수'], ['구매 전환율', p1(st.orders, ses), crP ? cr / crP : null, '주문 ÷ 세션'], ['객단가', D.won(aov), aovP ? aov / aovP : null, '매출 ÷ 주문'], ['순매출', D.won(st.sales), sp.sales ? st.sales / sp.sales : null, '세션 × 전환율 × 객단가']];
+    var chg = function (x) { return x == null ? '비교 없음' : (x >= 1 ? '▲ ' : '▼ ') + Math.abs(Math.round((x - 1) * 100)) + '%'; };
+    var eq = h('div', { class: 'sa-eq' }, tiles.map(function (t, i) {
+      return [i === 3 ? h('span', { class: 'sa-eq-op', text: '=' }) : i ? h('span', { class: 'sa-eq-op', text: '×' }) : null,
+        h('div', { class: 'sa-eq-t' + (i === 3 ? ' sa-eq-sum' : '') }, h('div', { class: 'sa-eq-k', text: t[0] }), h('div', { class: 'sa-eq-v', text: t[1] }), h('div', { class: 'sa-eq-c' + (t[2] != null && t[2] < 1 ? ' red' : ''), text: chg(t[2]) + ' · ' + t[3] }))];
+    }));
+    // 기여 분해: ln(매출 변화) = ln(세션 변화) + ln(전환율 변화) + ln(객단가 변화)
+    var why = null;
+    if (sesP && crP && aovP && sp.sales && ses && cr && aov) {
+      var parts = [['유입', Math.log(ses / sesP)], ['전환율', Math.log(cr / crP)], ['객단가', Math.log(aov / aovP)]], totL = Math.log(st.sales / sp.sales), totP = (st.sales / sp.sales - 1) * 100;
+      var maxAbs = Math.max.apply(null, parts.map(function (x) { return Math.abs(x[1]); })) || 1;
+      why = h('div', { class: 'sa-why' },
+        h('div', { class: 'strong', text: '이전 기간 대비 매출 ' + (totP >= 0 ? '+' : '') + Math.round(totP) + '% — 무엇 때문인가' }),
+        h('ul', null, parts.map(function (x) {
+          var pp = totL ? x[1] / totL * totP : 0;
+          return h('li', null, h('span', { class: 'sa-why-k', text: x[0] }),
+            h('span', { class: 'sa-why-b' }, h('span', { class: x[1] < 0 ? 'neg' : '', style: 'width:' + (Math.abs(x[1]) / maxAbs * 50) + '%;' + (x[1] < 0 ? 'right:50%' : 'left:50%') })),
+            h('span', { class: 'sa-why-v' + (pp < 0 ? ' red' : ''), text: (pp >= 0 ? '+' : '') + Math.round(pp) + '%p' }));
+        })),
+        h('p', { class: 'meta', text: '세 요인의 기여(%p)를 더하면 매출 변화와 같습니다(로그 분해). 유입이 끌었으면 광고 · 콘텐츠, 전환율이 끌었으면 상세페이지 · 리뷰 · 혜택, 객단가가 끌었으면 세트 · 무료배송 기준을 봅니다.' }));
+    }
+    // 작은 차트 3개
+    var ord = {}, rev = {}; P.valid.forEach(function (o) { ord[o.date] = (ord[o.date] || 0) + 1; rev[o.date] = (rev[o.date] || 0) + +o.amt; });
+    var rows = [];
+    if (gran === 'day') { for (var d = R[0]; d <= R[1]; d = D.addDays(d, 1)) rows.push({ k: d, s: tr[d] ? +tr[d].sessions || 0 : 0, o: ord[d] || 0, r: rev[d] || 0 }); }
+    else {
+      var mm = {}, addM = function (k) { if (!mm[k]) mm[k] = { k: k, s: 0, o: 0, r: 0 }; return mm[k]; };
+      Object.keys(tr).forEach(function (dd) { if (dd >= R[0] && dd <= R[1]) addM(dd.slice(0, 7)).s += +tr[dd].sessions || 0; });
+      Object.keys(ord).forEach(function (dd) { if (dd >= R[0] && dd <= R[1]) { var x = addM(dd.slice(0, 7)); x.o += ord[dd]; x.r += rev[dd]; } });
+      rows = Object.keys(mm).sort().map(function (k) { return mm[k]; });
+    }
+    if (!rows.some(function (r) { return r.s; })) return h('div', null, eq, why, ui.empty('트래픽 입력이 없어 세션 · 전환율 차트를 그릴 수 없습니다. 아래 「트래픽 입력」에 일별 세션을 붙여넣으세요.'));
+    rows.forEach(function (r) { r.cr = r.s ? r.o / r.s * 100 : null; });
+    var W = 960, pl = 64, pr = 12, bandH = 92, gapB = 26, pt = 18, n = rows.length, iw = W - pl - pr, bw = iw / n, H = pt + 3 * bandH + 2 * gapB + 26, ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('class', 'sa-chart'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', '매출 · 세션 · 전환율 작은 차트 3개');
+    var el = function (tag, a, txt) { var e = document.createElementNS(ns, tag); Object.keys(a).forEach(function (k) { e.setAttribute(k, a[k]); }); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; };
+    var X = function (i) { return pl + i * bw + bw / 2; };
+    var band = function (bi, title, key, fmtV, kind, cls) {
+      var y0 = pt + bi * (bandH + gapB), vals = rows.map(function (r) { return r[key] || 0; }), max = Math.max.apply(null, vals) || 1, step = D.niceStep(max / 2), top = Math.ceil(max / step) * step;
+      var Y = function (v) { return y0 + bandH - v / top * bandH; };
+      el('text', { x: pl, y: y0 - 6, class: 'sa-band-t' }, title);
+      for (var v = 0; v <= top; v += step) { el('line', { x1: pl, x2: W - pr, y1: Y(v), y2: Y(v), class: v ? 'sa-grid-l' : 'sa-base' }); el('text', { x: pl - 8, y: Y(v) + 4, 'text-anchor': 'end', class: 'sa-ax' }, fmtV(v)); }
+      if (kind === 'bar') {
+        var gap = Math.min(Math.max(bw * 0.25, 1.5), 10);
+        rows.forEach(function (r, i) {
+          var v2 = r[key] || 0, bh = v2 / top * bandH; if (bh <= 0) return;
+          var x = pl + i * bw + gap / 2, w = Math.max(bw - gap, 1), yy = y0 + bandH - bh, rr = Math.min(3, w / 2, bh);
+          el('path', { d: 'M' + x + ',' + (y0 + bandH) + 'V' + (yy + rr) + 'Q' + x + ',' + yy + ' ' + (x + rr) + ',' + yy + 'H' + (x + w - rr) + 'Q' + (x + w) + ',' + yy + ' ' + (x + w) + ',' + (yy + rr) + 'V' + (y0 + bandH) + 'Z', class: cls, 'data-i': i });
+        });
+      } else {
+        var dd2 = '', on = false;
+        rows.forEach(function (r, i) { if (r[key] == null) { on = false; return; } dd2 += (on ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(r[key]).toFixed(1); on = true; });
+        el('path', { d: dd2, class: cls });
+      }
+      return Y;
+    };
+    band(0, '순매출', 'r', function (v) { return D.man(v); }, 'bar', 'sa-bar sa-rel-rev');
+    band(1, '유입 · 세션', 's', function (v) { return n0(v); }, 'bar', 'sa-bar sa-rel-ses');
+    var Y3 = band(2, '구매 전환율 (주문 ÷ 세션)', 'cr', function (v) { return (Math.round(v * 10) / 10) + '%'; }, 'line', 'sa-line-7');
+    var every = Math.ceil(n / 12), yb = pt + 3 * bandH + 2 * gapB;
+    rows.forEach(function (r, i) { if (i % every === 0) el('text', { x: X(i), y: yb + 18, 'text-anchor': 'middle', class: 'sa-ax' }, gran === 'day' ? (+r.k.slice(5, 7)) + '/' + (+r.k.slice(8)) : r.k.slice(2).replace('-', '.')); });
+    var cross = el('line', { x1: 0, x2: 0, y1: pt - 4, y2: yb, class: 'sa-cross', visibility: 'hidden' }), dot = el('circle', { r: 4.5, class: 'sa-dot7', visibility: 'hidden' });
+    var wrap = h('div', { class: 'sa-chart-wrap' }), tip = h('div', { class: 'sa-tip', hidden: true });
+    rows.forEach(function (r, i) {
+      var hit = el('rect', { x: pl + i * bw, y: pt - 4, width: bw, height: yb - pt + 4, class: 'sa-hit' });
+      hit.addEventListener('mouseenter', function () {
+        cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('visibility', 'visible');
+        if (r.cr != null) { dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y3(r.cr)); dot.setAttribute('visibility', 'visible'); } else dot.setAttribute('visibility', 'hidden');
+        svg.querySelectorAll('.sa-bar').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
+        ui.clear(tip); ui.put(tip, h('div', { class: 'strong', text: gran === 'day' ? fmt.dot(r.k) + ' (' + D.WD[new Date(r.k + 'T00:00:00Z').getUTCDay()] + ')' : r.k }),
+          h('div', { text: '세션 ' + n0(r.s) + ' × 전환율 ' + (r.cr == null ? '—' : (Math.round(r.cr * 100) / 100) + '%') }),
+          h('div', { text: '× 객단가 ' + (r.o ? D.won(r.r / r.o) : '—') + ' = 매출 ' + D.won(r.r) }), h('div', { class: 'meta', text: '주문 ' + r.o + '건' }));
+        tip.hidden = false; tip.style.left = Math.min(Math.max(X(i) / W * 100, 14), 82) + '%';
+      });
+      hit.addEventListener('mouseleave', function () { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); svg.querySelectorAll('.sa-bar.on').forEach(function (b) { b.classList.remove('on'); }); });
+    });
+    wrap.appendChild(svg); wrap.appendChild(tip);
+    return h('div', null, eq, why, wrap, h('p', { class: 'meta sa-note', text: '세 차트는 날짜가 같은 줄에 맞춰져 있습니다. 매출이 튄 날에 세션이 같이 튀었으면 유입 효과, 세션은 그대로인데 전환율이 올랐으면 상세페이지 · 혜택 · 리뷰 효과로 봅니다.' }));
+  }
+
   /* ---------- 입력: 광고비 ---------- */
   function adInput(D) {
     var ed = D.canEdit();
@@ -325,5 +445,13 @@
       days.length ? h('p', { class: 'meta', text: '최근: ' + days.slice(0, 7).map(function (d) { return d.slice(5) + ' ' + n0(A.traffic[d].sessions); }).join(' · ') }) : null);
   }
 
+  // 현황 차트의 광고비 꺾은선용: 날짜별 반영 광고비(실제 0건이고 매출이 예시면 예시 광고비)
+  if (HR.D2C) HR.D2C.adDays = function () {
+    var D = HR.D2C, P = D.period(), list = A.ads;
+    if (!A.ads.length) { if (!P.demo) return {}; if (!A.demoAds) A.demoAds = sampleAds(D, P); list = A.demoAds; }
+    var day = spread(list, ['2000-01-01', '2999-12-31'], D).day, out = {};
+    Object.keys(day).forEach(function (d) { out[d] = day[d].perf + day[d].inf; });
+    return out;
+  };
   HR.register('ads', { render: render });
 })();
