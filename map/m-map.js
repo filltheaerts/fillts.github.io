@@ -23,9 +23,9 @@
     return h('li', { class: 'map-row' + (off ? ' off' : '') },
       h('div', { class: 'map-row-id' }, h('div', { class: 'map-name', text: a.name }), h('div', { class: 'map-path', text: 'fillts.com' + a.path }), ui.tag(state, off ? 'mute' : '')),
       h('div', { class: 'map-row-body' }, h('p', { class: 'map-desc', text: a.desc }),
-        links.length ? h('ul', { class: 'map-links' }, links.map(function (l) { return h('li', null, h('a', { href: a.path + l[0], text: l[1] })); })) : null,
+        links.length ? h('ul', { class: 'map-links' }, links.map(function (l) { return h('li', null, h('a', { href: a.path + l[0], target: '_blank', rel: 'noopener', text: l[1] })); })) : null,
         null),
-      off ? h('span') : h('a', { class: 'btn btn-sm map-open', href: a.path, text: '열기 →' }));
+      off ? h('span') : h('a', { class: 'btn btn-sm map-open', href: a.path, target: '_blank', rel: 'noopener', text: '열기 ↗' }));
   }
 
   function render(view) {
