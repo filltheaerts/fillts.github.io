@@ -240,6 +240,9 @@
         h('dl', { class: 'summary' }, [['하기로 함', dc('하기로 함')], ['보류', dc('보류')], ['안 하기로 함', dc('안 하기로 함')], ['미정', dc('미정')]].map(function (p) {
           return h('div', null, h('dt', { text: p[0] }), h('dd', { text: p[1] + '건' }));
         })),
+        c.samples ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '검체 — 실시예 · 비교예 · 대조 (괄호 = 중량비)' }), h('dl', { class: 'rd-kv' }, Object.keys(c.samples).map(function (k) {
+          return h('div', null, h('dt', { text: k + ' ' + c.samples[k].length }), h('dd', { text: c.samples[k].join(' · ') }));
+        }))) : null,
         (c.hypothesis || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '검증할 가설' }), h('ol', { class: 'rd-now' }, c.hypothesis.map(function (x) { return h('li', { text: x }); }))) : null,
         kinds.map(function (k) {
           var xs = tests.filter(function (t) { return (t.kind || 'human') === k[0]; });
