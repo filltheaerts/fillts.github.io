@@ -222,10 +222,8 @@
     if (!el.children.length) el.appendChild(h('li', { class: 'empty', text: '다가오는 일정이 없습니다.' }));
     right.appendChild(ui.panel('Upcoming', null, el));
     // 내 목표
-    // 순서는 목표관리 › 「내 목표 순서」에서 정한다 (hr_private.goalOrder)
-    var order = (S.priv && S.priv.goalOrder) || [];
-    var rank = function (g) { var i = order.indexOf(g.id); return i < 0 ? 1e6 : i; };
-    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return rank(a) - rank(b); });
+    // 순서는 목표관리 › 「내 목표 순서」에서 정한다 (hr_goals.ord)
+    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return HR.goals.rank(a) - HR.goals.rank(b); });
     var gl = h('ul', { class: 'list' });
     goals.slice(0, 6).forEach(function (g) { gl.appendChild(HR.goals.mini(g)); });
     if (!gl.children.length) gl.appendChild(h('li', { class: 'empty', text: '진행 중인 목표가 없습니다. 목표관리에서 이번 분기 목표를 세워 보세요.' }));
@@ -238,7 +236,7 @@
   /* ---------- 탭: 성장 ---------- */
   function tabGrowth(view, mid) {
     var gl = h('ul', { class: 'list' });
-    S.goals.filter(function (g) { return g.ownerMid === mid; }).sort(function (a, b) { return (b.period || '').localeCompare(a.period || ''); }).forEach(function (g) { gl.appendChild(HR.goals.mini(g)); });
+    S.goals.filter(function (g) { return g.ownerMid === mid; }).sort(function (a, b) { return HR.goals.rank(a) - HR.goals.rank(b) || (b.period || '').localeCompare(a.period || ''); }).forEach(function (g) { gl.appendChild(HR.goals.mini(g)); });
     if (!gl.children.length) gl.appendChild(h('li', { class: 'empty', text: '등록된 목표가 없습니다.' }));
     var ol = h('ul', { class: 'list' });
     HR.myOnes().filter(function (o) { return o.memberId === mid || o.leaderId === mid; }).forEach(function (o) {

@@ -35,18 +35,31 @@
       h('div', null, levelTag(g), ' ', g.title),
       h('div', { class: 'row' }, bar(p), h('span', { class: 'mono small', text: pctText(p) }), ui.tag(st[0], st[1]))));
   }
-  HR.goals = { mini: mini };
+  // 목표 순서 = 담당자가 「내 목표 순서」에서 정한 값(hr_goals.ord, 모두에게 공통). 없으면 예전 개인 저장값(hr_private.goalOrder)
+  function rank(g) {
+    if (typeof g.ord === 'number') return g.ord;
+    var i = g.ownerMid === S.mid ? ((S.priv && S.priv.goalOrder) || []).indexOf(g.id) : -1;
+    return i < 0 ? 999 : i;
+  }
+  HR.goals = { mini: mini, rank: rank };
 
   /* ---------- 목표 목록 + 상세 ---------- */
   function goalsView(view, selId) {
     G.period = G.period || curPeriod();
+    // 예전 개인 저장 순서(hr_private.goalOrder) → 목표 문서 ord로 1회 옮김 (다른 구성원에게도 같은 순서)
+    var legacy = (S.priv && S.priv.goalOrder) || [];
+    if (!G.ordMigrated && legacy.length && S.goals.some(function (g) { return g.ownerMid === S.mid && typeof g.ord !== 'number' && legacy.indexOf(g.id) >= 0; })) {
+      G.ordMigrated = true;
+      var mb = db.batch();
+      legacy.forEach(function (id, k) { S.goals.forEach(function (g) { if (g.id === id && g.ownerMid === S.mid) { g.ord = k; mb.update(db.doc('hr_goals/' + id), { ord: k }); } }); });
+      mb.commit().catch(function () {});
+    }
     var every = G.period === '*', all = S.goals.filter(function (g) { return every || g.period === G.period; });   // '*' = 전체 기간
     var byParent = {};
     all.forEach(function (g) { var k = g.parentId && all.some(function (x) { return x.id === g.parentId; }) ? g.parentId : ''; (byParent[k] = byParent[k] || []).push(g); });
     var order = { company: 0, team: 1, personal: 2 };
-    var mine = (S.priv && S.priv.goalOrder) || [], rk = function (g) { var i = mine.indexOf(g.id); return i < 0 ? 999 : i; };   // 내 순서(INFO 첫 화면과 같음)
-    // 순서: 진행 중 먼저 → 전사·팀·개인 → 기간 빠른 순 → 내 목표 순서 → 제목
-    var sorter = function (a, b) { return (a.status === 'done') - (b.status === 'done') || order[a.level] - order[b.level] || String(a.period || '').localeCompare(String(b.period || '')) || rk(a) - rk(b) || (a.title || '').localeCompare(b.title || '', 'ko'); };
+    // 순서: 진행 중 먼저 → 전사·팀·개인 → 담당자가 정한 목표 순서 → 기간 빠른 순 → 제목
+    var sorter = function (a, b) { return (a.status === 'done') - (b.status === 'done') || order[a.level] - order[b.level] || rank(a) - rank(b) || String(a.period || '').localeCompare(String(b.period || '')) || (a.title || '').localeCompare(b.title || '', 'ko'); };
     var doneN = all.filter(function (g) { return g.status === 'done'; }).length;
     function card(g, depth) {
       var p = pct(g), st = STAT[g.status] || STAT.on;
@@ -82,9 +95,14 @@
 
   // 내 목표 순서 — INFO 첫 화면 My goals에 보이는 순서 (hr_private.goalOrder)
   function orderPanel() {
-    var order = (S.priv && S.priv.goalOrder) || [], rank = function (g) { var i = order.indexOf(g.id); return i < 0 ? 1e6 : i; };
     var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return rank(a) - rank(b); });
-    var save = function (ids) { S.priv = Object.assign({}, S.priv, { goalOrder: ids }); db.doc('hr_private/' + S.mid).set({ goalOrder: ids, updatedAt: FV.serverTimestamp() }, { merge: true }).catch(ui.fail); HR.refresh(); };
+    var save = function (ids) {   // 목표 문서에 ord 저장 → 목표관리 목록 · INFO · 구성원 화면 모두 같은 순서
+      S.priv = Object.assign({}, S.priv, { goalOrder: ids });
+      var b = db.batch();
+      ids.forEach(function (id, k) { S.goals.forEach(function (g) { if (g.id === id) g.ord = k; }); b.update(db.doc('hr_goals/' + id), { ord: k }); });
+      b.set(db.doc('hr_private/' + S.mid), { goalOrder: ids, updatedAt: FV.serverTimestamp() }, { merge: true });
+      b.commit().catch(ui.fail); HR.refresh();
+    };
     var ul = h('ol', { class: 'list goal-order-list' }, goals.map(function (g, i) {
       var move = function (k) { return function () { var ids = goals.map(function (x) { return x.id; }), j = i + k; if (j < 0 || j >= ids.length) return; var t = ids[i]; ids[i] = ids[j]; ids[j] = t; save(ids); }; };
       return h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
@@ -94,7 +112,7 @@
     }));
     if (!goals.length) ul.appendChild(h('li', { class: 'empty', text: '내가 담당한 진행 중 목표가 없습니다.' }));
     return ui.panel('My order · 내 목표 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); G.ordering = false; HR.refresh(); } }), ul,
-      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. INFO 첫 화면 My goals에도 이 순서로 보입니다.' }));
+      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 목표관리 목록 · INFO 첫 화면 · 구성원 화면 모두 이 순서로 보입니다(다른 구성원에게도 같음).' }));
   }
 
   function detail(g) {
