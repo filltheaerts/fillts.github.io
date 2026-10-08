@@ -8,7 +8,7 @@
   var prevStart = HR.APP.onStart;
   HR.APP.onStart = function (sub) {
     prevStart && prevStart(sub);
-    sub(db.collection('fin_admin'), function (s) { var all = HR.rows(s); F.chk = all.filter(function (c) { return c.kind !== 'ref'; }); F.jgRef = all.filter(function (c) { return c.kind === 'ref'; }); });
+    sub(db.collection('fin_admin'), function (s) { var all = HR.rows(s); F.chk = all.filter(function (c) { return !c.kind; }); F.jgRef = all.filter(function (c) { return c.kind === 'ref'; }); F.jgGoal = all.filter(function (c) { return c.kind === 'goal'; }); F.jgMemo = all.filter(function (c) { return c.kind === 'memo'; }); });
   };
 
   var CATS = ['화장품법', '연구개발', '세무 · 회계', '인사 · 노무', '법인 · 등기', '정관', '특허', '기타'];
@@ -148,6 +148,17 @@
     var next = go.filter(function (x) { return x.s.d != null; })[0];
     var url = (F.cfg && F.cfg.bylawUrl) || '';
     var list = function (xs, empty) { return h('ul', { class: 'list chk-list' }, xs.length ? xs.map(function (x) { return row(x.c, x.s, ed, 'jg'); }) : h('li', { class: 'empty', text: empty })); };
+    // 맨 위: 하고자 하는 일 → 필요한 결의 · 정관 반영 여부 (kind 'goal' {task, resol, bylaw, st: ok|todo|none, when, note, order})
+    var goals = (F.jgGoal || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var ST = { ok: ['반영됨', 'jg-st-ok'], todo: ['미반영', 'jg-st-todo'], none: ['변경 불필요', 'jg-st-none'] };
+    var goalTb = h('table', { class: 'table fin-table jg-table jg-goal' }, h('thead', null, h('tr', null, ['하고자 하는 일', '필요한 결의', '정관', '언제'].map(function (x) { return h('th', { text: x }); }))),
+      h('tbody', null, goals.length ? goals.map(function (g) {
+        var st = ST[g.st] || ST.none;
+        return h('tr', null, h('td', null, h('div', { class: 'strong', text: g.task || '' }), g.note ? h('div', { class: 'jg-gnote', text: g.note }) : null),
+          h('td', { class: 'jg-body', text: g.resol || '' }),
+          h('td', null, h('span', { class: 'jg-st ' + st[1], text: st[0] }), g.bylaw ? h('div', { class: 'jg-gnote', text: g.bylaw }) : null),
+          h('td', { class: 'nowrap', text: g.when || '' }));
+      }) : h('tr', null, h('td', { colspan: '4', class: 'empty', text: '정리된 일이 없습니다.' }))));
     var refTb = h('table', { class: 'table fin-table jg-table' }, h('thead', null, h('tr', null, ['조항', '지금 정관', '앞으로 영향'].map(function (x) { return h('th', { text: x }); }))),
       h('tbody', null, refs.length ? refs.map(function (r) {
         return h('tr', null, h('td', { class: 'strong nowrap', text: (r.art || '') + (r.title ? ' ' + r.title : '') }), h('td', { class: 'jg-body', text: r.body || '' }), h('td', { class: 'jg-note', text: r.note || '' }));
@@ -155,6 +166,13 @@
     ui.put(view, ui.head('[행정] 정관', '정관 신설 · 변경 조항',
         h('div', { class: 'row' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
           ed ? ui.btn('+ 조항 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
+      ui.panel('하고자 하는 일 · 무엇으로 결의하고 정관에 있나', null, h('div', { class: 'table-wrap flat' }, goalTb)),
+      // 설계 메모 (kind 'memo' {title, sub, rows: JSON [[항목, 내용], …]}) — 예: 스톡옵션 설계안
+      (F.jgMemo || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); }).map(function (m) {
+        var rows = []; try { rows = JSON.parse(m.rows || '[]'); } catch (e) { rows = []; }
+        return ui.panel(m.title || '설계 메모', m.sub ? h('span', { class: 'meta', text: m.sub }) : null,
+          h('dl', { class: 'jg-memo' }, rows.map(function (r) { return h('div', { class: r[2] ? 'jg-memo-warn' : '' }, h('dt', { text: r[0] }), h('dd', { text: r[1] })); })));
+      }),
       F.kpi([['진행예정', go.length + '건', '', '하기로 정한 것'], ['대기', wait.length + '건', '', '아직 결정 안 함 · 필수 아님'],
         ['다음 마감', next ? dLabel(next.s.d) : '—', next && (next.s.k === 'near' || next.s.k === 'over') ? 'red' : '', next ? next.c.title : '진행예정 중 날짜 있는 항목 없음']], 'three'),
       ui.panel('진행예정 ' + go.length + '건', null, list(go, '아직 진행하기로 한 조항이 없습니다. 아래 대기에서 「진행」을 체크하세요.')),

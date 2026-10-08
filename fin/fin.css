@@ -341,3 +341,15 @@ a.map-card:hover { border-color: var(--black); }
 .jg-table .jg-note { min-width: 200px; color: var(--gray-600, #555); }
 .jg-go { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: var(--gray-400); cursor: pointer; padding-top: 3px; }
 .jg-go input { width: 18px; height: 18px; accent-color: var(--red); cursor: pointer; }
+.jg-goal td { vertical-align: top; }
+.jg-gnote { margin-top: 4px; font-size: 12px; line-height: 1.55; color: var(--gray-400); }
+.jg-st { display: inline-block; padding: 1px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid var(--gray-400); }
+.jg-st-todo { color: #fff; background: var(--red); border-color: var(--red); }
+.jg-st-ok { color: var(--black); }
+.jg-st-none { color: var(--gray-400); border-style: dashed; }
+.jg-memo > div { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--gray-100); }
+.jg-memo > div:first-child { border-top: none; }
+.jg-memo dt { font-size: 12px; font-weight: 600; }
+.jg-memo dd { font-size: 13px; line-height: 1.65; white-space: pre-line; }
+.jg-memo .jg-memo-warn dt, .jg-memo .jg-memo-warn dd { color: var(--red); }
+@media (max-width: 640px) { .jg-memo > div { grid-template-columns: 1fr; gap: 4px; } }
