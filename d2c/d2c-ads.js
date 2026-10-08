@@ -28,19 +28,25 @@
 
   /* ---------- 예시 (저장 안 함) ---------- */
   function rng(seed) { return function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }; }
-  function sampleAds(D) {
-    var rnd = rng(777), out = [];
+  function sampleAds(D, P) {   // 예시: 매일 광고비 = 그날 매출 × 20~50%(무작위) — 인플루언서 안분액 포함, 나머지를 퍼포먼스로
+    var rnd = rng(777), out = [], sales = {};
+    P.valid.forEach(function (o) { sales[o.date] = (sales[o.date] || 0) + +o.amt; });
+    var INF = [{ kind: 'inf', date: '2026-11-15', media: 'youtube', name: '유튜버 A (예시)', amt: 90000, imp: 21000, clk: 540, conv: 0, rev: 0 },
+      { kind: 'inf', date: '2026-12-01', media: 'youtube', name: '유튜버 B (예시)', amt: 120000, imp: 34000, clk: 880, conv: 0, rev: 0 }];
+    var infDay = function (d) { return INF.reduce(function (s, a) { var k = HR.L.daysBetween(a.date, d); return s + (k >= 0 && k < 30 ? a.amt / 30 : 0); }, 0); };
+    var push = function (d, media, name, amt, cpm, ctr, cvr, aov) {
+      if (amt <= 0) return; var imp = Math.round(amt / cpm * 1000), clk = Math.round(imp * ctr), cv = Math.round(clk * cvr);
+      out.push({ kind: 'perf', date: d, media: media, name: name, amt: amt, imp: imp, clk: clk, conv: cv, rev: cv * aov });
+    };
     for (var i = 0; i < 40; i++) {
-      var d = D.addDays('2026-11-12', i);
-      var m = Math.round((24000 + rnd() * 16000 + (i < 3 ? 25000 : 0)) / 1000) * 1000, mi = Math.round(m / 6500 * 1000), mc = Math.round(mi * (0.009 + rnd() * 0.005));
-      out.push({ kind: 'perf', date: d, media: 'meta', name: '전환 캠페인', amt: m, imp: mi, clk: mc, conv: Math.round(mc * 0.028), rev: Math.round(mc * 0.028) * 45000 });
-      var nv = Math.round((6000 + rnd() * 6000) / 100) * 100, nc = Math.round(nv / 280);
-      out.push({ kind: 'perf', date: d, media: 'naver', name: '브랜드 검색', amt: nv, imp: Math.round(nc / 0.035), clk: nc, conv: Math.round(nc * 0.045), rev: Math.round(nc * 0.045) * 44000 });
-      if (i % 3 === 0) { var kk = 10000, kc = Math.round(kk / 420); out.push({ kind: 'perf', date: d, media: 'kakao', name: '비즈보드', amt: kk, imp: Math.round(kc / 0.006), clk: kc, conv: Math.round(kc * 0.01), rev: Math.round(kc * 0.01) * 42000 }); }
+      var d = D.addDays('2026-11-12', i), s = sales[d] || 0; if (!s) continue;
+      var target = s * (0.2 + rnd() * 0.3), perf = Math.max(Math.round((target - infDay(d)) / 100) * 100, 0);
+      var kakao = i % 3 === 0 ? Math.round(perf * 0.15 / 100) * 100 : 0, naver = Math.round((perf - kakao) * (0.22 + rnd() * 0.1) / 100) * 100, meta = perf - kakao - naver;
+      push(d, 'meta', '전환 캠페인', meta, 6500, 0.009 + rnd() * 0.005, 0.028, 45000);
+      push(d, 'naver', '브랜드 검색', naver, 9800, 0.035, 0.045, 44000);
+      push(d, 'kakao', '비즈보드', kakao, 2500, 0.006, 0.01, 42000);
     }
-    out.push({ kind: 'inf', date: '2026-11-15', media: 'youtube', name: '유튜버 A (예시)', amt: 400000, imp: 21000, clk: 540, conv: 0, rev: 0 });
-    out.push({ kind: 'inf', date: '2026-12-01', media: 'youtube', name: '유튜버 B (예시)', amt: 600000, imp: 34000, clk: 880, conv: 0, rev: 0 });
-    return out;
+    return out.concat(INF);
   }
   function sampleTraffic(P, D) {
     var rnd = rng(4242), m = {}, by = {};
@@ -73,7 +79,7 @@
     if (!D || !D.G.loaded) { ui.put(view, ui.empty('불러오는 중…')); return; }
     var P = D.period(), R = P.R, gran = D.G.gran;
     var demoAds = !A.ads.length && P.demo, demoTr = !A.trafficN && P.demo;
-    if (demoAds && !A.demoAds) A.demoAds = sampleAds(D);
+    if (demoAds && !A.demoAds) A.demoAds = sampleAds(D, P);
     if (demoTr && !A.demoTr) A.demoTr = sampleTraffic(P, D);
     var ads = demoAds ? A.demoAds : A.ads, tr = demoTr ? A.demoTr : A.traffic;
     var cur = spread(ads, R, D), prv = spread(ads, P.P, D);
@@ -87,7 +93,7 @@
 
     ui.put(view, ui.head('D2C · 매출', '광고 · 퍼포먼스', h('span', { class: 'meta', text: (demoAds || demoTr ? '예시 데이터 · 저장 안 됨 · ' : '') + fmt.dot(R[0]) + ' ~ ' + fmt.dot(R[1]) })));
     if (demoAds || demoTr) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 데이터입니다.' }),
-      ' 매출은 현황 예시와 같고, 광고비는 Meta 하루 2.4~4만원 · 네이버 검색 0.6~1.2만원 · 카카오 3일마다 1만원 · 유튜버 2건(40만 · 60만원, 30일 안분), 트래픽은 전환율 약 2.4%로 가정했습니다. 아래 입력란에 실제 값을 넣으면 사라집니다.'));
+      ' 매출은 현황 예시와 같고, 광고비는 매일 그날 매출의 20~50%를 무작위로 썼다고 가정했습니다(유튜버 2건 9만 · 12만원 30일 안분분 포함, 나머지는 Meta · 네이버 검색 · 카카오), 트래픽은 전환율 약 2.4%로 가정했습니다. 아래 입력란에 실제 값을 넣으면 사라집니다.'));
     ui.put(view, D.filters(),
       h('dl', { class: 'summary sa-kpi sa-ad-kpi8' },
         D.kpi('광고비', D.won(adAmt), D.delta(adAmt, adPrev)),
