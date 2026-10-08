@@ -384,3 +384,12 @@ a.map-card:hover { border-color: var(--black); }
 .map-row .map-desc { margin: 0; font-size: 13px; line-height: 1.6; }
 .map-open { align-self: center; white-space: nowrap; }
 @media (max-width: 760px) { .map-row { grid-template-columns: minmax(0, 1fr); gap: 10px; } .map-open { justify-self: start; } }
+/* [행정] 취규 — 취업규칙 준비(비공식) */
+.rule-badge { align-self: center; padding: 2px 10px; font-size: 11px; font-weight: 700; color: var(--red); border: 1px dashed var(--red); white-space: nowrap; }
+.rule-lead { margin: 0 0 16px; font-size: 13px; line-height: 1.7; color: var(--gray-600, #555); }
+.rule-table td:first-child, .rule-step .jg-go { width: 44px; }
+.rule-table .jg-st { margin-right: 4px; }
+tr.rule-done td, li.rule-done .grow { color: var(--gray-400); }
+tr.rule-now td { background: #fdf1f2; }
+.rule-step { display: flex; gap: 12px; align-items: flex-start; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) tr.rule-now td { background: rgba(200, 16, 46, 0.12); } }
