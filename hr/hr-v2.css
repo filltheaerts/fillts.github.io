@@ -1669,3 +1669,10 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 .tl-drange { position: absolute; top: 0; bottom: 0; background: rgba(200, 16, 46, 0.12); border-left: 2px solid var(--red); border-right: 2px solid var(--red); pointer-events: none; z-index: 1; }
 .tl-tip { position: fixed; z-index: 1000; transform: translate(-50%, -100%); background: #111; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); font-variant-numeric: tabular-nums; }
 @media (pointer: coarse) { .tl-h { width: 16px; } }
+/* 일정 없는 서브 줄 — 빈 칸을 끌어 일정 만들기 */
+.tl-track.tl-create { cursor: crosshair; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tl-ghost { position: absolute; top: 9px; bottom: 9px; border-radius: 6px; background: rgba(200, 16, 46, 0.12); border: 1px dashed rgba(200, 16, 46, 0.5); z-index: 1; min-width: 6px; }
+.tl-empty-hint { position: absolute; top: 50%; transform: translateY(-50%); margin-left: 8px; font-size: 10px; color: var(--gray-400); white-space: nowrap; pointer-events: none; z-index: 1; }
+.tl-track.tl-create:hover .tl-empty-hint, body.tl-dragging .tl-empty-hint { display: none; }
+.tl-bar.tl-new { z-index: 5 !important; }
+@media (pointer: coarse) { .tl-empty-hint::after { content: ' (길게 눌러)'; } }

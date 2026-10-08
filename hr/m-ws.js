@@ -606,13 +606,28 @@
     e.preventDefault(); u.fn();
   });
   // o = { bar, outside(막대 밖 이름표), grid, scroller, lo, total, s(시작 일번호), e(끝 다음날 일번호), open(마감 미정), save(start, due) }
+  //   일정 없는 줄 = { create: true, track, cls(막대 색 클래스), grid, scroller, lo, total, save } — 빈 칸을 끌어 기간을 그린다(클릭 = 하루)
   function tlDrag(o) {
-    var bar = o.bar, st = null, tip = null, extra = [], range = null, scrollTimer = null;
+    var bar = o.bar, el = o.create ? o.track : bar, st = null, tip = null, extra = [], range = null, scrollTimer = null, ghost = null;
     var pct = function (d) { return (d - o.lo) / o.total * 100; };
-    bar.classList.add('tl-drag'); bar.setAttribute('draggable', 'false');
-    bar.appendChild(h('span', { class: 'tl-h l', title: '시작일 조정' })); bar.appendChild(h('span', { class: 'tl-h r', title: '마감일 조정' }));
-    bar.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    var dayAt = function (x) { var r = o.track.getBoundingClientRect(); return Math.max(o.lo, Math.min(o.lo + o.total - 1, o.lo + Math.floor((x - r.left) / (r.width / o.total)))); };
+    var dropGhost = function () { if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost); ghost = null; };
+    if (o.create) {
+      el.classList.add('tl-create'); el.title = '끌어서 일정 만들기 · 클릭 = 하루';
+      // 마우스를 올리면 그 날짜 칸에 흐린 막대 미리보기
+      el.addEventListener('mousemove', function (e) {
+        if (st) return; var d = dayAt(e.clientX);
+        if (!ghost) { ghost = h('div', { class: 'tl-ghost' }); el.appendChild(ghost); }
+        at(ghost, pct(d), pct(d + 1) - pct(d));
+      });
+      el.addEventListener('mouseleave', dropGhost);
+    } else {
+      bar.classList.add('tl-drag'); bar.setAttribute('draggable', 'false');
+      bar.appendChild(h('span', { class: 'tl-h l', title: '시작일 조정' })); bar.appendChild(h('span', { class: 'tl-h r', title: '마감일 조정' }));
+      bar.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    }
     function modeAt(x, touch) {
+      if (o.create) return 'c';
       var r = bar.getBoundingClientRect(), edge = Math.min(touch ? 18 : 9, r.width / 3);
       var m = x - r.left <= edge ? 'l' : r.right - x <= edge ? 'r' : 'm';
       return o.open && m === 'l' ? 'm' : m;   // 마감 미정 막대의 끝은 가짜(+14일) — 왼쪽 끝은 통째 이동과 같다
@@ -626,20 +641,26 @@
       track.appendChild(box); extra.push(box);
     }
     function begin(x, mode) {
+      if (o.create) {
+        dropGhost();
+        o.s = dayAt(x); o.e = o.s + 1;
+        bar = h('div', { class: 'tl-bar tl-subbar tl-new ' + (o.cls || '') }); at(bar, pct(o.s), pct(o.e) - pct(o.s)); o.track.appendChild(bar);
+      }
       var track = bar.parentNode, head = o.grid.querySelector('.tl-head .tl-track');
       st = { x0: x, sc0: o.scroller.scrollLeft, x: x, mode: mode, dayPx: track.getBoundingClientRect().width / o.total, s: o.s, e: o.e, l0: bar.style.left, w0: bar.style.width };
-      document.body.classList.add('tl-dragging'); if (mode !== 'm') document.body.classList.add('tl-resizing');
+      document.body.classList.add('tl-dragging'); if (mode === 'l' || mode === 'r') document.body.classList.add('tl-resizing');
       bar.classList.add('dragging');
       if (o.outside) o.outside.style.visibility = 'hidden';
       ticks(track); if (head) { ticks(head); range = h('div', { class: 'tl-drange' }); head.appendChild(range); extra.push(range); }
       tip = h('div', { class: 'tl-tip' }); document.body.appendChild(tip);
       document.addEventListener('keydown', esc);
     }
-    function esc(e) { if (e.key === 'Escape' && st) { st.s = o.s; st.e = o.e; end(); } }
+    function esc(e) { if (e.key === 'Escape' && st) { st.s = o.s; st.e = o.e; st.cancel = true; end(); } }
     function move(x, fromTimer) {
       st.x = x;
       var dd = Math.round((x + o.scroller.scrollLeft - st.x0 - st.sc0) / st.dayPx), min = o.lo, max = o.lo + o.total, s = o.s, e = o.e;
-      if (st.mode === 'm') { dd = Math.max(min - o.s, Math.min(max - o.e, dd)); s += dd; e += dd; }
+      if (st.mode === 'c') { var c = Math.max(min, Math.min(max - 1, o.s + dd)); s = Math.min(o.s, c); e = Math.max(o.s, c) + 1; }
+      else if (st.mode === 'm') { dd = Math.max(min - o.s, Math.min(max - o.e, dd)); s += dd; e += dd; }
       else if (st.mode === 'l') s = Math.max(min, Math.min(o.e - 1, o.s + dd));
       else e = Math.min(max, Math.max(o.s + 1, o.e + dd));
       st.s = s; st.e = e;
@@ -671,25 +692,31 @@
       // 드래그 직후의 클릭(막대 열기 · 서브 팝업)은 먹는다
       var eat = function (ev) { ev.preventDefault(); ev.stopPropagation(); };
       window.addEventListener('click', eat, true); setTimeout(function () { window.removeEventListener('click', eat, true); }, 400);
-      var s = st.s, e = st.e, mode = st.mode, l0 = st.l0, w0 = st.w0; st = null;
+      var s = st.s, e = st.e, mode = st.mode, l0 = st.l0, w0 = st.w0, cancel = st.cancel; st = null;
+      if (o.create) { if (cancel) { if (bar.parentNode) bar.parentNode.removeChild(bar); return; } o.save(dstr(s), dstr(e - 1)); return; }
       if (s === o.s && e === o.e) { bar.style.left = l0; bar.style.width = w0; if (o.outside) o.outside.style.visibility = ''; return; }
       o.save(dstr(s), o.open && mode !== 'r' ? '' : dstr(e - 1));
     }
     // 마우스: 4px 이상 움직여야 드래그 — 그보다 적으면 지금처럼 클릭
-    bar.addEventListener('mousedown', function (e) {
+    el.addEventListener('mousedown', function (e) {
       if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || st) return;
+      if (o.create && e.target !== el && e.target !== ghost) return;   // 빈 칸에서만
       e.preventDefault();
       var x0 = e.clientX, mode = modeAt(x0), started = false;
       var mm = function (ev) { if (!started) { if (Math.abs(ev.clientX - x0) < 4) return; started = true; begin(x0, mode); } move(ev.clientX); };
-      var mu = function () { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); if (started && st) end(); };
+      var mu = function () {
+        window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu);
+        if (!started && o.create) { begin(x0, mode); move(x0); end(); return; }   // 클릭 = 그날 하루
+        if (started && st) end();
+      };
       window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu);
     });
     // 터치: 길게 눌러야 잡힌다 — 그 전에 움직이면 평소처럼 스크롤
     var holdTimer = null;
-    bar.addEventListener('touchstart', function (e) {
+    el.addEventListener('touchstart', function (e) {
       if (e.touches.length !== 1 || st) return;
       var t = e.touches[0], x0 = t.clientX, y0 = t.clientY, armed = false;
-      var off = function () { clearTimeout(holdTimer); holdTimer = null; bar.removeEventListener('touchmove', tm); bar.removeEventListener('touchend', te); bar.removeEventListener('touchcancel', te); };
+      var off = function () { clearTimeout(holdTimer); holdTimer = null; el.removeEventListener('touchmove', tm); el.removeEventListener('touchend', te); el.removeEventListener('touchcancel', te); };
       var tm = function (ev) {
         var q = ev.touches[0];
         if (!armed) { if (Math.abs(q.clientX - x0) > 8 || Math.abs(q.clientY - y0) > 8) off(); return; }
@@ -698,9 +725,9 @@
       var te = function (ev) { off(); if (armed) { if (ev.cancelable) ev.preventDefault(); if (st) end(); } };
       clearTimeout(holdTimer);
       holdTimer = setTimeout(function () { armed = true; if (navigator.vibrate) navigator.vibrate(15); begin(x0, modeAt(x0, true)); move(x0); }, 350);
-      bar.addEventListener('touchmove', tm, { passive: false }); bar.addEventListener('touchend', te); bar.addEventListener('touchcancel', te);
+      el.addEventListener('touchmove', tm, { passive: false }); el.addEventListener('touchend', te); el.addEventListener('touchcancel', te);
     }, { passive: true });
-    bar.addEventListener('contextmenu', function (e) { if (st || holdTimer) e.preventDefault(); });
+    el.addEventListener('contextmenu', function (e) { if (st || holdTimer) e.preventDefault(); });
   }
   function timelineOf(list, showSpace) {
     var today = fmt.today(), T = dnum(today);
@@ -770,6 +797,11 @@
           var per = has ? subPeriod(sb) + ' · ' + days + '일' : '일정 미정';
           var first = String(sb.body || '').split('\n').filter(function (l) { return l.trim(); })[0] || '';
           var track = h('div', { class: 'tl-track' }, todayLine());
+          var saveSub = function (s, d) { tlCommit(p, function () { var arr = (p.subs || []).map(function (y) { return Object.assign({}, y); }); arr[si].start = s; arr[si].due = d; p.subs = arr; return { subs: cleanSubs(arr) }; }, '「' + sb.t + '」 ' + tlPeriod(s, d)); };
+          if (!has && editable) {
+            if (T >= lo && T <= hi) track.appendChild(at(h('span', { class: 'tl-empty-hint', text: '＋ 끌어서 일정 만들기' }), pct(T)));
+            tlDrag({ create: true, track: track, cls: 'st-' + (sb.done ? 'done' : (p.status || 'idea')), grid: grid, scroller: scroller, lo: lo, total: total, save: saveSub });
+          }
           if (has) {
             var l2 = pct(a), w2 = Math.max(pct(z) - l2, 0.6);
             var sbar = at(h('button', { type: 'button', class: 'tl-bar tl-subbar st-' + (sb.done ? 'done' : (p.status || 'idea')) + (late ? ' late' : ''), title: sb.t + ' · ' + per,
@@ -777,7 +809,7 @@
             var sout = w2 < 6 ? at(h('span', { class: 'tl-bar-out sub', text: sb.t + ' · ' + per }), Math.min(l2 + w2, 100)) : null;
             track.appendChild(sbar); if (sout) track.appendChild(sout);
             if (editable) tlDrag({ bar: sbar, outside: sout, grid: grid, scroller: scroller, lo: lo, total: total, s: a, e: z, open: false,
-              save: function (s, d) { tlCommit(p, function () { var arr = (p.subs || []).map(function (y) { return Object.assign({}, y); }); arr[si].start = s; arr[si].due = d; p.subs = arr; return { subs: cleanSubs(arr) }; }, '「' + sb.t + '」 ' + tlPeriod(s, d)); } });
+              save: saveSub });
           }
           grid.appendChild(h('div', { class: 'tl-row tl-subrow' + (last && !open ? ' last' : '') + (open ? ' open' : '') },
             h('button', { type: 'button', class: 'tl-label tl-sublabel' + (last ? ' last' : ''), title: '눌러서 보기 · 고치기', onclick: function () { subModal(p, si); } },
