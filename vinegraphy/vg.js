@@ -237,7 +237,7 @@
     ptEdit = id; HR.refresh();
     setTimeout(function () { var t = document.getElementById('vgEditT'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 120);
   }
-  function inlineEdit(prod, kind, list, x) {
+  function inlineEdit(prod, kind, list, x, theme) {
     var K = KINDS[kind];
     var tg = ui.select(K.tags.map(function (k) { return [k, k]; }), x ? x.tag : K.def, { class: 'vg-ie-tag', 'aria-label': '분류' });
     var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x ? x.title : '', maxlength: K.max || 120, placeholder: K.ph, 'aria-label': K.title });
@@ -249,7 +249,7 @@
       blurNow();
       if (x && title === x.title && pr.value.trim() === (x.proof || '') && tg.value === x.tag) return cancel();
       var data = { product: prod, kind: kind, title: title, proof: pr.value.trim(), tag: tg.value };
-      if (!x) data.order = nextOrder(list);
+      if (!x) { data.order = nextOrder(list); if (theme != null) data.theme = theme; }
       savePt(x && x.id, data).then(function () { ptEdit = null; ui.toast(x ? '고쳤습니다.' : '추가했습니다.'); HR.refresh(); });
     };
     var keys = function (e) {
@@ -269,41 +269,53 @@
   function dragStart(e, list) {
     if (e.button && e.button !== 0) return;
     e.preventDefault();
-    var li = e.currentTarget.closest('.vg-pt'), ol = li.parentNode, before = ids();
-    li.classList.add('dragging'); ol.classList.add('sorting'); document.body.classList.add('vg-dragging');
-    function ids() { return Array.prototype.map.call(ol.querySelectorAll('.vg-pt[data-id]'), function (n) { return n.dataset.id; }); }
-    function renumber() { Array.prototype.forEach.call(ol.querySelectorAll('.vg-pt-no'), function (n, k) { n.textContent = ('0' + (k + 1)).slice(-2); }); }
+    // 카피처럼 주제 묶음(.vg-themes)이 여러 개면 묶음 사이로도 옮긴다 → 놓은 묶음의 주제(theme)로 바뀐다
+    var li = e.currentTarget.closest('.vg-pt'), ol = li.parentNode, wrap = li.closest('.vg-themes');
+    var lists = wrap ? Array.prototype.slice.call(wrap.querySelectorAll('ol.vg-pts')) : [ol], before = snap();
+    li.classList.add('dragging'); (wrap || ol).classList.add('sorting'); document.body.classList.add('vg-dragging');
+    function ids(l) { return Array.prototype.map.call(l.querySelectorAll('.vg-pt[data-id]'), function (n) { return n.dataset.id; }); }
+    function snap() { return lists.map(function (l) { return (l.dataset.theme || '') + ':' + ids(l).join(','); }).join('|'); }
+    function renumber() { lists.forEach(function (l) { Array.prototype.forEach.call(l.querySelectorAll('.vg-pt-no'), function (n, k) { n.textContent = ('0' + (k + 1)).slice(-2); }); l.classList.toggle('empty', !l.querySelector('.vg-pt')); }); }
     function onMove(ev) {
       var y = ev.clientY;
       if (y < 70) window.scrollBy(0, -12); else if (y > window.innerHeight - 70) window.scrollBy(0, 12);
-      var rows = Array.prototype.filter.call(ol.children, function (n) { return n !== li; });
+      if (lists.length > 1) {
+        for (var q = 0; q < lists.length; q++) { var lr = lists[q].getBoundingClientRect(); if (y >= lr.top - 14 && y <= lr.bottom + 14) { ol = lists[q]; break; } }
+        lists.forEach(function (l) { l.classList.toggle('drop', l === ol); });
+      }
+      var rows = Array.prototype.filter.call(ol.children, function (n) { return n !== li && n.dataset.id; });
       var next = null;
       for (var k = 0; k < rows.length; k++) { var r = rows[k].getBoundingClientRect(); if (y < r.top + r.height / 2) { next = rows[k]; break; } }
       if (next !== li.nextSibling) { ol.insertBefore(li, next); renumber(); }
     }
     function onUp() {
       document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp);
-      li.classList.remove('dragging'); ol.classList.remove('sorting'); document.body.classList.remove('vg-dragging');
-      var after = ids();
-      if (after.join() === before.join()) return;
+      li.classList.remove('dragging'); (wrap || ol).classList.remove('sorting'); document.body.classList.remove('vg-dragging');
+      lists.forEach(function (l) { l.classList.remove('drop'); });
+      if (snap() === before) return;
       var byId = {}; list.forEach(function (p) { byId[p.id] = p; });
       var batch = db.batch(), n = 0;
-      after.forEach(function (id, k) {
-        var o = (k + 1) * 10, p = byId[id];
-        if (p && p.order !== o) { batch.update(db.collection('vg_points').doc(id), { order: o, updatedBy: S.mid, updatedAt: FV.serverTimestamp() }); p.order = o; n++; }
+      lists.forEach(function (l) {
+        var th = wrap ? l.dataset.theme || '' : null;
+        ids(l).forEach(function (id, k) {
+          var o = (k + 1) * 10, p = byId[id]; if (!p) return;
+          var ch = { order: o, updatedBy: S.mid, updatedAt: FV.serverTimestamp() }, diff = p.order !== o;
+          if (th !== null && (p.theme || '') !== th) { ch.theme = th; p.theme = th; diff = true; }
+          if (diff) { batch.update(db.collection('vg_points').doc(id), ch); p.order = o; n++; }
+        });
       });
       if (n) batch.commit().then(function () { ui.toast('순서를 바꿨습니다.'); }, function (err) { ui.fail(err); HR.refresh(); });
     }
     document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
   }
 
-  function row(prod, kind, list, x, i) {
+  function row(prod, kind, list, x, i, all) {
     var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
     if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
     var isCopy = kind === 'copy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
     var who = isCopy ? '' : (S.members[x.by] || {}).name || '';
     var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
-      onpointerdown: function (e) { dragStart(e, list); },
+      onpointerdown: function (e) { dragStart(e, all || list); },
       onkeydown: function (e) {
         if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
         e.preventDefault(); move(list, i, e.key === 'ArrowUp' ? -1 : 1);
@@ -344,6 +356,88 @@
           onclick: function () { mktOpen = !mktOpen; HR.refresh(); } }) : null),
       kind === 'appeal' && mktOpen ? mktPanel(prod, list) : null);
   }
+  /* 핵심 카피라이팅 — 소구 주제([권위] · [손실회피] …) 묶음. 주제 = vg_points kind 'theme', 카피의 theme = 주제 문서 id
+     카피는 끌어서 다른 주제로 옮길 수 있고, 주제 묶음도 머리의 손잡이로 끌어서 순서를 바꾼다. 주제 이름은 더블클릭으로 수정 */
+  var thEdit = null;   // 주제 id | 'new'
+  function themeDrag(e, themes) {
+    if (e.button && e.button !== 0) return;
+    e.preventDefault();
+    var sec = e.currentTarget.closest('.vg-theme'), box = sec.parentNode, before = tids();
+    sec.classList.add('dragging'); document.body.classList.add('vg-dragging');
+    function tids() { return Array.prototype.map.call(box.querySelectorAll('.vg-theme[data-tid]'), function (n) { return n.dataset.tid; }); }
+    function onMove(ev) {
+      var y = ev.clientY;
+      if (y < 70) window.scrollBy(0, -14); else if (y > window.innerHeight - 70) window.scrollBy(0, 14);
+      var others = Array.prototype.filter.call(box.querySelectorAll('.vg-theme[data-tid]'), function (n) { return n !== sec; }), next = null;
+      for (var k = 0; k < others.length; k++) { var r = others[k].getBoundingClientRect(); if (y < r.top + Math.min(r.height / 2, 40)) { next = others[k]; break; } }
+      if (!next) next = box.querySelector('.vg-theme:not([data-tid])');
+      if (next !== sec.nextSibling) box.insertBefore(sec, next);
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp);
+      sec.classList.remove('dragging'); document.body.classList.remove('vg-dragging');
+      var after = tids(); if (after.join() === before.join()) return;
+      var byId = {}; themes.forEach(function (t) { byId[t.id] = t; });
+      var batch = db.batch(), n = 0;
+      after.forEach(function (id, k) { var o = (k + 1) * 10, t = byId[id]; if (t && t.order !== o) { batch.update(db.collection('vg_points').doc(id), { order: o, updatedBy: S.mid, updatedAt: FV.serverTimestamp() }); t.order = o; n++; } });
+      if (n) batch.commit().then(function () { ui.toast('주제 순서를 바꿨습니다.'); }, function (err) { ui.fail(err); HR.refresh(); });
+    }
+    document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
+  }
+  function themeInput(prod, themes, t) {
+    var inp = ui.input({ id: 'vgThEdit', class: 'vg-th-in', value: t ? t.title : '', maxlength: 30, placeholder: '소구 주제 — 예) 권위', 'aria-label': '소구 주제' });
+    var done = function (save) {
+      var v = inp.value.replace(/^\[|\]$/g, '').trim(); thEdit = null; blurNow();
+      if (!save || !v || (t && v === t.title)) return HR.refresh();
+      (t ? savePt(t.id, { title: v }) : savePt(null, { product: prod, kind: 'theme', title: v, tag: '주제', theme: '', order: nextOrder(themes) }))
+        .then(function () { ui.toast(t ? '주제 이름을 바꿨습니다.' : '「' + v + '」 주제를 만들었습니다.'); HR.refresh(); });
+    };
+    inp.addEventListener('keydown', function (e) { if (e.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') { e.preventDefault(); done(false); } });
+    inp.addEventListener('blur', function () { if (thEdit !== null) done(true); });
+    return inp;
+  }
+  function focusSoon(id) { setTimeout(function () { var el = document.getElementById(id); if (el) { el.focus(); if (el.select) el.select(); } }, 120); }
+  function copyGroup(prod) {
+    var K = KINDS.copy, f = tagFilter.copy || '';
+    var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === 'copy'; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === 'theme'; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var known = {}; themes.forEach(function (t) { known[t.id] = 1; });
+    var counts = {}; list.forEach(function (p) { counts[p.tag] = (counts[p.tag] || 0) + 1; });
+    var filter = h('div', { class: 'vg-filter' }, [['', '전체 ' + list.length]].concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; })).map(function (o) {
+      return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter.copy = o[0]; HR.refresh(); } });
+    }));
+    var section = function (t) {
+      var tid = t ? t.id : '';
+      var items = list.filter(function (p) { return t ? p.theme === tid : !known[p.theme || '']; });
+      var shown = f ? items.filter(function (p) { return p.tag === f; }) : items;
+      var rows = shown.map(function (x, i) {
+        var r = row(prod, 'copy', items, x, i, list);
+        if (f) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } }
+        return r;
+      });
+      if (ptEdit === 'new:copy:' + tid) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (items.length + 1)).slice(-2) }), inlineEdit(prod, 'copy', list, null, tid)));
+      var mine = t && canEditPt(t);
+      var name = thEdit === tid && t ? themeInput(prod, themes, t)
+        : h('b', { class: 'vg-th-name', title: mine ? '더블클릭하면 이름을 고칩니다' : null, ondblclick: mine ? function () { thEdit = tid; HR.refresh(); focusSoon('vgThEdit'); } : null }, t ? '[' + t.title + ']' : '[주제 없음]');
+      return h('section', { class: 'vg-theme' + (t ? '' : ' none'), 'data-tid': t ? tid : null },
+        h('div', { class: 'vg-th-head' },
+          t ? h('span', { class: 'vg-th-grip', title: '끌어서 주제 순서 바꾸기', onpointerdown: function (e) { themeDrag(e, themes); } }, '⠿') : h('span', { class: 'vg-th-grip off' }),
+          name, h('span', { class: 'vg-th-n', text: String(items.length) }),
+          h('span', { class: 'grow' }),
+          ptEdit === 'new:copy:' + tid ? null : h('button', { type: 'button', class: 'vg-th-add', text: '+ 카피', onclick: function () { startEdit('new:copy:' + tid); } }),
+          mine && !items.length ? ui.confirmBtn('주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
+        h('ol', { class: 'vg-pts' + (rows.length ? '' : ' empty'), 'data-theme': tid }, rows));
+    };
+    var none = list.filter(function (p) { return !known[p.theme || '']; });
+    return h('section', { class: 'vg-group vg-group-copy' },
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · 주제 ' + themes.length })),
+      h('p', { class: 'muted small', text: '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
+      filter,
+      h('div', { class: 'vg-themes' }, themes.map(section), none.length || ptEdit === 'new:copy:' ? section(null) : null),
+      h('div', { class: 'vg-add-row' }, thEdit === 'new' ? themeInput(prod, themes, null)
+        : h('button', { type: 'button', class: 'vg-add', text: '+ 소구 주제', onclick: function () { thEdit = 'new'; HR.refresh(); focusSoon('vgThEdit'); } })));
+  }
+
   /* 핵심 키워드 — 칩 모양. 쉼표로 여러 개 한 번에 추가, 칩을 누르면 #해시태그 복사, 전체는 해시태그 · 쉼표 목록으로 복사
      끌어서 순서 · 더블클릭 수정 · × 삭제(작성자 · 관리자) */
   var kwEdit = null;
@@ -439,7 +533,7 @@
     ui.put(view, ui.head(name, '핵심 포인트', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
     var hr = function () { return h('hr', { class: 'vg-divider' }); };
-    ui.put(view, keywords(prod), hr(), group(prod, 'appeal'), hr(), group(prod, 'target'), hr(), group(prod, 'copy'));
+    ui.put(view, keywords(prod), hr(), group(prod, 'appeal'), hr(), group(prod, 'target'), hr(), copyGroup(prod));
   }
   function mktPanel(prod, list) {
     var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });

@@ -220,3 +220,23 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-group-copy .vg-pt:hover .vg-pt-act { opacity: 1; }
 .vg-group-copy .vg-pt:hover .vg-copy-btn { background: var(--vg-deep); color: #fff; border-color: var(--vg-deep); }
 @media (max-width: 900px) { .vg-group-copy .vg-pt-act { opacity: 1; } }
+
+/* 카피 소구 주제 묶음 [권위] … — 묶음 사이로 끌어서 옮기기 */
+.vg-themes { display: flex; flex-direction: column; gap: 14px; }
+.vg-theme { display: flex; flex-direction: column; gap: 4px; }
+.vg-theme.dragging { opacity: 0.85; outline: 2px solid var(--vg-wine); outline-offset: 4px; background: var(--vg-mist); }
+.vg-th-head { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+.vg-th-grip { width: 16px; text-align: center; color: var(--vg-lilac); cursor: grab; touch-action: none; user-select: none; font-size: 14px; }
+.vg-th-grip:hover { color: var(--vg-wine); }
+.vg-th-grip.off { cursor: default; }
+.vg-th-name { font-size: 14px; font-weight: 700; color: var(--vg-deep); letter-spacing: 0.02em; cursor: default; }
+.vg-th-n { font-size: 11px; color: var(--vg-wine); background: #fff; border: 1px solid var(--vg-lilac); border-radius: 9px; padding: 0 7px; line-height: 16px; }
+.vg-th-add { font: inherit; font-size: 11px; color: var(--vg-wine); background: transparent; border: none; cursor: pointer; padding: 2px 6px; }
+.vg-th-add:hover { text-decoration: underline; }
+.vg-th-in { font: inherit; font-size: 14px; font-weight: 700; padding: 3px 8px; border: 1px solid var(--vg-wine); background: #fff; width: 200px; }
+.vg-th-in:focus { outline: none; }
+.vg-theme.none .vg-th-name { color: var(--gray-400); }
+.vg-group-copy .vg-pts.empty { min-height: 34px; border-style: dashed; border-color: var(--vg-lilac); background: transparent; }
+.vg-group-copy .vg-pts.empty::before { content: "여기로 끌어다 놓기"; display: block; text-align: center; font-size: 11px; color: var(--vg-lilac); line-height: 32px; }
+.vg-group-copy .vg-pts.drop { box-shadow: 0 0 0 2px var(--vg-wine); }
+.vg-group-copy .vg-add-row .vg-th-in { flex: 1; width: auto; }
