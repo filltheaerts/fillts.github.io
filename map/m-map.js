@@ -23,18 +23,18 @@
       h('div', { class: 'map-row-id' }, h('div', { class: 'map-name', text: a.name }), h('div', { class: 'map-path', text: 'fillts.com' + a.path }), ui.tag(state, off ? 'mute' : '')),
       h('div', { class: 'map-row-body' }, h('p', { class: 'map-desc', text: a.desc }),
         links.length ? h('ul', { class: 'map-links' }, links.map(function (l) { return h('li', null, h('a', { href: a.path + l[0], text: l[1] })); })) : null,
-        !a.soon && !can ? h('p', { class: 'meta', text: 'HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.' }) : null),
+        null),
       off ? h('span') : h('a', { class: 'btn btn-sm map-open', href: a.path, text: '열기 →' }));
   }
 
   function render(view) {
     var me = S.members[S.mid] || {};
     var used = {}, secs = GROUPS.map(function (g) {
-      var apps = HR.APPS.filter(function (a) { return g[1].indexOf(a.id) >= 0; });
+      var apps = HR.APPS.filter(function (a) { return g[1].indexOf(a.id) >= 0 && HR.canApp(a.id); });   // 권한 없는 앱은 아예 안 보임
       apps.forEach(function (a) { used[a.id] = true; });
       return [g[0], apps];
     });
-    var rest = HR.APPS.filter(function (a) { return !used[a.id]; });
+    var rest = HR.APPS.filter(function (a) { return !used[a.id] && GROUPS.every(function (g) { return g[1].indexOf(a.id) < 0; }) && HR.canApp(a.id); });
     if (rest.length) secs.push(['기타', rest]);
     ui.put(view, ui.head('fillts', 'Sites', h('span', { class: 'meta', text: (me.name || S.user.email) + ' · 권한에 따라 보이는 앱이 다릅니다' })),
       secs.filter(function (s) { return s[1].length; }).map(function (s) {
