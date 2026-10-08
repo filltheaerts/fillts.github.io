@@ -50,11 +50,11 @@
   }
   /* 재택 출근 신청: 신청과 동시에 재택 출근 기록(시간 카운팅) → 대표 승인 시 그날 근무 전체 인정, 반려 시 미반영 */
   var REMOTE_RULES = [
-    '건강·교통·기상 등으로 사무실 출근이 어려운 날, 출근 전에 신청합니다.',
-    '신청과 동시에 재택 출근이 기록되고 근무시간이 카운팅됩니다. 위치 제한은 적용되지 않습니다.',
-    '대표가 승인하면 그날 근무 전체가 인정되고, 반려되면 그날 근무 기록은 반영되지 않습니다.',
-    '근무시간·휴게·자동 퇴근은 사무실과 같고, 연장·야간은 따로 신청합니다.',
-    '근무 중에는 Slack에 바로 응답할 수 있어야 하며, 그날 한 일은 퇴근 전 Slack에 공유합니다.'
+    '건강·교통·기상 등 사정이 있는 날, 출근 전 신청',
+    '신청 즉시 재택 출근 기록 (위치 제한 없음)',
+    '대표 승인 시 그날 근무 인정 · 반려 시 미반영',
+    '근무·휴게는 사무실과 동일, 연장·야간은 별도 신청',
+    '근무 중 Slack 즉시 응답 · 퇴근 전 한 일 공유'
   ];
   function remoteModal() {
     var old = document.getElementById('remoteModal'); if (old) old.remove();
@@ -77,7 +77,7 @@
       h('div', { class: 'sm-head' }, h('span', { class: 'sm-kicker', text: 'REMOTE · ' + fmt.date(t) }), h('button', { type: 'button', class: 'sm-x', 'aria-label': '닫기', text: '×', onclick: close })),
       h('h3', { class: 'sm-view-title', text: '재택 출근 신청' }),
       h('div', { class: 'field' }, h('label', { text: '사유' }), rsn), m,
-      h('ol', { class: 'remote-rules' }, REMOTE_RULES.map(function (x) { return h('li', { text: x }); })),
+      h('ul', { class: 'remote-rules' }, REMOTE_RULES.map(function (x) { return h('li', { text: x }); })),
       h('div', { class: 'row sm-actions' }, go, ui.btn('취소', close, 'btn-line')));
     wrap = h('div', { id: 'remoteModal', class: 'sm-wrap', onclick: function (e) { if (e.target === wrap) close(); } }, panel);
     document.body.appendChild(wrap);
@@ -115,10 +115,12 @@
     return h('section', { class: 'panel punch' },
       h('div', { class: 'panel-head' }, head, modes), clock,
       state, h('div', { class: 'punch-btns' }, bIn, bOut, bRem), msgEl,
-      ah ? h('p', { class: 'muted att-note', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null,
-      geoRule(t) ? h('p', { class: 'muted att-note', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다' }) : null,
-      h('div', { class: 'remote-rule-box' }, h('div', { class: 'remote-rule-h', text: '재택근무 규정' }),
-        h('ol', { class: 'remote-rules' }, REMOTE_RULES.map(function (x) { return h('li', { text: x }); }))));
+      h('div', { class: 'punch-guide' },
+        h('div', { class: 'pg-h', text: '[출근안내]' }),
+        h('ul', { class: 'pg-list' }, ah ? h('li', { class: 'att-note', text: ah + '시간 후 자동 퇴근 · 휴게시간 법정 기준 자동 공제' }) : null,
+          geoRule(t) ? h('li', { class: 'att-note', text: '오늘은 ' + String(S.cfg.geo.label || '사무실').replace(/\s*\(.*?\)/g, '') + ' ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 기록' }) : null),
+        h('div', { class: 'pg-h', text: '[재택신청 안내]' }),
+        h('ul', { class: 'pg-list' }, REMOTE_RULES.slice(0, 2).map(function (x) { return h('li', { class: 'att-note', text: x }); }))));
   }
   function weekPanel() {
     var t = fmt.today(), mon = L.mondayOf(t), days = A.days(S.myPunches, S.myFixes, { member: S.members[S.mid], from: mon, to: L.addDays(mon, 6), leaves: HR.leavesOf(S.mid) }), w = A.week(days, mon);

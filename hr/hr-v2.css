@@ -1695,3 +1695,17 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 .goal-card.is-done { opacity: 0.55; }
 .goal-card.is-done .goal-title { text-decoration: line-through; }
 .goal-hide-done { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+/* 출근 카드 안내 2줄: 줄바꿈 없이 카드 폭에 맞춰 글자 크기 자동 조절 */
+.punch { container-type: inline-size; }
+.punch .att-note { font-size: clamp(10px, calc(100cqi / 32.5), 12px); text-overflow: ellipsis; }
+
+/* 출근 카드 하단 안내: [출근안내] · [재택신청 안내] 점 목록 */
+.punch-guide { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.14); display: flex; flex-direction: column; gap: 4px; }
+.punch-guide .pg-h { font-size: 11px; font-weight: 600; color: var(--gray-200); letter-spacing: 0.02em; }
+.punch-guide .pg-h + .pg-list + .pg-h { margin-top: 8px; }
+.punch-guide .pg-list { list-style: none; margin: 0; padding: 0; }
+.punch-guide .pg-list li { color: var(--gray-400); }
+.punch-guide .pg-list li::before { content: "·"; margin-right: 6px; color: var(--gray-600); }
+.remote-panel ul.remote-rules { list-style: none; padding-left: 12px; }
+.remote-panel ul.remote-rules li::before { content: "· "; }
