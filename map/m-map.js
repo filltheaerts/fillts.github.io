@@ -36,6 +36,11 @@
   // 앱 아래 「권한」 줄 — [이름] 칩. 관리자는 역할 권한이라 여기서 못 뺀다
   function who(a) {
     if (!S.realAdmin) return null;
+    if (HR.OWNER_ONLY && a.id !== 'hr') {   // 검토 기간 잠금: HR 밖 앱은 대표 계정만 — 받은 권한이 있어도 열리지 않는다
+      var owner = Object.keys(S.users).map(function (k) { return S.users[k]; }).filter(function (u) { return (u.email || '').toLowerCase() === HR.OWNER_ONLY; })[0];
+      return h('div', { class: 'map-who' }, h('span', { class: 'map-who-k', text: '권한' }),
+        h('span', { class: 'map-chip' }, '[' + (owner ? HR.name(owner.memberId) : HR.OWNER_ONLY) + ']'), h('span', { class: 'meta', text: '검토 중 · 다른 계정 잠금' }));
+    }
     if (a.open) return h('div', { class: 'map-who' }, h('span', { class: 'map-who-k', text: '권한' }), h('span', { class: 'meta', text: '구성원 전원' }));
     var chips = [], others = [];
     Object.keys(S.users).map(function (uid) { return Object.assign({ uid: uid }, S.users[uid]); })
@@ -54,7 +59,7 @@
 
   function row(a) {
     var can = HR.canApp(a.id), lv = HR.appLevel(a.id), off = a.soon || !can;
-    var state = a.soon ? '준비 중' : !can ? '권한 없음' : a.open ? '구성원 전원' : lv === 'edit' ? '편집 권한' : '열람 권한';
+    var state = a.soon ? '준비 중' : !can ? '권한 없음' : HR.OWNER_ONLY && a.id !== 'hr' ? '대표 전용 · 검토 중' : a.open ? '구성원 전원' : lv === 'edit' ? '편집 권한' : '열람 권한';
     var links = off ? [] : (LINKS[a.id] || []);
     return h('li', { class: 'map-row' + (off ? ' off' : '') },
       h('div', { class: 'map-row-id' }, h('div', { class: 'map-name', text: a.name }), h('div', { class: 'map-path', text: 'fillts.com' + a.path }), ui.tag(state, off ? 'mute' : '')),
@@ -74,13 +79,14 @@
     var rest = HR.APPS.filter(function (a) { return !used[a.id] && GROUPS.every(function (g) { return g[1].indexOf(a.id) < 0; }) && HR.canApp(a.id); });
     if (rest.length) secs.push(['기타', rest]);
     var right = h('div', { class: 'map-head-r' }, h('span', { class: 'meta', text: (me.name || S.user.email) + ' · 권한에 따라 보이는 앱이 다릅니다' }),
-      S.realAdmin ? h('button', { type: 'button', class: 'btn btn-sm' + (editing ? '' : ' btn-line'), text: editing ? '수정 완료' : '권한 수정', 'aria-pressed': String(editing), onclick: function () { editing = !editing; HR.refresh(); } }) : null);
+      S.realAdmin && !HR.OWNER_ONLY ? h('button', { type: 'button', class: 'btn btn-sm' + (editing ? '' : ' btn-line'), text: editing ? '수정 완료' : '권한 수정', 'aria-pressed': String(editing), onclick: function () { editing = !editing; HR.refresh(); } }) : null);
     ui.put(view, ui.head('fillts', 'Sites', right),
       secs.filter(function (s) { return s[1].length; }).map(function (s) {
         return h('section', { class: 'map-sec' }, h('div', { class: 'map-sec-head' }, h('span', { class: 'map-sec-name', text: s[0] }), h('span', { class: 'meta', text: s[1].map(function (a) { return a.name; }).join(' · ') })),
           h('ul', { class: 'map-rows' }, s[1].map(row)));
       }),
       ui.panel('Public · 공개 페이지', null, h('ul', { class: 'list' }, EXTRA.map(function (x) { return h('li', null, h('a', { class: 'grow', href: x[0], text: x[1] }), h('span', { class: 'meta', text: x[2] })); }))),
+      S.realAdmin && HR.OWNER_ONLY ? h('p', { class: 'note', text: '검토 기간이라 HR 말고는 모든 앱이 대표 계정에만 열려 있습니다. 다른 계정에는 이 Map과 앱 링크가 보이지 않고, 주소로 들어와도 HR로 돌아갑니다. 공개할 때 잠금을 풀면 「권한 수정」으로 사람별 권한을 줄 수 있습니다.' }) :
       S.realAdmin ? h('p', { class: 'note' }, '「권한 수정」을 누르면 이름 옆 ×로 바로 빼고, 「+ 추가」로 편집 권한을 줍니다. 열람 · 편집 구분은 ', h('a', { href: '/hr/#admin/apps', text: 'HR › 설정 › 앱 접근' }), '에서 바꿉니다. 관리자는 역할 권한이라 여기서 빠지지 않습니다.') : null);
   }
   HR.register('map', { render: render });
