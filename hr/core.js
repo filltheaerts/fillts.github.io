@@ -31,7 +31,7 @@
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
   var SNAP = { serverTimestamps: 'estimate' };
 
-  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {}, APP: APP, APPS: APPS, OWNER_ONLY: OWNER_ONLY }   // OWNER_ONLY: /map 권한 표시가 잠금 상태를 알 수 있게;
+  var HR = window.HR = { L: L, db: db, auth: auth, FV: FV, modules: {}, cache: {}, APP: APP, APPS: APPS, OWNER_ONLY: OWNER_ONLY };   // OWNER_ONLY: /map 권한 표시가 잠금 상태를 알 수 있게
   var S = HR.S = {
     user: null, mid: null, role: 'employee', isAdmin: false, isLead: false,
     cfg: Object.assign({}, L.DEFAULT_CONFIG), hmap: L.holidayMap(L.DEFAULT_CONFIG),
