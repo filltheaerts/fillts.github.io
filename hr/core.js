@@ -14,11 +14,11 @@
     { id: 'hr', name: 'HR', path: '/hr/', open: true, desc: '출퇴근 · 휴가 · 공지 · 구성원 · 목표 · WORK · +AI · 입금요청' },
     { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
-    { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 자사몰(카페24) 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 자사몰 전환을 런칭 전 → 첫 30일 → M+3 로드맵으로 실행 관리 · LTV 계산' },
+    { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 로드맵 · LTV' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 씨드 유튜버 1명으로 비슷한 채널(구독자 · 댓글 톤 · 키워드) 찾기 → 컨택 · 메일 문의 · 계약 · 시딩 · 업로드 대기 관리' },
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
-    { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 위킵 입고 사양 복사 · 발주 현황' },
-    { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '바인그라피 브랜드 에셋 — 브랜드 미션 · 클렌징 젤 제품 사양 · 전성분 · 상세페이지 카피 · 패키지 문안 · 표기 검수' }
+    { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
+    { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
@@ -565,10 +565,36 @@
       s2.setAttribute('aria-pressed', String(S.viewAsStaff)); s2.title = S.viewAsStaff ? '누르면 관리자 모드로' : '앱 권한이 없는 일반 구성원에게 보이는 화면';
     }
   }
+  // ---------- 비공개 화면 코드 로더 (261009) — functions/appsrc.js · manifest.json ----------
+  var PRIV_FN = 'https://asia-northeast3-fillts-web.cloudfunctions.net/appsrc';
+  function loadPriv() {
+    var dir = (location.pathname.match(/^\/([a-z0-9]+)\//) || [0, 'hr'])[1];
+    return auth.currentUser.getIdToken().then(function (t) {
+      return fetch(PRIV_FN, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ app: dir }) });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j.files || []; });
+    }).then(function (files) { return files.reduce(function (p, f) { return p.then(function () { return runPriv(f); }); }, Promise.resolve()); });
+  }
+  function runPriv(f) {
+    return new Promise(function (ok, no) {
+      var s = document.createElement('script'), url = URL.createObjectURL(new Blob([f.c + '\n//# sourceURL=' + f.p], { type: 'text/javascript' }));
+      s.src = url; s.onload = function () { URL.revokeObjectURL(url); ok(); }; s.onerror = function () { no(new Error('불러오기 실패: ' + f.p)); };
+      document.head.appendChild(s);
+    });
+  }
   function start(hu) {
     // 다른 앱(/fin · /inf 등)은 core.js 뒤에 화면 코드(큰 라이브러리 포함)를 더 불러온다. 로그인 확인이 그보다 먼저 끝나면
     // 앱의 데이터 구독(APP.onStart)이 붙기 전에 시작돼 화면이 비어 버린다 → 페이지 스크립트가 모두 실행된 뒤에 시작한다.
     if (document.readyState !== 'complete') { window.addEventListener('load', function () { start(hu); }, { once: true }); return; }
+    // 화면 코드는 공개 저장소에 없다 — 로그인 확인 뒤 서버(appsrc)에서 권한 확인을 거쳐 받아 순서대로 실행한 다음 다시 시작한다 (261009)
+    if (!HR.privReady) {
+      loadPriv().then(function () { HR.privReady = true; start(hu); }, function (e) {
+        showAuth('noaccess'); $('bootstrapForm').hidden = true;
+        $('noAccessTitle').textContent = '화면을 불러오지 못했습니다';
+        $('noAccessText').textContent = (e && e.message ? e.message : '네트워크 오류') + ' — 새로고침해 보세요. 계속되면 관리자에게 알려 주세요.';
+      });
+      return;
+    }
     // /mkt 등 다른 화면에서 로그인하러 왔으면 로그인 직후 그 화면으로 돌려보낸다 (15분 안, 같은 사이트 경로만)
     try {
       var nx = JSON.parse(localStorage.getItem('hrNext') || 'null'); localStorage.removeItem('hrNext');
