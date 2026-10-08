@@ -97,7 +97,9 @@
   function product(view, id) {
     var X = prod(view, id); if (!X) return;
     var V = X.V, G = X.G, P = G.product;
-    head(view, G.name + ' · 제품 사양', P.nameKo, V);
+    ui.put(view, ui.head(G.name + ' · 제품 사양', P.nameKo, h('div', { class: 'row vg-head-r' },
+      G.pack ? h('a', { class: 'btn btn-line btn-sm', href: '#' + id + '-pack', text: '패키지 문안 →' }) : null,
+      V.asOf ? h('span', { class: 'meta', text: '기준 ' + V.asOf.replace(/-/g, '.') }) : null)));
     ui.put(view,
       h('section', { class: 'vg-hero' }, h('div', { class: 'br-kicker', text: P.brand + ' · ' + P.line }), h('h2', { text: P.nameEn }), h('p', { class: 'vg-tag', text: P.tagline }), h('p', { class: 'vg-hook', text: P.hook })),
       heroStats(P),
@@ -157,6 +159,7 @@
     var X = prod(view, id); if (!X) return;
     var V = X.V, G = X.G, K = G.pack;
     if (!K) return ui.put(view, ui.head(G.name + ' · 패키지 문안', G.product.nameKo), ui.empty('패키지 문안이 아직 없습니다.'));
+    ui.put(view, h('a', { class: 'meta vg-back', href: '#' + id + '-spec', text: '← ' + G.name + ' 제품 사양' }));
     head(view, G.name + ' · 패키지 문안', '튜브 · 단상자 인쇄 문안', V);
     var table = function (T) {
       return ui.panel(T.title, null, h('div', { class: 'table-wrap flat' }, h('table', { class: 'table vg-table' },
@@ -194,9 +197,88 @@
   }
 
   HR.register('brand', { render: brand });
-  // 제품별 메뉴: <제품id>-spec · -pdp · -pack · -check (제품 목록은 app.js VG_PRODUCTS)
+
+  /* ---------- 핵심 소구점 — vg_points (구성원 누구나 추가 · 순서, 수정 · 삭제는 작성자 · 관리자) + MKT 소구점 보드에서 가져오기 ---------- */
+  var S = HR.S, FV = HR.FV, VG = { points: [], loaded: false, mkt: [], mktOk: false };
+  var TAGS = ['컨셉', '성분', '효과', '신뢰', '감성'];
+  var ptEdit = null;
+  HR.APP.onStart = function (sub) {
+    sub(db.collection('vg_points'), function (s) { VG.points = HR.rows(s); VG.loaded = true; });
+    if (HR.canApp('mkt')) sub(db.collection('mkt_items').where('board', '==', 'appeal'), function (s) { VG.mkt = HR.rows(s); VG.mktOk = true; });
+  };
+  function canEditPt(x) { return S.isAdmin || x.by === S.mid; }
+  function savePt(id, data) {
+    var base = { updatedBy: S.mid, updatedAt: FV.serverTimestamp() };
+    var q = id ? db.collection('vg_points').doc(id).update(Object.assign(data, base))
+      : db.collection('vg_points').add(Object.assign({ src: '', mktId: '', proof: '' }, data, base, { by: S.mid, at: FV.serverTimestamp() }));
+    return q.catch(function (e) { ui.fail(e); throw e; });
+  }
+  function nextOrder(list) { return list.reduce(function (m, p) { return Math.max(m, p.order || 0); }, 0) + 10; }
+  function ptForm(prod, list, x, done) {
+    var t = ui.input({ value: x ? x.title : '', maxlength: 120, placeholder: '한 문장 소구점 — 예) 씻고 나서도 당기지 않는 약산성 젤' });
+    var pr = h('textarea', { rows: 2, maxlength: 1000, placeholder: '근거 — 성분 · 수치 · 시험 · 원본 문서 (선택)' }); pr.value = x ? x.proof || '' : '';
+    var tg = ui.select(TAGS.map(function (k) { return [k, k]; }), x ? x.tag : '효과');
+    var go = function () {
+      var title = t.value.trim(); if (!title) { t.focus(); return; }
+      var data = { product: prod, title: title, proof: pr.value.trim(), tag: tg.value };
+      if (!x) data.order = nextOrder(list);
+      savePt(x && x.id, data).then(function () { ui.toast(x ? '고쳤습니다.' : '추가했습니다.'); if (!x) { t.value = ''; pr.value = ''; } done(); });
+    };
+    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) go(); });
+    return h('div', { class: 'vg-pt-form' }, h('div', { class: 'row' }, ui.field('분류', tg, 'vg-pt-tag'), ui.field('소구점', t)), ui.field('근거', pr),
+      h('div', { class: 'row' }, ui.btn(x ? '저장' : '+ 추가', go, 'btn-sm'), x ? ui.btn('취소', function () { ptEdit = null; HR.refresh(); }, 'btn-line btn-sm') : null));
+  }
+  function move(list, i, d) {
+    var a = list[i], b = list[i + d]; if (!a || !b) return;
+    var oa = a.order || 0, ob = b.order || 0; if (oa === ob) ob = oa + d;
+    savePt(a.id, { order: ob }); savePt(b.id, { order: oa });
+  }
+  function points(view, prod) {
+    var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
+    var name = G ? G.name : '클렌징 젤';
+    ui.put(view, ui.head(name + ' · 핵심 소구점', '왜 우리여야 하나', h('span', { class: 'meta', text: '구성원 누구나 추가 · 순서 변경' })));
+    if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
+    var list = VG.points.filter(function (p) { return p.product === prod; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    ui.put(view,
+      h('p', { class: 'muted small', text: '한 문장 약속 + 믿게 만드는 근거. 상세페이지 · 광고 · 인플루언서 브리프는 이 목록에서 고릅니다. 쓰지 않는 말은 제품 사양 › Claims를 확인하세요.' }),
+      list.length ? h('ol', { class: 'vg-pts' }, list.map(function (x, i) {
+        if (ptEdit === x.id) return h('li', { class: 'vg-pt editing' }, ptForm(prod, list, x, function () { ptEdit = null; }));
+        return h('li', { class: 'vg-pt' },
+          h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) }),
+          h('div', { class: 'vg-pt-main' },
+            h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
+            h('b', { class: 'vg-pt-title', text: x.title }),
+            x.proof ? h('p', { class: 'vg-pt-proof', text: x.proof }) : null,
+            h('span', { class: 'meta', text: (S.members[x.by] || {}).name || '' })),
+          h('div', { class: 'vg-pt-act' },
+            h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', title: '위로', disabled: !i, onclick: function () { move(list, i, -1); } }),
+            h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', title: '아래로', disabled: i === list.length - 1, onclick: function () { move(list, i, 1); } }),
+            canEditPt(x) ? ui.btn('수정', function () { ptEdit = x.id; HR.refresh(); }, 'btn-line btn-xs') : null,
+            canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
+      })) : ui.empty('아직 소구점이 없습니다. 아래에서 추가하세요.'),
+      ui.panel('Add · 소구점 추가', null, ptForm(prod, list, null, function () { HR.refresh(); })),
+      mktPanel(prod, list));
+  }
+  function mktPanel(prod, list) {
+    if (!HR.canApp('mkt')) return h('p', { class: 'note', text: 'MKT 소구점 보드에서 가져오기는 MKT 열람 권한이 있으면 보입니다.' });
+    var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });
+    var rank = { pick: 0, review: 1, idea: 2, hold: 3 }, LB = { pick: '확정', review: '검토', idea: '아이디어', hold: '보류' };
+    var items = VG.mkt.slice().sort(function (a, b) { return (rank[a.status] == null ? 9 : rank[a.status]) - (rank[b.status] == null ? 9 : rank[b.status]); });
+    return ui.panel('From MKT · 소구점 보드에서 가져오기', h('a', { class: 'meta', href: '/mkt/', target: '_blank', rel: 'opener', text: 'MKT 열기 ↗' }),
+      !VG.mktOk ? ui.empty('불러오는 중…') : !items.length ? ui.empty('MKT 소구점 보드가 아직 비어 있습니다. MKT에서 적으면 여기서 골라 가져올 수 있습니다.')
+        : h('ul', { class: 'list' }, items.map(function (m) {
+          return h('li', null, h('div', { class: 'grow' }, ui.tag(LB[m.status] || m.status, m.status === 'pick' ? 'red' : 'mute'), ' ', h('b', { text: m.title }),
+            m.body ? h('p', { class: 'vg-pt-proof', text: m.body.slice(0, 160) }) : null),
+            taken[m.id] ? h('span', { class: 'meta', text: '가져옴' }) : ui.btn('가져오기', function () {
+              savePt(null, { product: prod, title: m.title.slice(0, 120), proof: (m.body || '').slice(0, 1000), tag: '효과', order: nextOrder(list), src: 'mkt', mktId: m.id })
+                .then(function () { ui.toast('가져왔습니다. 분류는 수정에서 바꿀 수 있습니다.'); });
+            }, 'btn-line btn-xs'));
+        })));
+  }
+
+  // 제품별 메뉴: <제품id>-spec · -pdp · -points · -check (+ -pack: 메뉴에는 없고 제품 사양에서 바로가기) (제품 목록은 app.js VG_PRODUCTS)
   (window.VG_PRODUCTS || []).forEach(function (p) {
-    [['spec', product], ['pdp', pdp], ['pack', pack], ['check', check]].forEach(function (m) {
+    [['spec', product], ['pdp', pdp], ['points', points], ['pack', pack], ['check', check]].forEach(function (m) {
       HR.register(p.id + '-' + m[0], { render: function (view) { m[1](view, p.id); } });
     });
   });

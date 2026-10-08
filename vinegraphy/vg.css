@@ -102,3 +102,25 @@
 /* 메뉴 묶음 [브랜드] | [제품명] — fin.css .nav-grp와 같은 모양 */
 .nav-links li.nav-grp { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--vg-wine); white-space: nowrap; align-self: center; }
 .nav-links li.nav-grp-brand { color: var(--black); }
+
+/* 핵심 소구점 */
+.vg-head-r { align-items: center; }
+.vg-back { display: inline-block; margin-bottom: 4px; }
+.vg-pts { list-style: none; display: flex; flex-direction: column; gap: 10px; padding: 0; }
+.vg-pt { display: flex; gap: 16px; align-items: flex-start; background: var(--paper); border: 1px solid var(--gray-200); border-left: 3px solid var(--vg-wine); padding: 18px 20px; }
+.vg-pt.editing { display: block; }
+.vg-pt-no { font-size: 20px; font-weight: 300; color: var(--gray-400); min-width: 28px; line-height: 1.3; }
+.vg-pt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.vg-pt-top { display: flex; gap: 8px; align-items: center; }
+.vg-pt-chip { font-size: 11px; padding: 2px 8px; background: var(--vg-mist); color: var(--vg-wine); border: 1px solid var(--vg-lilac); }
+.vg-pt-title { font-size: 18px; font-weight: 600; line-height: 1.45; word-break: keep-all; }
+.vg-pt-proof { font-size: 13px; line-height: 1.7; color: var(--gray-600); word-break: keep-all; }
+.vg-pt-act { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; }
+.vg-pt-act .btn:disabled { opacity: 0.3; }
+.vg-pt-form { display: flex; flex-direction: column; gap: 10px; }
+.vg-pt-form .vg-pt-tag { flex: 0 0 120px; }
+@media (max-width: 900px) {
+  .vg-pt { flex-wrap: wrap; padding: 16px; }
+  .vg-pt-act { max-width: none; width: 100%; justify-content: flex-start; }
+  .vg-pt-form .vg-pt-tag { flex: 1 1 100%; }
+}

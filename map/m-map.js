@@ -8,7 +8,7 @@
     fin: [['#home', 'Overview'], ['#plan', '자금조달'], ['#runway', '런웨이'], ['#flow', '현금흐름'], ['#sched', '지출예정'], ['#tx', '거래내역'], ['#tax', '세무사 전달']],
     mkt: [['', '마케팅 맵']],
     inf: [['#home', 'Overview'], ['#find', '탐색'], ['#pipe', '파이프라인'], ['#mail', '메일']],
-    vg: [['#brand', '브랜드'], ['#gel-spec', '클렌징 젤 · 사양'], ['#gel-pdp', '상세페이지'], ['#gel-pack', '패키지 문안'], ['#gel-check', '검수']]
+    vg: [['#brand', '브랜드'], ['#gel-spec', '클렌징 젤 · 사양'], ['#gel-pdp', '상세페이지'], ['#gel-points', '핵심 소구점'], ['#gel-check', '검수']]
   };
   var EXTRA = [['/', 'fillts.com', '회사 홈페이지 (공개)']];
 
