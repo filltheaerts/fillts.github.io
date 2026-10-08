@@ -211,6 +211,9 @@
     strat: { label: 'Strategy', title: '마케팅 전략', tags: ['목표', '지표', '채널', '콘텐츠', '광고', '가격', 'CRM', '운영'], def: '채널', max: 300,
       lead: '런칭부터 매출 3억까지 필요한 것. 항목은 왼쪽 ⠿로 끌어서 다른 전략 묶음으로 옮기고, 묶음은 [이름] 앞 ⠿로 순서를 바꿉니다. 이름 · 항목은 더블클릭으로 고칩니다.',
       ph: '해야 할 것 한 줄', ph2: '근거 · 숫자 · 담당 (선택)' },
+    todo: { label: 'Priority', title: '중요한 순서대로', tags: ['목표', '지표', '채널', '콘텐츠', '광고', '가격', 'CRM', '운영'], def: '운영', max: 300,
+      lead: '성공에 필요한 일을 중요한 순서대로. 끝나면 체크합니다(누가 언제 했는지 남음). 항목 · 묶음은 끌어서 옮기고 더블클릭으로 고칩니다.',
+      ph: '해야 할 일 한 줄', ph2: '왜 · 기한 · 담당 (선택)' },
     tcopy: { label: 'Target Copy', title: '타겟 전용 카피', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
       lead: '핵심 카피를 타겟별 피부 고민 · 상황에 맞춰 바꾼 문장. 묶음 이름은 위 타겟 소비자 목록을 따르고, 카피는 끌어서 다른 타겟으로 옮깁니다.',
       ph: '이 타겟에게 하는 한 문장', ph2: '어떤 핵심 카피 · 고민에서 왔는지 (선택)' },
@@ -319,7 +322,8 @@
     var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
     if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
     var isCopy = kind === 'copy' || kind === 'tcopy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
-    var who = isCopy || kind === 'strat' ? '' : (S.members[x.by] || {}).name || '';
+    var isTodo = kind === 'todo';
+    var who = isCopy || kind === 'strat' || isTodo ? '' : (S.members[x.by] || {}).name || '';
     var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
       onpointerdown: function (e) { dragStart(e, all || list); },
       onkeydown: function (e) {
@@ -327,13 +331,16 @@
         e.preventDefault(); move(list, i, e.key === 'ArrowUp' ? -1 : 1);
         var id = x.id; setTimeout(function () { var g = document.querySelector('.vg-pt[data-id="' + id + '"] .vg-pt-grip'); if (g) g.focus(); }, 400);
       } }, '⠿');
-    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), 'data-id': x.id, title: (isCopy && x.proof ? x.proof + (canEditPt(x) ? ' · ' : '') : '') + (canEditPt(x) ? '더블클릭하면 바로 고칩니다' : ''),
-      ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip')) return; startEdit(x.id); } : null },
-      grip, no,
+    var check = isTodo ? h('input', { type: 'checkbox', class: 'vg-chk', checked: !!x.done, 'aria-label': x.title + ' 완료', title: x.done ? doneText(x) : '끝나면 체크',
+      onclick: function (e) { e.stopPropagation(); toggleDone(x, e.target.checked); } }) : null;
+    return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : '') + (isTodo && x.done ? ' done' : ''), 'data-id': x.id, title: (isCopy && x.proof ? x.proof + (canEditPt(x) ? ' · ' : '') : '') + (canEditPt(x) ? '더블클릭하면 바로 고칩니다' : ''),
+      ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button, .vg-pt-grip, .vg-chk')) return; startEdit(x.id); } : null },
+      grip, check || no,
       h('div', { class: 'vg-pt-main' },
         h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
           x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
-        !isCopy && (x.proof || who) ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
+        !isCopy && (x.proof || who || (isTodo && x.done)) ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null,
+          isTodo && x.done ? h('span', { class: 'vg-done-by', text: doneText(x) }) : null) : null),
       h('div', { class: 'vg-pt-act' },
         isCopy ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-line btn-xs vg-copy-btn') : null,
         canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
@@ -407,18 +414,22 @@
   function copyGroup(prod, kind) {
     kind = kind || 'copy';
     var K = KINDS[kind], f = tagFilter[kind] || '', byTarget = kind === 'tcopy';
-    var themeKind = byTarget ? 'target' : kind === 'strat' ? 'stheme' : 'theme', tk = function (id) { return kind + ':' + id; };   // 이름 수정 상태는 묶음 종류별로
+    var themeKind = byTarget ? 'target' : kind === 'strat' ? 'stheme' : kind === 'todo' ? 'tsec' : 'theme', tk = function (id) { return kind + ':' + id; };   // 이름 수정 상태는 묶음 종류별로
     var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === kind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === themeKind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     var known = {}; themes.forEach(function (t) { known[t.id] = 1; });
     var counts = {}; list.forEach(function (p) { counts[p.tag] = (counts[p.tag] || 0) + 1; });
-    var filter = h('div', { class: 'vg-filter' }, [['', '전체 ' + list.length]].concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; })).map(function (o) {
+    var isTodo = kind === 'todo', doneN = list.filter(function (p) { return p.done; }).length;
+    var opts = [['', '전체 ' + list.length]].concat(isTodo ? [['__open', '남은 일 ' + (list.length - doneN)], ['__done', '완료 ' + doneN]] : [])
+      .concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; }));
+    var filter = h('div', { class: 'vg-filter' }, opts.map(function (o) {
       return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter[kind] = o[0]; HR.refresh(); } });
     }));
+    var pass = function (p) { return !f || (f === '__open' ? !p.done : f === '__done' ? !!p.done : p.tag === f); };
     var section = function (t) {
       var tid = t ? t.id : '';
       var items = list.filter(function (p) { return t ? p.theme === tid : !known[p.theme || '']; });
-      var shown = f ? items.filter(function (p) { return p.tag === f; }) : items;
+      var shown = items.filter(pass);
       var rows = shown.map(function (x, i) {
         var r = row(prod, kind, items, x, i, list);
         if (f) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } }
@@ -433,20 +444,21 @@
       return h('section', { class: 'vg-theme' + (t ? '' : ' none'), 'data-tid': t ? tid : null },
         h('div', { class: 'vg-th-head' },
           t && !byTarget ? h('span', { class: 'vg-th-grip', title: '끌어서 주제 순서 바꾸기', onpointerdown: function (e) { themeDrag(e, themes); } }, '⠿') : h('span', { class: 'vg-th-grip off' }),
-          name, h('span', { class: 'vg-th-n', text: String(items.length) }),
+          name, h('span', { class: 'vg-th-n' + (isTodo && items.length && items.every(function (p) { return p.done; }) ? ' all' : ''), text: isTodo ? items.filter(function (p) { return p.done; }).length + ' / ' + items.length : String(items.length) }),
           h('span', { class: 'grow' }),
-          ptEdit === newKey ? null : h('button', { type: 'button', class: 'vg-th-add', text: kind === 'strat' ? '+ 항목' : '+ 카피', onclick: function () { startEdit(newKey); } }),
-          mine && !items.length ? ui.confirmBtn(kind === 'strat' ? '묶음 삭제' : '주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
+          ptEdit === newKey ? null : h('button', { type: 'button', class: 'vg-th-add', text: kind === 'strat' || isTodo ? '+ 항목' : '+ 카피', onclick: function () { startEdit(newKey); } }),
+          mine && !items.length ? ui.confirmBtn(kind === 'strat' || isTodo ? '묶음 삭제' : '주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
         h('ol', { class: 'vg-pts' + (rows.length ? '' : ' empty'), 'data-theme': tid }, rows));
     };
     var none = list.filter(function (p) { return !known[p.theme || '']; });
     return h('section', { class: 'vg-group vg-group-copy vg-group-' + kind },
-      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · ' + (byTarget ? '타겟 ' : kind === 'strat' ? '묶음 ' : '주제 ') + themes.length })),
-      h('p', { class: 'muted small', text: byTarget || kind === 'strat' ? K.lead : '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
-      list.length > 8 ? filter : null,
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · ' + (byTarget ? '타겟 ' : kind === 'strat' || isTodo ? '묶음 ' : '주제 ') + themes.length })),
+      isTodo ? progress(doneN, list.length) : null,
+      h('p', { class: 'muted small', text: byTarget || kind === 'strat' || isTodo ? K.lead : '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
+      list.length > 8 || isTodo ? filter : null,
       h('div', { class: 'vg-themes' }, themes.map(section), none.length || ptEdit === 'new:' + kind + ':' ? section(null) : null),
       byTarget ? null : h('div', { class: 'vg-add-row' }, thEdit === tk('new') ? themeInput(prod, themes, null, themeKind)
-        : h('button', { type: 'button', class: 'vg-add', text: kind === 'strat' ? '+ 전략 묶음' : '+ 소구 주제', onclick: function () { thEdit = tk('new'); HR.refresh(); focusSoon('vgThEdit'); } })));
+        : h('button', { type: 'button', class: 'vg-add', text: kind === 'strat' ? '+ 전략 묶음' : isTodo ? '+ 우선순위 묶음' : '+ 소구 주제', onclick: function () { thEdit = tk('new'); HR.refresh(); focusSoon('vgThEdit'); } })));
   }
 
   /* 핵심 키워드 — 칩 모양. 쉼표로 여러 개 한 번에 추가, 칩을 누르면 #해시태그 복사, 전체는 해시태그 · 쉼표 목록으로 복사
@@ -538,6 +550,27 @@
       h('div', { class: 'vg-kws' }, chips, input),
       list.length ? h('p', { class: 'vg-kw-preview', text: words.map(hashtag).join(' ') }) : null);
   }
+  // DO LIST — 체크는 구성원 누구나 (규칙: done · doneBy · doneAt만 바꾸는 수정은 작성자가 아니어도 허용)
+  function doneText(x) {
+    var who = (S.members[x.doneBy] || {}).name || '', at = x.doneAt && x.doneAt.toDate ? x.doneAt.toDate() : null;
+    return '완료' + (who ? ' · ' + who : '') + (at ? ' · ' + (at.getMonth() + 1) + '/' + at.getDate() : '');
+  }
+  function toggleDone(x, on) {
+    var ch = on ? { done: true, doneBy: S.mid, doneAt: FV.serverTimestamp() } : { done: false, doneBy: '', doneAt: null };
+    x.done = on;
+    savePt(x.id, ch).then(function () { ui.toast(on ? '완료 체크했습니다.' : '완료를 풀었습니다.'); }, function () { HR.refresh(); });
+  }
+  function progress(n, total) {
+    var pct = total ? Math.round(n / total * 100) : 0, bar = h('div', { class: 'vg-prog-bar' }), fill = h('span');
+    fill.style.width = pct + '%'; bar.appendChild(fill);
+    return h('div', { class: 'vg-prog' }, h('b', { text: pct + '%' }), bar, h('span', { class: 'meta', text: n + ' / ' + total + ' 완료' }));
+  }
+  function dolist(view, prod) {
+    var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
+    ui.put(view, ui.head(G ? G.name : '클렌징 젤', 'DO LIST', h('span', { class: 'meta', text: '중요한 순서대로 · 체크는 누구나' })));
+    if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
+    ui.put(view, copyGroup(prod, 'todo'));
+  }
   function strategy(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
     ui.put(view, ui.head(G ? G.name : '클렌징 젤', '마케팅 전략', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 이동 · 더블클릭 수정' })));
@@ -571,7 +604,7 @@
 
   // 제품별 메뉴: <제품id>-spec · -pdp · -points · -check (+ -pack: 메뉴에는 없고 제품 사양에서 바로가기) (제품 목록은 app.js VG_PRODUCTS)
   (window.VG_PRODUCTS || []).forEach(function (p) {
-    [['spec', product], ['pdp', pdp], ['points', points], ['strat', strategy], ['pack', pack], ['check', check]].forEach(function (m) {
+    [['spec', product], ['pdp', pdp], ['points', points], ['strat', strategy], ['todo', dolist], ['pack', pack], ['check', check]].forEach(function (m) {
       HR.register(p.id + '-' + m[0], { render: function (view) { m[1](view, p.id); } });
     });
   });

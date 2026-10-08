@@ -4,4 +4,4 @@
    제품 추가: 아래 VG_PRODUCTS + vinegraphy.json products/order + index.html 메뉴 묶음 [제품명] */
 window.VG_PRODUCTS = [{ id: 'gel', name: '클렌징 젤' }];
 window.HR_APP = { id: 'vg', title: 'VINEGRAPHY', home: 'brand', lite: true,
-  menus: ['brand'].concat(window.VG_PRODUCTS.reduce(function (a, p) { return a.concat(['spec', 'pdp', 'points', 'strat', 'pack', 'check'].map(function (m) { return p.id + '-' + m; })); }, [])) };
+  menus: ['brand'].concat(window.VG_PRODUCTS.reduce(function (a, p) { return a.concat(['spec', 'pdp', 'points', 'strat', 'todo', 'pack', 'check'].map(function (m) { return p.id + '-' + m; })); }, [])) };

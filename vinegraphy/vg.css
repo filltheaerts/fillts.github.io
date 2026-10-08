@@ -256,3 +256,20 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-group-strat .vg-th-name { font-size: 15px; }
 .vg-group-strat .vg-themes { gap: 18px; }
 @media (max-width: 900px) { .vg-group-strat .vg-pt-proof { padding-left: 0; } }
+
+/* DO LIST — 체크박스 · 진행률 */
+.vg-group-todo { background: #fff; border: 1px solid var(--gray-200); }
+.vg-group-todo .vg-pt { align-items: flex-start; padding: 8px 12px 8px 8px; }
+.vg-group-todo .vg-pt-title { font-size: 14px; font-weight: 600; }
+.vg-group-todo .vg-pt-proof { display: block; font-size: 12px; color: var(--gray-600); padding-left: 62px; margin-top: 1px; }
+.vg-chk { flex: none; width: 18px; height: 18px; margin: 3px 2px 0 0; accent-color: var(--vg-wine); cursor: pointer; }
+.vg-group-todo .vg-pt.done .vg-pt-title { color: var(--gray-400); text-decoration: line-through; text-decoration-color: var(--vg-lilac); font-weight: 500; }
+.vg-group-todo .vg-pt.done .vg-pt-chip { opacity: 0.5; }
+.vg-group-todo .vg-pt.done .vg-pt-proof { color: var(--gray-400); }
+.vg-done-by { margin-left: 8px; font-size: 11px; color: var(--vg-wine); }
+.vg-th-n.all { background: var(--vg-wine); border-color: var(--vg-wine); color: #fff; }
+.vg-prog { display: flex; align-items: center; gap: 12px; margin: 2px 0 4px; }
+.vg-prog b { font-size: 22px; font-weight: 600; color: var(--vg-deep); min-width: 56px; }
+.vg-prog-bar { flex: 1; height: 8px; background: var(--vg-mist); border: 1px solid var(--vg-lilac); border-radius: 4px; overflow: hidden; }
+.vg-prog-bar span { display: block; height: 100%; background: var(--vg-wine); transition: width 0.3s; }
+@media (max-width: 900px) { .vg-group-todo .vg-pt-proof { padding-left: 0; } }
