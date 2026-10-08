@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var IDLE_LIMIT_MS = 30 * 60 * 1000;
+  var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;
   firebase.initializeApp(window.FILLTS_FIREBASE);
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
   var SNAP = { serverTimestamps: 'estimate' };
@@ -145,12 +145,12 @@
       start(snap.data());
     }).catch(function (e) { console.warn(e); showAuth('blocked', '정보를 불러오지 못했습니다. 잠시 후 새로고침 해 주세요.'); });
   });
-  // 30분 무활동 자동 로그아웃 (HR에서 「로그인 유지」를 고른 기기는 제외)
+  // 2시간 무활동 자동 로그아웃 (HR에서 「로그인 유지」를 고른 기기는 제외)
   var lastAct = Date.now();
   ['click', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true }); });
   setInterval(function () {
     var keep = false; try { keep = localStorage.getItem('hrKeep') === '1'; } catch (x) { /* 무시 */ }
-    if (S.user && !keep && Date.now() - lastAct > IDLE_LIMIT_MS) { stopAll(); auth.signOut(); toast('30분 동안 사용이 없어 로그아웃했습니다.'); }
+    if (S.user && !keep && Date.now() - lastAct > IDLE_LIMIT_MS) { stopAll(); auth.signOut(); toast('2시간 동안 사용이 없어 로그아웃했습니다.'); }
   }, 60000);
 
   /* ============ 구독 ============ */

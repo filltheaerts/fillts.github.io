@@ -21,7 +21,7 @@
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '바인그라피 브랜드 에셋 — 브랜드 미션 · 클렌징 젤 제품 사양 · 전성분 · 상세페이지 카피 · 패키지 문안 · 표기 검수' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
-  var IDLE_LIMIT_MS = 30 * 60 * 1000;
+  var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
   firebase.initializeApp(window.FILLTS_FIREBASE);
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
@@ -508,12 +508,12 @@
     }).catch(function (e) { fail(e, $('noAccessMsg')); });
   });
 
-  // 30분 무활동 자동 로그아웃 (로그인 유지 선택 시 제외)
+  // 2시간 무활동 자동 로그아웃 (로그인 유지 선택 시 제외)
   var lastAct = Date.now();
   ['click', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) { window.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true }); });
   setInterval(function () {
     var keep = false; try { keep = localStorage.getItem('hrKeep') === '1'; } catch (x) { /* 무시 */ }
-    if (S.user && !keep && Date.now() - lastAct > IDLE_LIMIT_MS) { logout(); toast('30분 동안 사용이 없어 로그아웃했습니다.'); }
+    if (S.user && !keep && Date.now() - lastAct > IDLE_LIMIT_MS) { logout(); toast('2시간 동안 사용이 없어 로그아웃했습니다.'); }
   }, 60000);
 
   /* ============================================

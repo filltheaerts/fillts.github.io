@@ -154,7 +154,12 @@
 .sa-chart .sa-base { stroke: var(--gray-400); stroke-width: 1; }
 .sa-chart .sa-ax { font-size: 11px; fill: var(--gray-400); font-family: inherit; }
 .sa-chart .sa-bar { fill: #3a3a3a; }
-.sa-chart .sa-bar.on { fill: var(--red); }
+.sa-chart .sa-bar.on { fill: #0a0a0a; }
+.sa-chart .sa-bar-r { fill: var(--red); }
+.sa-chart .sa-bar-r.on { fill: #9e0c24; }
+.sa-chart .sa-bar-t { font-size: 10px; font-weight: 600; fill: #fff; font-family: inherit; pointer-events: none; }
+.sa-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--gray-600); margin: 4px 0 8px; }
+.sa-legend span { display: inline-flex; gap: 6px; align-items: center; }
 .sa-chart .sa-hit { fill: transparent; }
 .sa-tip { position: absolute; top: 6px; transform: translateX(-50%); background: var(--paper, #fff); border: 1px solid var(--gray-200); box-shadow: 0 4px 14px rgba(0,0,0,.08); padding: 8px 10px; font-size: 12px; line-height: 1.6; pointer-events: none; white-space: nowrap; z-index: 2; }
 .sa-table { margin-top: 8px; font-size: 12px; }

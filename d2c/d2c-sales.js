@@ -26,6 +26,7 @@
   function sample() {
     var seed = 20261112; var rnd = function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
     var pick = function (arr) { var r = rnd(), s = 0; for (var i = 0; i < arr.length; i++) { s += arr[i][1]; if (r < s) return arr[i][0]; } return arr[arr.length - 1][0]; };
+    // 예시는 rep: 0.5 — 모든 날 매출 · 주문의 절반을 재구매로 표시
     var P = 34200, out = [], custs = [], n = 0, start = '2026-11-12';
     var daily = function (i, d) {
       var wd = new Date(d + 'T00:00:00Z').getUTCDay();
@@ -42,9 +43,9 @@
         if (!rep) custs.push(ck);
         var gift = d >= '2026-12-01' && rnd() < 0.18;
         var q = gift ? 2 : pick([[1, 0.74], [2, 0.21], [3, 0.05]]);
-        var item = gift ? { n: '[홀리데이] 젤클렌저 선물세트', o: '2개 + 미니 · 기프트박스', q: 1, a: P * 2 } : { n: '바인그라피 젤클렌저 150ml', o: q === 1 ? '1개' : q === 2 ? '2개월 루틴 (2개)' : '3개', q: q, a: P * q };
+        var item = gift ? { n: '[홀리데이] 젤클렌저 선물세트', o: '2개 + 미니 · 기프트박스', q: 1, a: P * 2 } : { n: '바인그라피 젤클렌저 150ml', o: q + '개', q: q, a: P * q };
         var hr = pick([[1, 0.04], [8, 0.06], [10, 0.08], [12, 0.12], [15, 0.1], [19, 0.18], [21, 0.24], [23, 0.18]]);
-        out.push({ id: 'EX' + (100000 + n), no: '20261112-' + (100000 + n), date: d, hour: hr, amt: item.a, items: [item], cancel: rnd() < 0.03, status: '',
+        out.push({ id: 'EX' + (100000 + n), rep: 0.5, no: '20261112-' + (100000 + n), date: d, hour: hr, amt: item.a, items: [item], cancel: rnd() < 0.03, status: '',
           method: pick([['네이버페이', 0.36], ['카카오페이', 0.24], ['신용카드', 0.3], ['토스페이', 0.1]]),
           src: pick([['meta', 0.38], ['youtube', 0.22], ['naver', 0.18], ['direct', 0.14], ['kakao', 0.08]]),
           coupon: rnd() < 0.3 ? 'VG-WELCOME' : '', ckey: ck, member: rnd() < 0.72 });
@@ -63,12 +64,12 @@
     var valid = orders.filter(function (o) { return !o.cancel && +o.amt > 0 && o.date; })
       .sort(function (a, b) { return (a.date + (a.hour || 0)) < (b.date + (b.hour || 0)) ? -1 : 1; });
     var seen = {};
-    valid.forEach(function (o) { o._new = !seen[o.ckey]; seen[o.ckey] = 1; });   // 전체 기간에서 그 고객의 첫 유효 주문 = 신규
+    valid.forEach(function (o) { o._rep = o.rep != null ? +o.rep : seen[o.ckey] ? 1 : 0; o._new = o._rep < 1; seen[o.ckey] = 1; });   // 재구매 비중(0~1): 그 고객의 첫 유효 주문 = 신규 0 · 이후 = 1 (예시는 0.5 고정)
     return valid;
   }
   function stats(list, all) {
     var sales = 0, cust = {}, nw = 0, nwS = 0;
-    list.forEach(function (o) { sales += +o.amt; cust[o.ckey] = 1; if (o._new) { nw++; nwS += +o.amt; } });
+    list.forEach(function (o) { sales += +o.amt; cust[o.ckey] = 1; nw += 1 - o._rep; nwS += +o.amt * (1 - o._rep); });
     var n = list.length, cancels = (all || []).filter(function (o) { return o.cancel; }).length;
     return { sales: sales, orders: n, aov: n ? sales / n : 0, cust: Object.keys(cust).length, newO: nw, repO: n - nw, repS: sales - nwS, cancelRate: all && all.length ? cancels / all.length : 0, cancels: cancels };
   }
@@ -142,8 +143,8 @@
     var keys = [], m = {};
     if (gran === 'day') { for (var d = R[0]; d <= R[1]; d = addDays(d, 1)) keys.push(d); }
     else { list.forEach(function (o) { var k = o.date.slice(0, 7); if (keys.indexOf(k) < 0) keys.push(k); }); keys.sort(); }
-    keys.forEach(function (k) { m[k] = { k: k, s: 0, n: 0, nw: 0 }; });
-    list.forEach(function (o) { var k = gran === 'day' ? o.date : o.date.slice(0, 7); if (m[k]) { m[k].s += +o.amt; m[k].n++; if (o._new) m[k].nw++; } });
+    keys.forEach(function (k) { m[k] = { k: k, s: 0, n: 0, nw: 0, rs: 0 }; });
+    list.forEach(function (o) { var k = gran === 'day' ? o.date : o.date.slice(0, 7); if (m[k]) { m[k].s += +o.amt; m[k].n++; m[k].nw += 1 - o._rep; m[k].rs += +o.amt * o._rep; } });
     var rows = keys.map(function (k) { return m[k]; });
     if (!rows.length) return ui.empty('이 기간에 주문이 없습니다.');
     var W = 960, H = 240, pl = 52, pr = 8, pt = 12, pb = 26, iw = W - pl - pr, ih = H - pt - pb;
@@ -157,22 +158,32 @@
     var wrap = h('div', { class: 'sa-chart-wrap' }), tip = h('div', { class: 'sa-tip', hidden: true });
     rows.forEach(function (r, i) {
       var x = pl + i * bw + gap / 2, w = Math.max(bw - gap, 1), bh = r.s / top * ih, y = pt + ih - bh;
-      if (bh > 0) { var rr = Math.min(4, w / 2, bh); el('path', { d: 'M' + x + ',' + (pt + ih) + 'V' + (y + rr) + 'Q' + x + ',' + y + ' ' + (x + rr) + ',' + y + 'H' + (x + w - rr) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + rr) + 'V' + (pt + ih) + 'Z', class: 'sa-bar', 'data-i': i }); }
+      if (bh > 0) {
+        var rh = r.rs / top * ih, nh = bh - rh, g2 = rh > 0 && nh > 0 ? 2 : 0, base = pt + ih;
+        var bar = function (y0, hh, cls, round) {   // 위쪽만 4px 둥근 막대 (round=false면 각진 위)
+          if (hh <= 0) return; var yy = y0 - hh, rr = round ? Math.min(4, w / 2, hh) : 0;
+          el('path', { d: 'M' + x + ',' + y0 + 'V' + (yy + rr) + 'Q' + x + ',' + yy + ' ' + (x + rr) + ',' + yy + 'H' + (x + w - rr) + 'Q' + (x + w) + ',' + yy + ' ' + (x + w) + ',' + (yy + rr) + 'V' + y0 + 'Z', class: cls, 'data-i': i });
+        };
+        bar(base, nh - g2 / 2, 'sa-bar', rh <= 0);
+        bar(base - nh - g2 / 2, rh - g2 / 2, 'sa-bar sa-bar-r', true);
+        if (rh >= 16 && w >= 20) el('text', { x: x + w / 2, y: base - nh - rh / 2 + 4, 'text-anchor': 'middle', class: 'sa-bar-t' }, Math.round(r.rs / r.s * 100) + '%');
+      }
       if (i % every === 0) { var lab = gran === 'day' ? (+r.k.slice(5, 7)) + '/' + (+r.k.slice(8)) : (+r.k.slice(2, 4)) + '.' + r.k.slice(5); el('text', { x: pl + i * bw + bw / 2, y: H - 8, 'text-anchor': 'middle', class: 'sa-ax' }, lab); }
       var hit = el('rect', { x: pl + i * bw, y: pt, width: bw, height: ih, class: 'sa-hit' });
       hit.addEventListener('mouseenter', function () {
         svg.querySelectorAll('.sa-bar').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-i') === i); });
         ui.clear(tip); ui.put(tip, h('div', { class: 'strong', text: gran === 'day' ? fmt.dot(r.k) + ' (' + WD[new Date(r.k + 'T00:00:00Z').getUTCDay()] + ')' : r.k.replace('-', '.') }),
-          h('div', { text: '순매출 ' + won(r.s) }), h('div', { text: '주문 ' + r.n + '건 · 객단가 ' + (r.n ? won(r.s / r.n) : '—') }), h('div', { class: 'meta', text: '신규 ' + r.nw + ' · 재구매 ' + (r.n - r.nw) }));
+          h('div', { text: '순매출 ' + won(r.s) }), h('div', { class: 'red', text: '재구매 ' + won(r.rs) + ' · ' + (r.s ? Math.round(r.rs / r.s * 100) : 0) + '%' }), h('div', { text: '주문 ' + r.n + '건 · 객단가 ' + (r.n ? won(r.s / r.n) : '—') }), h('div', { class: 'meta', text: '신규 ' + Math.round(r.nw) + ' · 재구매 ' + Math.round(r.n - r.nw) + '건' }));
         tip.hidden = false; var px = (pl + i * bw + bw / 2) / W * 100; tip.style.left = Math.min(Math.max(px, 12), 84) + '%';
       });
       hit.addEventListener('mouseleave', function () { tip.hidden = true; svg.querySelectorAll('.sa-bar.on').forEach(function (b) { b.classList.remove('on'); }); });
     });
     wrap.appendChild(svg); wrap.appendChild(tip);
     var tbl = h('details', { class: 'sa-table' }, h('summary', { text: '표로 보기' }), h('div', { class: 'table-wrap flat' }, h('table', { class: 'table' },
-      h('thead', null, h('tr', null, ['기간', '순매출', '주문', '객단가', '신규', '재구매'].map(function (c, j) { return h('th', { class: j ? 'num' : '', text: c }); }))),
-      h('tbody', null, rows.slice().reverse().filter(function (r) { return r.n; }).map(function (r) { return h('tr', null, h('td', { text: gran === 'day' ? fmt.dot(r.k) : r.k }), h('td', { class: 'num', text: won(r.s) }), h('td', { class: 'num', text: r.n }), h('td', { class: 'num', text: won(r.s / r.n) }), h('td', { class: 'num', text: r.nw }), h('td', { class: 'num', text: r.n - r.nw })); })))));
-    return h('div', null, wrap, tbl);
+      h('thead', null, h('tr', null, ['기간', '순매출', '재구매 매출', '주문', '객단가', '신규', '재구매'].map(function (c, j) { return h('th', { class: j ? 'num' : '', text: c }); }))),
+      h('tbody', null, rows.slice().reverse().filter(function (r) { return r.n; }).map(function (r) { return h('tr', null, h('td', { text: gran === 'day' ? fmt.dot(r.k) : r.k }), h('td', { class: 'num', text: won(r.s) }), h('td', { class: 'num', text: won(r.rs) + ' · ' + Math.round(r.rs / r.s * 100) + '%' }), h('td', { class: 'num', text: r.n }), h('td', { class: 'num', text: won(r.s / r.n) }), h('td', { class: 'num', text: Math.round(r.nw) }), h('td', { class: 'num', text: Math.round(r.n - r.nw) })); })))));
+    var legend = h('div', { class: 'sa-legend' }, h('span', null, h('i', { class: 'sw sw-n' }), '신규 매출'), h('span', null, h('i', { class: 'sw sw-r' }), '재구매 매출 (빨간 칸 안 숫자 = 그날 재구매 비중)'));
+    return h('div', null, legend, wrap, tbl);
   }
   function niceStep(x) { var p = Math.pow(10, Math.floor(Math.log10(x || 1))), f = x / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
 
@@ -210,8 +221,8 @@
     return h('div', null,
       h('div', { class: 'sa-split' }, h('span', { class: 'sa-split-n', style: 'width:' + a + '%' }), h('span', { class: 'sa-split-r', style: 'width:' + (100 - a) + '%' })),
       h('dl', { class: 'sa-split-l' },
-        h('div', null, h('dt', null, h('i', { class: 'sw sw-n' }), '신규 주문'), h('dd', { text: st.newO + '건 · ' + Math.round(a) + '%' })),
-        h('div', null, h('dt', null, h('i', { class: 'sw sw-r' }), '재구매 주문'), h('dd', { text: st.repO + '건 · ' + Math.round(100 - a) + '%' }))),
+        h('div', null, h('dt', null, h('i', { class: 'sw sw-n' }), '신규 주문'), h('dd', { text: Math.round(st.newO) + '건 · ' + Math.round(a) + '%' })),
+        h('div', null, h('dt', null, h('i', { class: 'sw sw-r' }), '재구매 주문'), h('dd', { text: Math.round(st.repO) + '건 · ' + Math.round(100 - a) + '%' }))),
       h('p', { class: 'meta', text: '재구매 = 같은 고객(회원ID 또는 휴대폰)의 두 번째 이후 주문. 오픈 후 약 7주(소진 주기)가 지나야 늘어나기 시작합니다.' }));
   }
   function weekHour(list) {
