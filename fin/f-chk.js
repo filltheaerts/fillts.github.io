@@ -70,7 +70,13 @@
 
   function row(c, st, ed, base) {
     var dCls = 'chk-d chk-' + st.k;
-    return h('li', { class: 'chk-row chk-row-' + st.k },
+    // [행정] 정관: 체크 = 진행예정 / 해제 = 대기 (fin_admin.go)
+    var pick = base === 'jg' && !c.done ? h('label', { class: 'jg-go', title: c.go ? '체크 해제 → 대기로' : '체크 → 진행예정으로' },
+      h('input', { type: 'checkbox', checked: !!c.go, disabled: !ed, onchange: function () {
+        var on = this.checked;
+        db.doc('fin_admin/' + c.id).update({ go: on, updatedAt: FV.serverTimestamp() }).then(function () { ui.toast(on ? '진행예정으로 옮겼습니다.' : '대기로 옮겼습니다.'); }).catch(ui.fail);
+      } }), h('span', { text: '진행' })) : null;
+    return h('li', { class: 'chk-row chk-row-' + st.k }, pick,
       h('span', { class: dCls, text: st.k === 'done' ? '완료' : st.k === 'nodate' ? '미정' : dLabel(st.d) }),
       h('div', { class: 'grow' },
         h('div', { class: 'chk-title' }, h('span', { class: 'chk-cat', text: catShort(c.cat) }), h('a', { href: ed ? '#' + (base || 'chk') + '/edit/' + c.id : null, class: 'strong', text: c.title }),
@@ -135,8 +141,11 @@
     var items = F.chk.filter(function (c) { return c.cat === '정관'; }).map(function (c) { return { c: c, s: state(c, t) }; })
       .sort(function (a, b) { return (a.s.k === 'done') - (b.s.k === 'done') || ((a.c.due || '9999') < (b.c.due || '9999') ? -1 : 1); });
     var live = items.filter(function (x) { return x.s.k !== 'done'; }), done = items.filter(function (x) { return x.s.k === 'done'; });
+    var go = live.filter(function (x) { return x.c.go; });
+    // 대기 = 아직 하기로 안 한 것 → 마감이 가까워도 빨간 경고 대신 날짜만
+    var wait = live.filter(function (x) { return !x.c.go; }).map(function (x) { return { c: x.c, s: x.s.k === 'near' || x.s.k === 'over' ? { k: 'plan', d: x.s.d } : x.s }; });
     var refs = (F.jgRef || []).slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    var next = live.filter(function (x) { return x.s.d != null; })[0];
+    var next = go.filter(function (x) { return x.s.d != null; })[0];
     var url = (F.cfg && F.cfg.bylawUrl) || '';
     var list = function (xs, empty) { return h('ul', { class: 'list chk-list' }, xs.length ? xs.map(function (x) { return row(x.c, x.s, ed, 'jg'); }) : h('li', { class: 'empty', text: empty })); };
     var refTb = h('table', { class: 'table fin-table jg-table' }, h('thead', null, h('tr', null, ['조항', '지금 정관', '앞으로 영향'].map(function (x) { return h('th', { text: x }); }))),
@@ -146,9 +155,10 @@
     ui.put(view, ui.head('[행정] 정관', '정관 신설 · 변경 조항',
         h('div', { class: 'row' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
           ed ? ui.btn('+ 조항 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
-      F.kpi([['신설 · 변경', live.length + '건', '', '필수 아님 · 하기로 하면 이 날짜까지'], ['임박 · 지남', live.filter(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }).length + '건', live.some(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }) ? 'red' : '', '항목별 알림 기간 안'],
-        ['다음 마감', next ? dLabel(next.s.d) : '—', '', next ? next.c.title : '날짜 있는 항목 없음']], 'three'),
-      ui.panel('신설 · 변경할 조항 (선택)', null, list(live, '등록된 정관 변경 계획이 없습니다.')),
+      F.kpi([['진행예정', go.length + '건', '', '하기로 정한 것'], ['대기', wait.length + '건', '', '아직 결정 안 함 · 필수 아님'],
+        ['다음 마감', next ? dLabel(next.s.d) : '—', next && (next.s.k === 'near' || next.s.k === 'over') ? 'red' : '', next ? next.c.title : '진행예정 중 날짜 있는 항목 없음']], 'three'),
+      ui.panel('진행예정 ' + go.length + '건', null, list(go, '아직 진행하기로 한 조항이 없습니다. 아래 대기에서 「진행」을 체크하세요.')),
+      ui.panel('대기 ' + wait.length + '건', h('span', { class: 'meta', text: '「진행」 체크 → 진행예정으로' }), list(wait, '대기 중인 조항이 없습니다.')),
       done.length ? ui.panel('완료 ' + done.length + '건', null, list(done, '')) : null,
       ui.panel('지금 정관 · 날짜와 절차가 걸린 조항', url ? h('span', { class: 'meta', text: '원본 기준 요약' }) : null, h('div', { class: 'table-wrap flat' }, refTb)),
       F.readOnlyNote(),

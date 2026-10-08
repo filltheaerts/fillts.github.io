@@ -339,3 +339,5 @@ a.map-card:hover { border-color: var(--black); }
 .jg-table .nowrap { white-space: nowrap; }
 .jg-table .jg-body { min-width: 220px; }
 .jg-table .jg-note { min-width: 200px; color: var(--gray-600, #555); }
+.jg-go { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: var(--gray-400); cursor: pointer; padding-top: 3px; }
+.jg-go input { width: 18px; height: 18px; accent-color: var(--red); cursor: pointer; }
