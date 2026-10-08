@@ -383,7 +383,7 @@
     var saved = null; try { saved = JSON.parse(localStorage.getItem('hrOAuth') || 'null'); localStorage.removeItem('hrOAuth'); } catch (e) { /* 무시 */ }
     history.replaceState(null, '', location.pathname + location.search + '#info');
     if (!saved || p.state !== saved.st || Date.now() - saved.at > 15 * 60000) { HR.oauthErr = '로그인 요청을 확인하지 못했습니다. 다시 눌러 주세요.'; return; }
-    if (saved.next && /^\/[a-z_]+\//.test(saved.next)) HR.oauthNext = saved.next;
+    if (saved.next && /^\/[a-z0-9_]+\//.test(saved.next)) HR.oauthNext = saved.next;   // 앱 경로에 숫자 허용 (/d2c/)
     if (p.error && HR.oauthNext) { location.replace(HR.oauthNext); return; }   // 자동 로그인(prompt=none) 실패 → 원래 앱의 로그인 화면으로
     if (p.error) { HR.oauthErr = p.error === 'access_denied' ? 'Google 로그인을 취소했습니다.' : 'Google 로그인 오류 (' + p.error + ')'; return; }
     var claims = {};
