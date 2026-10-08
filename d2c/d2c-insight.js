@@ -45,17 +45,17 @@
 
   /* ================= [CRM] 고객 데이터 ================= */
   var SEG = [
-    ['new', '신규 1회', '첫 구매 후 60일 이내', function (c, r) { return c.n === 1 && r <= 60; }, '사용법(D+3) · 리뷰 요청(D+8) · 2주 후기(D+14)', '#crm'],
-    ['due', '소진 임박 1회', '61~90일 · 7주 소진 지남', function (c, r) { return c.n === 1 && r > 60 && r <= 90; }, '재구매 리마인드 · 2개 세트 · 정기배송 제안', '#crm'],
-    ['risk', '이탈 위험 1회', '91~120일', function (c, r) { return c.n === 1 && r > 90 && r <= 120; }, '윈백 1차 — 피부 상태 체크(혜택 없이) → 10% 쿠폰', '#crm'],
-    ['sleep', '휴면 1회', '120일 넘게 구매 없음', function (c, r) { return c.n === 1 && r > 120; }, '윈백 마지막 1회 · 신제품(오일) 소식', '#crm'],
-    ['two', '재구매 2회', '두 번 산 고객', function (c) { return c.n === 2; }, '정기배송 전환 · 등급 상승 안내', '#crm'],
+    ['new', '신규 1회', '첫 구매 후 60일 이내', function (c, r) { return c.n === 1 && r <= 60; }, '사용법(D+3) · 리뷰 요청(D+8) · 2주 후기(D+14)', '#crmmsg'],
+    ['due', '소진 임박 1회', '61~90일 · 7주 소진 지남', function (c, r) { return c.n === 1 && r > 60 && r <= 90; }, '재구매 리마인드 · 2개 세트 · 정기배송 제안', '#crmmsg'],
+    ['risk', '이탈 위험 1회', '91~120일', function (c, r) { return c.n === 1 && r > 90 && r <= 120; }, '윈백 1차 — 피부 상태 체크(혜택 없이) → 10% 쿠폰', '#crmmsg'],
+    ['sleep', '휴면 1회', '120일 넘게 구매 없음', function (c, r) { return c.n === 1 && r > 120; }, '윈백 마지막 1회 · 신제품(오일) 소식', '#crmmsg'],
+    ['two', '재구매 2회', '두 번 산 고객', function (c) { return c.n === 2; }, '정기배송 전환 · 등급 상승 안내', '#crmmsg'],
     ['loyal', '충성 3회 이상', '세 번 이상', function (c) { return c.n >= 3; }, '할인 없이 신제품 선공개 · 손편지 · 의견 청취(바인 클럽)', '#crm']
   ];
   function crmdata(view) {
     var B = base(); if (!B) { ui.put(view, ui.empty('불러오는 중…')); return; }
     var D = B.D, cs = B.cust, tot = cs.length, rev = cs.reduce(function (s, c) { return s + c.rev; }, 0);
-    ui.put(view, ui.head('D2C · CRM 데이터', '고객 데이터', h('span', { class: 'meta', text: (B.demo ? '예시 · ' : '') + fmt.dot(B.today) + ' 기준 · 고객 ' + n0(tot) + '명' })));
+    ui.put(view, ui.head('D2C · CRM', '데이터 — 고객 세그먼트', h('span', { class: 'meta', text: (B.demo ? '예시 · ' : '') + fmt.dot(B.today) + ' 기준 · 고객 ' + n0(tot) + '명' })));
     if (B.demo) demoNote(view, '고객 데이터');
     if (!tot) { ui.put(view, ui.empty('주문 데이터가 없습니다. 현황 › 주문 데이터 올리기에서 카페24 주문 엑셀을 올리세요.')); return; }
     var rep = cs.filter(function (c) { return c.n >= 2; }), member = cs.filter(function (c) { return c.member; }).length;
@@ -70,7 +70,7 @@
         box('고객', n0(tot) + '명', '구매한 적 있는 사람'), box('재구매 고객', pc(rep.length, tot), n0(rep.length) + '명 · 2회 이상'),
         box('고객당 구매', (cs.reduce(function (s, c) { return s + c.n; }, 0) / tot).toFixed(2) + '회', '평균'), box('고객당 매출', D.won(rev / tot), '누적 LTV(매출 기준)'),
         box('회원 구매 비중', pc(member, tot), '비회원은 휴대폰으로 묶음'), box('발송 가능', '—', '수신동의 수는 카페24에서 확인')),
-      ui.panel('세그먼트 — 구매 횟수 × 마지막 구매 후 경과일', h('a', { class: 'link', href: '#crm', text: 'CRM 메시지 →' }),
+      ui.panel('세그먼트 — 구매 횟수 × 마지막 구매 후 경과일', h('a', { class: 'link', href: '#crmmsg', text: '메시지 문안 →' }),
         h('div', { class: 'table-wrap flat' }, h('table', { class: 'table sa-media ci-seg' },
           h('thead', null, h('tr', null, ['세그먼트', '기준', '고객', '비중', '매출', '평균 경과일', '보낼 메시지'].map(function (c, j) { return h('th', { class: j >= 2 && j <= 5 ? 'num' : '', text: c }); }))),
           h('tbody', null, segs.map(function (x) {
