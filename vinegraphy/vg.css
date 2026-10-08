@@ -240,3 +240,9 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-group-copy .vg-pts.empty::before { content: "여기로 끌어다 놓기"; display: block; text-align: center; font-size: 11px; color: var(--vg-lilac); line-height: 32px; }
 .vg-group-copy .vg-pts.drop { box-shadow: 0 0 0 2px var(--vg-wine); }
 .vg-group-copy .vg-add-row .vg-th-in { flex: 1; width: auto; }
+
+/* 타겟 전용 카피 — 묶음 머리 = 타겟(분류 칩 + 한 줄) */
+.vg-group-tcopy { background: #fff; border-color: var(--vg-lilac); }
+.vg-group-tcopy .vg-th-name { font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.vg-th-tag { font-size: 10px; font-weight: 500; padding: 1px 6px; color: var(--vg-wine); background: var(--vg-mist); border: 1px solid var(--vg-lilac); }
+.vg-group-tcopy .vg-pts { border-color: var(--vg-mist); }

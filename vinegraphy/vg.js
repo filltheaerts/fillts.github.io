@@ -208,6 +208,9 @@
     copy: { label: 'Copy', title: '핵심 카피라이팅', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
       lead: '그대로 가져다 쓰는 확정 문장. 줄 오른쪽 「복사」로 바로 복사합니다. 아래는 쓰는 곳 · 메모.',
       ph: '카피 문장 — 예) Born of the vineyard. Reserved for your skin.', ph2: '쓰는 곳 · 메모 — 상세 Hero · 단상자 · 광고 (선택)' },
+    tcopy: { label: 'Target Copy', title: '타겟 전용 카피', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
+      lead: '핵심 카피를 타겟별 피부 고민 · 상황에 맞춰 바꾼 문장. 묶음 이름은 위 타겟 소비자 목록을 따르고, 카피는 끌어서 다른 타겟으로 옮깁니다.',
+      ph: '이 타겟에게 하는 한 문장', ph2: '어떤 핵심 카피 · 고민에서 왔는지 (선택)' },
     target: { label: 'Target', title: '타겟 소비자', tags: ['핵심', '피부', '상황', '심리'], def: '피부',
       lead: '누구의 어떤 순간을 잡을까. 위 소구점이 가장 크게 들리는 사람부터 적습니다.',
       ph: '한 줄 타겟 — 예) 세안 후 당김이 고민인 30대 수부지', ph2: '설명 — 지금 쓰는 것 · 불만 · 사는 순간 (선택)' }
@@ -312,7 +315,7 @@
   function row(prod, kind, list, x, i, all) {
     var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
     if (ptEdit === x.id) return h('li', { class: 'vg-pt editing', 'data-id': x.id }, h('span', { class: 'vg-pt-grip off' }), no, inlineEdit(prod, kind, list, x));
-    var isCopy = kind === 'copy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
+    var isCopy = kind === 'copy' || kind === 'tcopy';   // 카피는 문장만 — 작성자 · 메모는 숨기고 메모는 마우스를 올리면
     var who = isCopy ? '' : (S.members[x.by] || {}).name || '';
     var grip = h('span', { class: 'vg-pt-grip', tabindex: '0', role: 'button', title: '끌어서 순서 바꾸기 (방향키로도 이동)', 'aria-label': (i + 1) + '번 순서 바꾸기',
       onpointerdown: function (e) { dragStart(e, all || list); },
@@ -329,7 +332,7 @@
           x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
         !isCopy && (x.proof || who) ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
       h('div', { class: 'vg-pt-act' },
-        kind === 'copy' ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-line btn-xs vg-copy-btn') : null,
+        isCopy ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-line btn-xs vg-copy-btn') : null,
         canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
         canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
   }
@@ -397,44 +400,48 @@
     return inp;
   }
   function focusSoon(id) { setTimeout(function () { var el = document.getElementById(id); if (el) { el.focus(); if (el.select) el.select(); } }, 120); }
-  function copyGroup(prod) {
-    var K = KINDS.copy, f = tagFilter.copy || '';
-    var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === 'copy'; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === 'theme'; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+  // kind 'copy' = 소구 주제(theme) 묶음 · 'tcopy' = 타겟(target) 묶음 (타겟 이름 · 순서는 타겟 소비자 목록에서만 바꾼다)
+  function copyGroup(prod, kind) {
+    kind = kind || 'copy';
+    var K = KINDS[kind], f = tagFilter[kind] || '', byTarget = kind === 'tcopy';
+    var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === kind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var themes = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === (byTarget ? 'target' : 'theme'); }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
     var known = {}; themes.forEach(function (t) { known[t.id] = 1; });
     var counts = {}; list.forEach(function (p) { counts[p.tag] = (counts[p.tag] || 0) + 1; });
     var filter = h('div', { class: 'vg-filter' }, [['', '전체 ' + list.length]].concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; })).map(function (o) {
-      return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter.copy = o[0]; HR.refresh(); } });
+      return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter[kind] = o[0]; HR.refresh(); } });
     }));
     var section = function (t) {
       var tid = t ? t.id : '';
       var items = list.filter(function (p) { return t ? p.theme === tid : !known[p.theme || '']; });
       var shown = f ? items.filter(function (p) { return p.tag === f; }) : items;
       var rows = shown.map(function (x, i) {
-        var r = row(prod, 'copy', items, x, i, list);
+        var r = row(prod, kind, items, x, i, list);
         if (f) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } }
         return r;
       });
-      if (ptEdit === 'new:copy:' + tid) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (items.length + 1)).slice(-2) }), inlineEdit(prod, 'copy', list, null, tid)));
-      var mine = t && canEditPt(t);
+      var newKey = 'new:' + kind + ':' + tid;
+      if (ptEdit === newKey) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (items.length + 1)).slice(-2) }), inlineEdit(prod, kind, list, null, tid)));
+      var mine = t && !byTarget && canEditPt(t);
       var name = thEdit === tid && t ? themeInput(prod, themes, t)
-        : h('b', { class: 'vg-th-name', title: mine ? '더블클릭하면 이름을 고칩니다' : null, ondblclick: mine ? function () { thEdit = tid; HR.refresh(); focusSoon('vgThEdit'); } : null }, t ? '[' + t.title + ']' : '[주제 없음]');
+        : h('b', { class: 'vg-th-name', title: mine ? '더블클릭하면 이름을 고칩니다' : null, ondblclick: mine ? function () { thEdit = tid; HR.refresh(); focusSoon('vgThEdit'); } : null },
+          byTarget && t ? [h('span', { class: 'vg-th-tag', text: t.tag }), t.title] : t ? '[' + t.title + ']' : byTarget ? '[타겟 없음]' : '[주제 없음]');
       return h('section', { class: 'vg-theme' + (t ? '' : ' none'), 'data-tid': t ? tid : null },
         h('div', { class: 'vg-th-head' },
-          t ? h('span', { class: 'vg-th-grip', title: '끌어서 주제 순서 바꾸기', onpointerdown: function (e) { themeDrag(e, themes); } }, '⠿') : h('span', { class: 'vg-th-grip off' }),
+          t && !byTarget ? h('span', { class: 'vg-th-grip', title: '끌어서 주제 순서 바꾸기', onpointerdown: function (e) { themeDrag(e, themes); } }, '⠿') : h('span', { class: 'vg-th-grip off' }),
           name, h('span', { class: 'vg-th-n', text: String(items.length) }),
           h('span', { class: 'grow' }),
-          ptEdit === 'new:copy:' + tid ? null : h('button', { type: 'button', class: 'vg-th-add', text: '+ 카피', onclick: function () { startEdit('new:copy:' + tid); } }),
+          ptEdit === newKey ? null : h('button', { type: 'button', class: 'vg-th-add', text: '+ 카피', onclick: function () { startEdit(newKey); } }),
           mine && !items.length ? ui.confirmBtn('주제 삭제', function () { db.collection('vg_points').doc(tid).delete().then(function () { ui.toast('주제를 지웠습니다.'); }, ui.fail); }, 'btn btn-line btn-xs danger') : null),
         h('ol', { class: 'vg-pts' + (rows.length ? '' : ' empty'), 'data-theme': tid }, rows));
     };
     var none = list.filter(function (p) { return !known[p.theme || '']; });
-    return h('section', { class: 'vg-group vg-group-copy' },
-      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · 주제 ' + themes.length })),
-      h('p', { class: 'muted small', text: '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
-      filter,
-      h('div', { class: 'vg-themes' }, themes.map(section), none.length || ptEdit === 'new:copy:' ? section(null) : null),
-      h('div', { class: 'vg-add-row' }, thEdit === 'new' ? themeInput(prod, themes, null)
+    return h('section', { class: 'vg-group vg-group-copy vg-group-' + kind },
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개 · ' + (byTarget ? '타겟 ' : '주제 ') + themes.length })),
+      h('p', { class: 'muted small', text: byTarget ? K.lead : '소구 주제별로 묶었습니다. 카피는 왼쪽 ⠿로 끌어서 다른 주제로 옮기고, 주제는 [이름] 앞 ⠿로 끌어서 순서를 바꿉니다. 이름은 더블클릭으로 고칩니다.' }),
+      list.length > 8 ? filter : null,
+      h('div', { class: 'vg-themes' }, themes.map(section), none.length || ptEdit === 'new:' + kind + ':' ? section(null) : null),
+      byTarget ? null : h('div', { class: 'vg-add-row' }, thEdit === 'new' ? themeInput(prod, themes, null)
         : h('button', { type: 'button', class: 'vg-add', text: '+ 소구 주제', onclick: function () { thEdit = 'new'; HR.refresh(); focusSoon('vgThEdit'); } })));
   }
 
@@ -533,7 +540,7 @@
     ui.put(view, ui.head(name, '핵심 포인트', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
     var hr = function () { return h('hr', { class: 'vg-divider' }); };
-    ui.put(view, keywords(prod), hr(), group(prod, 'appeal'), hr(), group(prod, 'target'), hr(), copyGroup(prod));
+    ui.put(view, keywords(prod), hr(), group(prod, 'appeal'), hr(), group(prod, 'target'), hr(), copyGroup(prod, 'tcopy'), hr(), copyGroup(prod, 'copy'));
   }
   function mktPanel(prod, list) {
     var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });
