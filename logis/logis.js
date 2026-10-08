@@ -84,9 +84,10 @@
     p.orderBy = addDays(today(), Math.floor(gap));
     p.state = gap <= 0 ? 'now' : gap <= 14 ? 'soon' : 'ok';
     p.runout = addDays(today(), Math.floor(p.daysLeft));
+    if (onOrder && it.order.eta && lg.stock > 0 && p.runout < it.order.eta) p.state = 'gap';   // 입고 예정일 전에 바닥난다
     return p;
   }
-  var ST = { now: ['지금 발주', 'lg-st-now'], soon: ['2주 안 발주', 'lg-st-soon'], ok: ['여유', 'lg-st-ok'], nodata: ['소진 속도 입력 필요', 'lg-st-none'] };
+  var ST = { gap: ['입고 전 품절 위험', 'lg-st-now'], now: ['지금 발주', 'lg-st-now'], soon: ['2주 안 발주', 'lg-st-soon'], ok: ['여유', 'lg-st-ok'], nodata: ['소진 속도 입력 필요', 'lg-st-none'] };
   var stTag = function (p) { var s = ST[p.state]; return h('span', { class: 'lg-st ' + s[1], text: s[0] }); };
   var days = function (n) { return n == null || !isFinite(n) ? '—' : Math.floor(n) + '일'; };
 
@@ -104,14 +105,14 @@
   /* ================= [home] 한판 ================= */
   function home(view) {
     if (wait(view)) return;
-    var ps = G.items.map(plan), urgent = ps.filter(function (p) { return p.state === 'now' || p.state === 'soon'; });
+    var ps = G.items.map(plan), urgent = ps.filter(function (p) { return p.state === 'now' || p.state === 'soon' || p.state === 'gap'; });
     var d = D(), open = (d.open || []).slice().sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
     var inbound = G.items.filter(function (i) { return i.order && +i.order.qty; });
     var quick = G.specs.filter(function (s) { return s.pin; });
     head(view, '물류 한판', h('span', { class: 'meta', text: d.asOf ? '기본사항 기준 ' + fmt.dot(d.asOf) : '' }));
     ui.put(view,
       h('dl', { class: 'summary four' },
-        sumBox('지금 발주', ps.filter(function (p) { return p.state === 'now'; }).length + '건', urgent.length ? 'red' : ''),
+        sumBox('지금 발주 · 품절 위험', ps.filter(function (p) { return p.state === 'now' || p.state === 'gap'; }).length + '건', urgent.length ? 'red' : ''),
         sumBox('2주 안 발주', ps.filter(function (p) { return p.state === 'soon'; }).length + '건'),
         sumBox('입고 대기', inbound.length + '건'),
         sumBox('물류 미결', open.length + '건', open.length ? 'red' : '')),
@@ -384,7 +385,7 @@
   // 박스 겉면 표기 라벨: 총 수량 · 박스당 개수 → 박스마다 「○번째 박스(1/N)」 문구
   var LB = { name: '', per: '', total: '' };
   function labelMaker() {
-    var products = G.items.filter(function (i) { return i.kind === 'product' || i.where === 'wekeep'; });
+    var products = G.items.filter(function (i) { return i.kind === 'product'; }).concat(G.items.filter(function (i) { return i.kind !== 'product' && i.where === 'wekeep'; }));
     if (!LB.name) LB.name = products[0] ? products[0].name : '';
     var name = ui.input({ value: LB.name, 'aria-label': '품목명', oninput: function () { LB.name = this.value; } });
     var per = ui.input({ type: 'number', min: '1', value: LB.per, placeholder: '박스당 개수', class: 'lg-qty', 'aria-label': '박스당 개수', oninput: function () { LB.per = this.value; } });
