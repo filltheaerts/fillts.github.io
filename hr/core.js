@@ -21,6 +21,10 @@
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '바인그라피 브랜드 에셋 — 브랜드 미션 · 클렌징 젤 제품 사양 · 전성분 · 상세페이지 카피 · 패키지 문안 · 표기 검수' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
+  // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
+  // 공개할 때 '' 로 비우고 firestore.rules의 isOwner() 조건도 같이 뺀다
+  var OWNER_ONLY = 'kjw@fillts.com';
+  function ownerLocked() { return !!OWNER_ONLY && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }
   var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
   firebase.initializeApp(window.FILLTS_FIREBASE);
@@ -39,6 +43,7 @@
   HR.appInfo = function (id) { return APPS.filter(function (a) { return a.id === id; })[0] || null; };
   HR.appLevel = function (app) {
     var a = HR.appInfo(app);
+    if (app !== 'hr' && ownerLocked()) return '';
     if (S.realAdmin || (a && a.open) || app === 'map') return 'edit';
     return (S.apps || {})[app] || '';
   };
@@ -449,6 +454,10 @@
   auth.onAuthStateChanged(function (u) {
     if (u && HR.oauthNext) return;   // 원래 앱으로 이동 중
     if (!u && APP.id !== 'hr' && trySilent()) return;
+    if (!u && APP.id !== 'hr' && OWNER_ONLY) {   // 잠금 중: 대표 기기가 아니면 이 앱의 로그인 화면도 보여 주지 않는다
+      var hint = ''; try { hint = (localStorage.getItem('hrHint') || '').toLowerCase(); } catch (e) { /* 무시 */ }
+      if (hint !== OWNER_ONLY) { location.replace('/hr/'); return; }
+    }
     if (!u) { stopAll(); S.user = null; S.mid = null; showAuth('login'); setAuthMode('login'); return; }
     if (!u.emailVerified) {
       showAuth('verify');
@@ -558,6 +567,7 @@
     S.isAdmin = S.role === 'admin'; S.isLead = S.isAdmin || S.role === 'manager';
     S.realAdmin = S.isAdmin; S.realLead = S.isLead;
     try { if (/@fillts\.com$/i.test(S.user.email || '')) localStorage.setItem('hrHint', S.user.email.toLowerCase()); sessionStorage.removeItem('hrSilentTried'); } catch (e) { /* 무시 */ }
+    if (APP.id !== 'hr' && ownerLocked()) { location.replace('/hr/'); return; }
     if (APP.id !== 'hr' && !HR.canApp(APP.id)) {
       S.mid = null; showAuth('noaccess'); $('bootstrapForm').hidden = true;
       $('noAccessTitle').textContent = '접근 권한이 없습니다';

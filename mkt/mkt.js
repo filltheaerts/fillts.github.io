@@ -136,8 +136,14 @@
     var a = e.target.closest && e.target.closest('.js-logout');
     if (a) { e.preventDefault(); stopAll(); auth.signOut(); }
   });
+  var OWNER_ONLY = 'kjw@fillts.com';   // 검토 기간 잠금 — hr/core.js와 같은 값 (공개할 때 '' 로)
   auth.onAuthStateChanged(function (u) {
-    if (!u) { stopAll(); S.user = null; S.mid = null; showAuth('login'); return; }
+    if (!u) {
+      var hint = ''; try { hint = (localStorage.getItem('hrHint') || '').toLowerCase(); } catch (e) { /* 무시 */ }
+      if (OWNER_ONLY && hint !== OWNER_ONLY) { location.replace('/hr/'); return; }
+      stopAll(); S.user = null; S.mid = null; showAuth('login'); return;
+    }
+    if (OWNER_ONLY && (u.email || '').toLowerCase() !== OWNER_ONLY) { location.replace('/hr/'); return; }
     if (!u.emailVerified) return showAuth('blocked', '이메일 인증이 끝나지 않았습니다. fillts HR에서 인증을 마친 뒤 다시 오세요.');
     S.user = u;
     db.doc('hr_users/' + u.uid).get().then(function (snap) {
