@@ -676,6 +676,8 @@ a.link-card { color: inherit; text-decoration: none; }
 .ms-sub { font-size: 11px; color: var(--gray-600); }
 /* PC 메뉴 간격 32px → 24px (약 75%) */
 @media (min-width: 901px) { .nav-links { gap: 24px; } }
+/* WORK~MAP 구분선 묶음 간격 48px → 38px (80%) — 앞 간격 24→19 · 구분선 뒤 24→19 */
+@media (min-width: 901px) { .nav-links li.nav-sep { margin-left: -5px; padding-left: 19px; } }
 .plan-goal { white-space: pre-line; }
 
 .ws-crew { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0 2px; }
