@@ -233,6 +233,33 @@
     var oa = a.order || 0, ob = b.order || 0; if (oa === ob) ob = oa + d;
     savePt(a.id, { order: ob }); savePt(b.id, { order: oa });
   }
+  // 더블클릭(또는 「수정」) → 그 칸에서 바로 소구점 · 근거 · 분류를 고친다. Enter 저장(근거는 Ctrl+Enter) · Esc 취소
+  function startEdit(id) {
+    ptEdit = id; HR.refresh();
+    setTimeout(function () { var t = document.getElementById('vgEditT'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 120);
+  }
+  function inlineEdit(x) {
+    var tg = ui.select(TAGS.map(function (k) { return [k, k]; }), x.tag, { class: 'vg-ie-tag', 'aria-label': '분류' });
+    var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x.title, maxlength: 120, 'aria-label': '소구점' });
+    var pr = h('textarea', { class: 'vg-ie-proof', rows: 2, maxlength: 1000, placeholder: '근거 (선택)', 'aria-label': '근거' }); pr.value = x.proof || '';
+    var cancel = function () { ptEdit = null; HR.refresh(); };
+    var save = function () {
+      var title = t.value.trim(); if (!title) { t.focus(); return; }
+      if (title === x.title && pr.value.trim() === (x.proof || '') && tg.value === x.tag) return cancel();
+      savePt(x.id, { product: x.product, title: title, proof: pr.value.trim(), tag: tg.value }).then(function () { ptEdit = null; ui.toast('고쳤습니다.'); HR.refresh(); });
+    };
+    var keys = function (e) {
+      if (e.isComposing) return;
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      else if (e.key === 'Enter' && (e.target === t || e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+    };
+    [t, pr, tg].forEach(function (el) { el.addEventListener('keydown', keys); });
+    return h('div', { class: 'vg-pt-main' },
+      h('div', { class: 'vg-pt-top' }, tg, t),
+      pr,
+      h('div', { class: 'vg-ie-act' }, ui.btn('저장', save, 'btn-xs'), ui.btn('취소', cancel, 'btn-line btn-xs'),
+        h('span', { class: 'meta', text: 'Enter 저장 (근거 칸은 Ctrl+Enter) · Esc 취소' })));
+  }
   function points(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
     var name = G ? G.name : '클렌징 젤';
@@ -242,18 +269,20 @@
     ui.put(view,
       h('p', { class: 'muted small', text: '한 문장 약속 + 믿게 만드는 근거. 상세페이지 · 광고 · 인플루언서 브리프는 이 목록에서 고릅니다. 쓰지 않는 말은 제품 사양 › Claims를 확인하세요.' }),
       list.length ? h('ol', { class: 'vg-pts' }, list.map(function (x, i) {
-        if (ptEdit === x.id) return h('li', { class: 'vg-pt editing' }, ptForm(prod, list, x, function () { ptEdit = null; }));
-        return h('li', { class: 'vg-pt' },
-          h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) }),
+        var no = h('span', { class: 'vg-pt-no', text: ('0' + (i + 1)).slice(-2) });
+        if (ptEdit === x.id) return h('li', { class: 'vg-pt editing' }, no, inlineEdit(x));
+        var who = (S.members[x.by] || {}).name || '';
+        return h('li', { class: 'vg-pt' + (canEditPt(x) ? ' can-edit' : ''), title: canEditPt(x) ? '더블클릭하면 소구점 · 근거를 바로 고칩니다' : null,
+          ondblclick: canEditPt(x) ? function (e) { if (e.target.closest('button')) return; startEdit(x.id); } : null },
+          no,
           h('div', { class: 'vg-pt-main' },
-            h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
-            h('b', { class: 'vg-pt-title', text: x.title }),
-            x.proof ? h('p', { class: 'vg-pt-proof', text: x.proof }) : null,
-            h('span', { class: 'meta', text: (S.members[x.by] || {}).name || '' })),
+            h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
+              x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
+            x.proof || who ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
           h('div', { class: 'vg-pt-act' },
             h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', title: '위로', disabled: !i, onclick: function () { move(list, i, -1); } }),
             h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', title: '아래로', disabled: i === list.length - 1, onclick: function () { move(list, i, 1); } }),
-            canEditPt(x) ? ui.btn('수정', function () { ptEdit = x.id; HR.refresh(); }, 'btn-line btn-xs') : null,
+            canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
             canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
       })) : ui.empty('아직 소구점이 없습니다. 아래에서 추가하세요.'),
       ui.panel('Add · 소구점 추가', null, ptForm(prod, list, null, function () { HR.refresh(); })),
