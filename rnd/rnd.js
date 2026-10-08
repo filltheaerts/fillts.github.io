@@ -54,13 +54,16 @@
           return h('li', null, h('div', { class: 'rd-q-head' }, badge(u.due), h('span', { class: 'strong', text: u.t }), u.due ? h('span', { class: 'meta', text: dot(u.due) }) : null),
             u.why ? h('p', { class: 'rd-q-why', text: u.why }) : null, u.path ? pathRow(root, u.path) : null);
         }))),
-      h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '2. 출력 · 편철할 문서 — 그대로 인쇄' }),
-        table(['#', '문서', '쪽', '편철', '서명'], (q.print || []).map(function (p) {
-          return h('tr', null, h('td', { class: 'nowrap strong', text: p.no }),
-            h('td', null, h('div', { class: 'strong', text: p.name }), p.note ? h('div', { class: 'meta', text: p.note }) : null, pathRow(root, p.file)),
-            h('td', { class: 'num', text: p.pages ? String(p.pages) : '' }), h('td', { text: p.bind || '' }), h('td', { class: p.sign ? 'red nowrap' : '', text: p.sign || '—' }));
+      // 2 = 인쇄할 것만 (문서 · 쪽 · 경로), 3 = 출력 전후 확인 체크리스트 (□ 인쇄해서 체크)
+      h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '2. 인쇄할 것' }),
+        h('ol', { class: 'rd-q-list' }, (q.print || []).map(function (p) {
+          return h('li', null, h('div', { class: 'rd-q-head' }, h('span', { class: 'strong', text: p.name }), p.pages ? h('span', { class: 'rd-d', text: p.pages + '쪽' }) : null), pathRow(root, p.file));
         }))),
-      root ? h('p', { class: 'note no-print' }, '폴더 바로 열기: 「경로 복사」 → 탐색기 열기(Win+E) → 주소창(Ctrl+L)에 붙여넣기. 브라우저는 보안상 웹페이지에서 내 PC 폴더를 직접 열지 못합니다. 기준 PC = Windows(대표 PC) · 루트 ', h('code', { text: win(root) })) : null);
+      (q.check || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '3. 확인 체크리스트' }),
+        h('ul', { class: 'rd-chk' }, q.check.map(function (c) {
+          return h('li', null, h('span', { class: 'rd-box', 'aria-hidden': 'true', text: '□' }), h('div', { class: 'grow' }, h('span', { class: 'strong', text: c.t }), c.d ? h('div', { class: 'meta', text: c.d }) : null, c.path ? pathRow(root, c.path) : null));
+        }))) : null,
+      root ? h('p', { class: 'note no-print' }, '폴더 열기: 「경로 복사」 → Win+E → Ctrl+L → 붙여넣기 (브라우저는 보안상 내 PC 폴더를 직접 못 엶)') : null);
   }
 
   /* ---------- 현황 ---------- */

@@ -78,3 +78,6 @@
 .rd-cl-kv > div { display: grid; grid-template-columns: 44px 1fr; gap: 10px; font-size: 12px; line-height: 1.6; }
 .rd-cl-kv dt { color: var(--gray-400); }
 .rd-cl-kv dd { margin: 0; }
+.rd-chk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rd-chk li { display: flex; gap: 10px; align-items: flex-start; }
+.rd-box { font-size: 18px; line-height: 1; padding-top: 1px; }
