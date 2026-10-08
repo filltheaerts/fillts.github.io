@@ -1723,10 +1723,12 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 .nav-right .nav-map:hover { background: var(--black); color: #fff; }
 .nav-right .nav-toggle { order: 100; }
 
-/* 모바일 상단바 고정 (261009) — 넓은 표 · 보드 때문에 페이지가 가로로 넓어져도 로고 · 알림 · 햄버거가 항상 화면 안에 보이게. PC(901px~)는 그대로 */
+/* 모바일 상단바 순서 (261009) — 햄버거를 맨 왼쪽으로: ☰ · 로고 · … · 알림 · MAP. 페이지가 가로로 넓어져도 햄버거는 항상 화면 안. PC(901px~)는 그대로 */
 @media (max-width: 900px) {
-  .nav { position: fixed; top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box; gap: 12px; }
-  .app { padding-top: 72px; }
-  .nav .logo { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nav-right { flex: 0 0 auto; margin-left: auto; }
+  .nav { gap: 12px; justify-content: flex-start; }
+  .nav-right { display: contents; }
+  .nav-toggle { order: -2; margin-left: -8px; }
+  .nav .logo { order: -1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-right .bell-wrap { order: 1; margin-left: auto; }
+  .nav-right .nav-map { order: 2; }
 }
