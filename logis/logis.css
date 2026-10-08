@@ -209,3 +209,21 @@
 .lg-table td.lg-wrap { white-space: normal; word-break: keep-all; }
 .lg-fixed td { padding-top: 10px; padding-bottom: 10px; }
 @media (max-width: 760px) { .lg-fixed { min-width: 720px; } .lg-pay { min-width: 600px; } }
+
+/* 발주처 연락처 표 */
+.lg-sec-h { font-size: 18px; font-weight: 500; margin: 28px 0 12px; }
+.lg-vbook-wrap { max-height: none; }
+.lg-vbook td, .lg-vbook th { white-space: normal; vertical-align: top; height: auto; }
+.lg-vbook td.ed { padding: 0; }
+.lg-vcell { display: block; width: 100%; box-sizing: border-box; border: none; background: transparent; resize: none; overflow: hidden; font: inherit; font-size: 12.5px; line-height: 1.5; padding: 7px 8px; min-height: 34px; word-break: keep-all; overflow-wrap: anywhere; }
+.lg-vcell:focus { outline: 2px solid var(--red); outline-offset: -2px; background: #fff; }
+.lg-vc-name { min-width: 130px; font-weight: 600; } .lg-vc-name .lg-vcell { font-weight: 600; }
+.lg-vc-xs { min-width: 64px; } .lg-vc-s { min-width: 116px; } .lg-vc-m { min-width: 170px; } .lg-vc-l { min-width: 240px; }
+.lg-vbook .lg-vc-name { position: sticky; left: 0; z-index: 1; background: #fffbea; }
+.lg-vbook thead th.lg-vc-name { z-index: 3; background: #f6efd4; }
+.lg-vc-act { min-width: 120px; white-space: nowrap !important; padding: 6px !important; }
+.lg-vc-act .btn, .lg-vc-act .meta { display: block; margin-bottom: 4px; text-align: center; }
+.lg-vbook tr.lg-v-miss td.lg-vc-name { box-shadow: inset 3px 0 0 var(--red); }
+.lg-sheet-wrap.lg-vbook-wrap { width: auto !important; left: auto !important; transform: none !important; max-width: none; }
+.lg-vbook .lg-vcell { max-height: 64px; }
+.lg-vbook .lg-vcell:focus { max-height: none; overflow: auto; }

@@ -10,7 +10,7 @@
     d2c: [['#sales', '매출 현황'], ['#store', '자사몰'], ['#retain', 'CRM'], ['#cs', 'CS'], ['#home', '핵심 · 한판'], ['#cohort', '지표']],
     inf: [['#home', 'Overview'], ['#find', '탐색'], ['#pipe', '파이프라인'], ['#mail', '메일']],
     rnd: [['#gel', '임상 · 젤'], ['#oil', '임상 · 오일'], ['#kibo', '기보/벤처'], ['#quick', 'Quick'], ['#home', '현황'], ['#research', '연구'], ['#due', '기한'], ['#docs', '서류 · 검증']],
-    logis: [['#home', '한판'], ['#stock', '재고 · 재발주'], ['#wekeep', '위킵'], ['#mail', '발주 메일'], ['#order', '창고 · 발주 현황']],
+    logis: [['#home', '한판'], ['#stock', '재고 · 재발주'], ['#wekeep', '위킵'], ['#mail', '발주처 · 메일'], ['#order', '창고 · 발주 현황']],
     vg: [['#brand', '브랜드'], ['#gel-spec', '클렌징 젤 · 사양'], ['#gel-pdp', '상세페이지'], ['#gel-points', '핵심 포인트'], ['#gel-strat', '마케팅 전략'], ['#gel-todo', 'DO LIST'], ['#gel-check', '검수']]
   };
   var EXTRA = [['/', 'fillts.com', '회사 홈페이지 (공개)']];

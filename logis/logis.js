@@ -283,13 +283,52 @@
   }
 
   /* ================= [mail] 발주 메일 ================= */
+  /* 발주처 연락처 — 한 줄 = 한 업체. 칸을 고치고 벗어나면(또는 Enter) 바로 저장. 메일 본문은 이 값으로 만든다 */
+  var VCOLS = [
+    ['name', '업체', 'lg-vc-name', 1], ['items', '공급 품목', 'lg-vc-m', 1], ['person', '발주 담당', 'lg-vc-s', 1], ['title', '직책', 'lg-vc-xs', 1],
+    ['phone', '휴대폰', 'lg-vc-s', 1], ['email', '메일', 'lg-vc-m', 1], ['tel', '대표전화 · 팩스', 'lg-vc-s', 1],
+    ['terms', '결제 조건', 'lg-vc-m', 2], ['bank', '입금 계좌', 'lg-vc-m', 2], ['ship', '납품지 (메일 「입고지」)', 'lg-vc-l', 3], ['mailNote', '메일 요청사항', 'lg-vc-l', 3], ['note', '메모 (메일에 안 들어감)', 'lg-vc-l', 3]
+  ];
+  function vendorBook() {
+    var ed = canEdit();
+    var cell = function (v, c) {
+      var f = c[0], val = v[f] || '';
+      if (!ed) return h('td', { class: c[2], text: val });
+      var el = h('textarea', { class: 'lg-vcell', rows: 1, spellcheck: 'false', 'aria-label': (v.name || '새 업체') + ' ' + c[1], placeholder: f === 'name' ? '업체명' : '' });
+      el.value = val;
+      el.addEventListener('input', function () { grow(el); });
+      el.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && c[3] === 1) { e.preventDefault(); el.blur(); } });
+      el.addEventListener('change', function () {
+        var nv = f === 'email' ? el.value.trim() : el.value;
+        if (nv === val) return;
+        if (f === 'email' && nv && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nv)) { ui.toast('메일 주소 형식을 확인해 주세요.'); return; }
+        var d = {}; d[f] = nv; save(db.collection('logis_vendors').doc(v.id), d);
+      });
+      setTimeout(function () { grow(el); }, 0);
+      return h('td', { class: 'ed ' + c[2] }, el);
+    };
+    var missing = function (v) { return ['person', 'phone', 'email'].filter(function (f) { return !v[f]; }).length; };
+    return ui.panel('발주처 연락처 — 고치면 바로 저장', ed ? ui.btn('+ 업체', function () {
+      db.collection('logis_vendors').add({ name: '', sort: G.vendors.length + 1, updatedAt: FV.serverTimestamp(), updatedBy: S.mid || '' }).then(HR.refresh);
+    }, 'btn-line btn-xs') : null,
+      h('div', { class: 'lg-sheet-wrap lg-vbook-wrap' }, h('table', { class: 'lg-sheet lg-vbook' },
+        h('thead', null, h('tr', null, VCOLS.map(function (c) { return h('th', { class: c[2] + (ed ? ' ed' : ''), text: c[1] }); }), h('th', { class: 'lg-vc-act', text: '' }))),
+        h('tbody', null, G.vendors.map(function (v) {
+          var miss = missing(v);
+          return h('tr', { class: miss ? 'lg-v-miss' : '' }, VCOLS.map(function (c) { return cell(v, c); }),
+            h('td', { class: 'lg-vc-act' }, h('a', { class: 'btn btn-xs', href: '#mail/' + v.id, text: '메일 쓰기' }), miss ? h('span', { class: 'meta', text: '빈칸 ' + miss }) : null,
+              ed ? ui.confirmBtn('삭제', function () { db.collection('logis_vendors').doc(v.id).delete(); }) : null));
+        })))),
+      h('p', { class: 'note', text: '노란 칸을 눌러 바로 고칩니다. 짧은 칸은 Enter, 긴 칸(조건 · 납품지 · 요청사항)은 칸을 벗어나면 저장되고 칸을 누르면 펼쳐집니다. 담당 · 휴대폰 · 메일 중 빈칸이 있는 업체는 왼쪽에 표시됩니다. 납품지를 비워 두면 품목 보관처(위킵이면 위킵 입고 조건)가 메일에 들어갑니다.' }));
+  }
   var M = { vid: '', qty: {}, eta: '', note: null };
   function mail(view, parts) {
     if (wait(view)) return;
     if (parts[0] === 'vendor') return vendorForm(view, parts[1] === 'new' ? null : vendor(parts[1]));
     if (parts[0] !== undefined && parts[0] !== M.vid) { M.vid = parts[0]; M.qty = {}; M.eta = ''; }
     var v = vendor(M.vid);
-    head(view, '발주 메일', canEdit() ? h('a', { class: 'btn btn-line btn-sm', href: '#mail/vendor/new', text: '+ 발주처' }) : null);
+    head(view, '발주처 · 발주 메일');
+    ui.put(view, vendorBook(), h('h2', { class: 'lg-sec-h', text: '발주 메일 쓰기' }));
     var pick = h('div', { class: 'lg-vendors' }, G.vendors.map(function (x) {
       var cnt = G.items.filter(function (i) { return i.vendorId === x.id; }).map(plan).filter(function (p) { return p.state === 'now' || p.state === 'soon'; }).length;
       return h('a', { class: 'lg-vchip' + (x.id === M.vid ? ' on' : ''), href: '#mail/' + x.id }, x.name, cnt ? h('span', { class: 'lg-vchip-n', text: String(cnt) }) : null);
@@ -310,8 +349,8 @@
     });
     var text = buildMail(v, ps);
     ui.put(view,
-      ui.panel(v.name + ' — 이번 발주', canEdit() ? h('a', { class: 'link', href: '#mail/vendor/' + v.id, text: '발주처 정보 수정' }) : null,
-        ui.kv([['담당', [v.person, v.phone].filter(Boolean).join(' · ') || '—'], ['메일', v.email || '— (발주처 정보에서 입력)'], ['결제 조건', v.terms || '—'], ['기본 입고지', v.ship || '품목 보관처 기준']]),
+      ui.panel(v.name + ' — 이번 발주', null,
+        ui.kv([['담당', [v.person && v.person + (v.title ? ' ' + v.title : ''), v.phone].filter(Boolean).join(' · ') || '— (위 연락처 표에서 입력)'], ['메일', v.email || '— (위 연락처 표에서 입력)'], ['결제 조건', v.terms || '—'], ['납품지', v.ship || '품목 보관처 기준']]),
         its.length ? h('div', { class: 'table-wrap flat' }, h('table', { class: 'table lg-table' },
           h('thead', null, h('tr', null, ['품목', '상태', '현재고', '권장', '발주 수량', '금액(VAT 별도)'].map(function (c, i) { return h('th', { class: i >= 2 && i !== 4 ? 'num' : '', text: c }); }))),
           h('tbody', null, rows))) : ui.empty('이 발주처에 연결된 품목이 없습니다. 「재고 · 재발주 › 설정」에서 발주처를 지정하세요.'),
@@ -337,7 +376,7 @@
     var subject = '[(주)필츠] 발주 요청 — ' + (names[0] || '품목') + (names.length > 1 ? ' 외 ' + (names.length - 1) + '건' : '') + ' (' + today().slice(2).replace(/-/g, '') + ')';
     var dest = v.ship || Object.keys(wh).map(destText).join('\n');
     var body = [
-      (v.person ? v.person + '님, ' : '') + '안녕하세요.',
+      (v.person ? v.person + (v.title ? ' ' + v.title : '') + '님, ' : '') + '안녕하세요.',
       '(주)필츠 바인그라피 ' + (me.name || '') + '입니다. 아래와 같이 발주드립니다.',
       '',
       '■ 발주 내역',
