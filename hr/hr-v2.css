@@ -1722,3 +1722,11 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 .nav-right .nav-map { order: 99; display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px solid var(--black); font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--black); text-decoration: none; white-space: nowrap; }
 .nav-right .nav-map:hover { background: var(--black); color: #fff; }
 .nav-right .nav-toggle { order: 100; }
+
+/* 모바일 상단바 고정 (261009) — 넓은 표 · 보드 때문에 페이지가 가로로 넓어져도 로고 · 알림 · 햄버거가 항상 화면 안에 보이게. PC(901px~)는 그대로 */
+@media (max-width: 900px) {
+  .nav { position: fixed; top: 0; left: 0; right: 0; width: 100%; box-sizing: border-box; gap: 12px; }
+  .app { padding-top: 72px; }
+  .nav .logo { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-right { flex: 0 0 auto; margin-left: auto; }
+}
