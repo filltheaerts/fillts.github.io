@@ -353,3 +353,4 @@ a.map-card:hover { border-color: var(--black); }
 .jg-memo dd { font-size: 13px; line-height: 1.65; white-space: pre-line; }
 .jg-memo .jg-memo-warn dt, .jg-memo .jg-memo-warn dd { color: var(--red); }
 @media (max-width: 640px) { .jg-memo > div { grid-template-columns: 1fr; gap: 4px; } }
+.jg-date { align-self: center; font-size: 12px; color: var(--gray-600, #555); }

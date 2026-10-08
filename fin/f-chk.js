@@ -164,7 +164,8 @@
         return h('tr', null, h('td', { class: 'strong nowrap', text: (r.art || '') + (r.title ? ' ' + r.title : '') }), h('td', { class: 'jg-body', text: r.body || '' }), h('td', { class: 'jg-note', text: r.note || '' }));
       }) : h('tr', null, h('td', { colspan: '3', class: 'empty', text: '정관 요약이 아직 없습니다.' }))));
     ui.put(view, ui.head('[행정] 정관', '정관 신설 · 변경 조항',
-        h('div', { class: 'row' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
+        h('div', { class: 'row' }, F.cfg && F.cfg.bylawDate ? h('span', { class: 'meta jg-date', text: '현행 정관 ' + fmt.dot(F.cfg.bylawDate) + ' 작성' }) : null,
+          url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
           ed ? ui.btn('+ 조항 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
       ui.panel('하고자 하는 일 · 무엇으로 결의하고 정관에 있나', null, h('div', { class: 'table-wrap flat' }, goalTb)),
       // 설계 메모 (kind 'memo' {title, sub, rows: JSON [[항목, 내용], …]}) — 예: 스톡옵션 설계안
