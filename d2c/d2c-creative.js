@@ -58,7 +58,12 @@
     var T = list.reduce(function (t, x) { ['spend', 'imp', 'clk', 'conv', 'rev', 'v3s'].forEach(function (k) { t[k] += +x[k] || 0; }); return t; }, { spend: 0, imp: 0, clk: 0, conv: 0, rev: 0, v3s: 0 });
     var vImp = list.filter(function (x) { return x.format === 'video'; }).reduce(function (s, x) { return s + (+x.imp || 0); }, 0);
     var avg = { ctr: T.imp ? T.clk / T.imp : 0, cvr: T.clk ? T.conv / T.clk : 0 };
-    ui.put(view, ui.head('D2C · 데이터', '광고 성과', h('span', { class: 'meta', text: demo ? '예시 소재 · 저장 안 됨' : '소재 ' + list.length + '개 · 누적' })));
+    var sec = C.sec || 'media';
+    ui.put(view, ui.head('D2C · 데이터', '광고 성과', h('span', { class: 'meta', text: sec === 'inf' ? '인플루언서 예시 · 저장 안 됨' : demo ? '예시 소재 · 저장 안 됨' : '소재 ' + list.length + '개 · 누적' })),
+      h('div', { class: 'ad-sec', role: 'tablist' }, [['media', '매체 광고', 'Meta · GDN · 카카오모먼트'], ['inf', '인플루언서 광고', '유튜브 · 인스타 협업 콘텐츠']].map(function (t) {
+        return h('button', { type: 'button', role: 'tab', 'aria-selected': String(sec === t[0]), class: sec === t[0] ? 'on' : '', onclick: function () { C.sec = t[0]; HR.refresh(); } }, h('b', { text: t[1] }), h('small', { text: t[2] }));
+      })));
+    if (sec === 'inf') { infSection(view); return; }
     if (demo) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 소재입니다.' }), ' Meta 6 · GDN 3 · 카카오모먼트 3, 소재 12개를 가정했습니다(그림은 예시 일러스트). 아래 「소재 입력」에 넣거나, 「소재 › 매체에서 가져오기」(Meta · GDN · 카카오모먼트 API)가 연결되면 자동으로 채워지고 사라집니다.'));
     ui.put(view,
       h('dl', { class: 'summary sa-kpi' },
@@ -115,6 +120,74 @@
   }
 
 
+
+  /* ================= 광고 › 인플루언서 광고 =================
+     콘텐츠 1건 = 크리에이터 · 플랫폼 · 업로드일 · 비용 · 조회 · 좋아요 · 댓글 · 링크 클릭 · 쿠폰코드 주문 · 매출
+     실제 데이터는 /inf 「완료 콘텐츠」(inf_creators.contents) + 카페24 주문의 쿠폰코드로 채운다. 지금은 예시(실제 협업 아님) */
+  function infSample() {
+    // [id, 크리에이터, 구독, 플랫폼, 형식, 제목, 업로드, 비용, 조회, 좋아요, 댓글, 링크클릭, 쿠폰, 주문, 매출]
+    var rows = [
+      ['inf-01', '채정안TV', '33.9만', 'YouTube', '롱폼 12:48', '요즘 매일 쓰는 세안템 하나', '2026-11-20', 6000000, 412000, 9800, 1240, 6900, 'VG-JEONGAN', 214, 8360000],
+      ['inf-02', '채정안TV', '33.9만', 'YouTube', '쇼츠 0:42 · 리컷', '세안 30초 루틴 공개', '2026-11-27', 0, 238000, 7100, 310, 1650, 'VG-JEONGAN', 46, 1780000],
+      ['inf-03', '기은세', '14.6만', 'Instagram', '릴스 0:31', '집에서 하는 저녁 세안', '2026-12-02', 3000000, 186000, 8400, 420, 2100, 'VG-EUNSE', 92, 3480000],
+      ['inf-04', 'happydana', '3.2만', 'YouTube', '롱폼 9:12', '쌍둥이 재우고 10분 세안 루틴', '2026-11-25', 600000, 41000, 1900, 380, 860, 'VG-DANA', 38, 1420000],
+      ['inf-05', '유튜버 A (예시)', '6.8만', 'YouTube', '쇼츠 0:38', '건성 피부 클렌저 바꿈', '2026-11-15', 90000, 21000, 690, 54, 540, 'VG-A10', 15, 560000],
+      ['inf-06', '유튜버 B (예시)', '4.1만', 'YouTube', '롱폼 8:05', '약산성 클렌저 3주 써봄', '2026-12-01', 120000, 34000, 1120, 162, 880, 'VG-B10', 21, 790000]
+    ];
+    return rows.map(function (r) {
+      return { id: r[0], creator: r[1], subs: r[2], platform: r[3], format: r[4], title: r[5], date: r[6], cost: r[7], views: r[8], likes: r[9], cmts: r[10], clicks: r[11], coupon: r[12], orders: r[13], sales: r[14], thumb: 'ex/' + r[0] + '.svg', vertical: /쇼츠|릴스/.test(r[4]) };
+    });
+  }
+  function infSection(view) {
+    if (!C.inf) C.inf = infSample();
+    var list = C.inf.map(function (x) { var o = Object.assign({}, x); o.eng = o.views ? (o.likes + o.cmts) / o.views : 0; o.ctr = o.views ? o.clicks / o.views : 0; o.cvr = o.clicks ? o.orders / o.clicks : 0; o.roas = o.cost ? o.sales / o.cost : null; o.cpv = o.views && o.cost ? o.cost / o.views : null; return o; });
+    var T = list.reduce(function (t, x) { ['cost', 'views', 'likes', 'cmts', 'clicks', 'orders', 'sales'].forEach(function (k) { t[k] += x[k]; }); return t; }, { cost: 0, views: 0, likes: 0, cmts: 0, clicks: 0, orders: 0, sales: 0 });
+    var sort = C.isort || 'roas';
+    var key = { roas: function (x) { return x.roas == null ? 1e9 : x.roas; }, views: function (x) { return x.views; }, eng: function (x) { return x.eng; }, orders: function (x) { return x.orders; } }[sort];
+    list.sort(function (a, b) { return key(b) - key(a); });
+    ui.put(view,
+      h('div', { class: 'sa-demo' }, h('strong', { text: '예시 데이터입니다 — 실제 협업이 아닙니다.' }), ' /inf에 등록된 채정안TV · 기은세 · happydana와 퍼포먼스 예시의 유튜버 A · B로 협업 콘텐츠 6개를 가정했습니다. 썸네일은 인물 사진 없이 만든 일러스트입니다. 실제로는 /inf 「완료 콘텐츠」와 카페24 주문의 쿠폰코드로 채워집니다.'),
+      h('dl', { class: 'summary sa-kpi' },
+        kpiBox('협업 콘텐츠', list.length + '개', list.map(function (x) { return x.creator; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).length + '명'),
+        kpiBox('비용', won(T.cost), '원고료 · 제작비 (제품 원가 제외)'),
+        kpiBox('조회', n0(T.views), 'CPV ' + won(T.views ? T.cost / T.views : 0)),
+        kpiBox('참여율', pc(T.likes + T.cmts, T.views, 2), '(좋아요 + 댓글) ÷ 조회'),
+        kpiBox('쿠폰 주문', n0(T.orders) + '건', '링크 클릭 ' + n0(T.clicks) + ' · 전환 ' + pc(T.orders, T.clicks, 1)),
+        kpiBox('ROAS (쿠폰 실측)', T.cost ? (T.sales / T.cost).toFixed(2) + '배' : '—', '쿠폰 매출 ' + won(T.sales))),
+      ui.panel('콘텐츠별 성과', h('div', { class: 'sa-seg', role: 'group' }, [['roas', 'ROAS 순'], ['orders', '주문 순'], ['views', '조회 순'], ['eng', '참여율 순']].map(function (s) {
+        return h('button', { type: 'button', class: sort === s[0] ? 'on' : '', text: s[1], onclick: function () { C.isort = s[0]; HR.refresh(); } });
+      })),
+        h('ol', { class: 'if-grid' }, list.map(function (x, i) {
+          return h('li', { class: 'if-card' },
+            h('div', { class: 'if-th' + (x.vertical ? ' v' : '') }, h('img', { src: x.thumb, alt: x.title, loading: 'lazy' }), h('span', { class: 'cr-rank' + (i < 3 ? ' top' : ''), text: i + 1 }), h('span', { class: 'if-pf if-' + x.platform.toLowerCase(), text: x.platform })),
+            h('div', { class: 'if-body' },
+              h('div', { class: 'if-cr' }, h('b', { text: x.creator }), h('span', { class: 'meta', text: '구독 ' + x.subs + ' · ' + x.format })),
+              h('div', { class: 'if-title', text: x.title }),
+              h('div', { class: 'meta', text: '업로드 ' + x.date.slice(5).replace('-', '.') + ' · 쿠폰 ' + x.coupon + ' · 비용 30일 안분' }),
+              h('dl', { class: 'if-nums' },
+                h('div', null, h('dt', { text: '비용' }), h('dd', { text: x.cost ? D2Cman(x.cost) + '원' : '0원 (2차 활용)' })),
+                h('div', null, h('dt', { text: '조회' }), h('dd', { text: n0(x.views) })),
+                h('div', null, h('dt', { text: '참여율' }), h('dd', { text: pc(x.likes + x.cmts, x.views, 2) })),
+                h('div', null, h('dt', { text: '링크 클릭' }), h('dd', { text: n0(x.clicks) })),
+                h('div', null, h('dt', { text: '쿠폰 주문' }), h('dd', { class: 'strong', text: n0(x.orders) + '건' })),
+                h('div', null, h('dt', { text: 'ROAS' }), h('dd', { class: x.roas != null && x.roas >= 1 ? 'red' : '', text: x.roas == null ? '∞ (무상)' : x.roas.toFixed(2) })))));
+        }))),
+      ui.panel('크리에이터별 합계', h('span', { class: 'meta', text: '같은 사람의 롱폼 · 쇼츠 · 리컷을 묶어서' }), infTable(list)),
+      h('p', { class: 'meta sa-note', text: '인플루언서 시청자는 링크 대신 검색으로 들어오는 경우가 많아 매출 귀속은 쿠폰코드가 1순위입니다(UTM은 보조). 비용은 퍼포먼스 메뉴에서 업로드일부터 30일 안분해 매출 대비 광고비에 들어갑니다. 협찬 콘텐츠는 제목 · 첫머리에 「유료광고 · 광고」 표시가 필수입니다.' }));
+  }
+  function D2Cman(v) { return (HR.D2C && HR.D2C.man) ? HR.D2C.man(v) : n0(v); }
+  function infTable(list) {
+    var by = {};
+    list.forEach(function (x) { var c = by[x.creator] || (by[x.creator] = { creator: x.creator, subs: x.subs, n: 0, cost: 0, views: 0, eng: 0, clicks: 0, orders: 0, sales: 0 }); c.n++; c.cost += x.cost; c.views += x.views; c.eng += x.likes + x.cmts; c.clicks += x.clicks; c.orders += x.orders; c.sales += x.sales; });
+    var rows = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.sales - a.sales; });
+    return h('div', { class: 'table-wrap flat' }, h('table', { class: 'table sa-media' },
+      h('thead', null, h('tr', null, ['크리에이터', '구독', '콘텐츠', '비용', '조회', 'CPV', '참여율', '링크 클릭', '쿠폰 주문', '쿠폰 매출', 'ROAS', '주문당 비용'].map(function (c, j) { return h('th', { class: j >= 2 ? 'num' : '', text: c }); }))),
+      h('tbody', null, rows.map(function (c) {
+        return h('tr', null, h('td', { class: 'strong', text: c.creator }), h('td', { text: c.subs }), h('td', { class: 'num', text: c.n + '개' }), h('td', { class: 'num', text: won(c.cost) }), h('td', { class: 'num', text: n0(c.views) }),
+          h('td', { class: 'num', text: c.views && c.cost ? won(c.cost / c.views) : '—' }), h('td', { class: 'num', text: pc(c.eng, c.views, 2) }), h('td', { class: 'num', text: n0(c.clicks) }), h('td', { class: 'num', text: n0(c.orders) + '건' }),
+          h('td', { class: 'num', text: won(c.sales) }), h('td', { class: 'num strong' + (c.cost && c.sales / c.cost >= 1 ? ' red' : ''), text: c.cost ? (c.sales / c.cost).toFixed(2) : '—' }), h('td', { class: 'num', text: c.orders ? won(c.cost / c.orders) : '—' }));
+      }))));
+  }
   /* ---------- 매체별 CTR 순위 (Meta · GDN · 카카오모먼트 세 칸) ---------- */
   function byMedia(list) {
     var cols = ['meta', 'gdn', 'kakao'].map(function (k) {
