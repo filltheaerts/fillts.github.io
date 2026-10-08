@@ -14,6 +14,7 @@
     { id: 'hr', name: 'HR', path: '/hr/', open: true, desc: '출퇴근 · 휴가 · 공지 · 구성원 · 목표 · WORK · +AI · 입금요청' },
     { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
+    { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 자사몰(카페24) 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 자사몰 전환을 런칭 전 → 첫 30일 → M+3 로드맵으로 실행 관리 · LTV 계산' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 씨드 유튜버 1명으로 비슷한 채널(구독자 · 댓글 톤 · 키워드) 찾기 → 컨택 · 메일 문의 · 계약 · 시딩 · 업로드 대기 관리' },
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 위킵 입고 사양 복사 · 발주 현황' },
