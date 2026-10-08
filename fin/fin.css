@@ -354,3 +354,10 @@ a.map-card:hover { border-color: var(--black); }
 .jg-memo .jg-memo-warn dt, .jg-memo .jg-memo-warn dd { color: var(--red); }
 @media (max-width: 640px) { .jg-memo > div { grid-template-columns: 1fr; gap: 4px; } }
 .jg-date { align-self: center; font-size: 12px; color: var(--gray-600, #555); }
+.jg-goal td:first-child { min-width: 320px; }
+.jg-sol { margin-top: 8px; padding: 8px 10px; background: #fdf1f2; border-left: 3px solid var(--red); display: flex; flex-direction: column; gap: 5px; font-size: 12px; line-height: 1.6; }
+.jg-sol > div { display: flex; gap: 8px; align-items: flex-start; }
+.jg-sol-k { flex: none; padding: 0 6px; font-size: 11px; font-weight: 700; color: var(--red); border: 1px solid var(--red); background: #fff; white-space: nowrap; }
+.jg-sol-k.jg-sol-todo { color: #fff; background: var(--red); }
+.jg-sol-v { white-space: pre-line; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .jg-sol { background: rgba(200, 16, 46, 0.12); } :root:not([data-theme="light"]) .jg-sol-k { background: transparent; } }

@@ -154,7 +154,11 @@
     var goalTb = h('table', { class: 'table fin-table jg-table jg-goal' }, h('thead', null, h('tr', null, ['하고자 하는 일', '필요한 결의', '정관', '언제'].map(function (x) { return h('th', { text: x }); }))),
       h('tbody', null, goals.length ? goals.map(function (g) {
         var st = ST[g.st] || ST.none;
-        return h('tr', null, h('td', null, h('div', { class: 'strong', text: g.task || '' }), g.note ? h('div', { class: 'jg-gnote', text: g.note }) : null),
+        // 솔루션 한 줄씩: proc = 프로세스(단계를 > 로), todo = 해야 하는 것(줄바꿈)
+        var sol = g.proc || g.todo ? h('div', { class: 'jg-sol' },
+          g.proc ? h('div', null, h('span', { class: 'jg-sol-k', text: '프로세스' }), h('span', { text: g.proc })) : null,
+          g.todo ? h('div', null, h('span', { class: 'jg-sol-k jg-sol-todo', text: '해야 하는 것' }), h('span', { class: 'jg-sol-v', text: g.todo })) : null) : null;
+        return h('tr', null, h('td', null, h('div', { class: 'strong', text: g.task || '' }), g.note ? h('div', { class: 'jg-gnote', text: g.note }) : null, sol),
           h('td', { class: 'jg-body', text: g.resol || '' }),
           h('td', null, h('span', { class: 'jg-st ' + st[1], text: st[0] }), g.bylaw ? h('div', { class: 'jg-gnote', text: g.bylaw }) : null),
           h('td', { class: 'nowrap', text: g.when || '' }));
