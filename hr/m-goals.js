@@ -41,7 +41,10 @@
     var i = g.ownerMid === S.mid ? ((S.priv && S.priv.goalOrder) || []).indexOf(g.id) : -1;
     return i < 0 ? 999 : i;
   }
-  HR.goals = { mini: mini, rank: rank };
+  // 공통 순서(목표관리 목록 · INFO · 구성원 화면): 진행 중 먼저 → 전사·팀·개인 → 기간 빠른 순(단계별) → 같은 기간 안에서 담당자가 정한 순서 → 제목
+  var LEVEL_ORD = { company: 0, team: 1, personal: 2 };
+  function sorter(a, b) { return (a.status === 'done') - (b.status === 'done') || (LEVEL_ORD[a.level] || 0) - (LEVEL_ORD[b.level] || 0) || String(a.period || '').localeCompare(String(b.period || '')) || rank(a) - rank(b) || (a.title || '').localeCompare(b.title || '', 'ko'); }
+  HR.goals = { mini: mini, rank: rank, sort: sorter };
 
   /* ---------- 목표 목록 + 상세 ---------- */
   function goalsView(view, selId) {
@@ -57,9 +60,6 @@
     var every = G.period === '*', all = S.goals.filter(function (g) { return every || g.period === G.period; });   // '*' = 전체 기간
     var byParent = {};
     all.forEach(function (g) { var k = g.parentId && all.some(function (x) { return x.id === g.parentId; }) ? g.parentId : ''; (byParent[k] = byParent[k] || []).push(g); });
-    var order = { company: 0, team: 1, personal: 2 };
-    // 순서: 진행 중 먼저 → 전사·팀·개인 → 담당자가 정한 목표 순서 → 기간 빠른 순 → 제목
-    var sorter = function (a, b) { return (a.status === 'done') - (b.status === 'done') || order[a.level] - order[b.level] || rank(a) - rank(b) || String(a.period || '').localeCompare(String(b.period || '')) || (a.title || '').localeCompare(b.title || '', 'ko'); };
     var doneN = all.filter(function (g) { return g.status === 'done'; }).length;
     function card(g, depth) {
       var p = pct(g), st = STAT[g.status] || STAT.on;
@@ -95,7 +95,7 @@
 
   // 내 목표 순서 — INFO 첫 화면 My goals에 보이는 순서 (hr_private.goalOrder)
   function orderPanel() {
-    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(function (a, b) { return rank(a) - rank(b); });
+    var goals = S.goals.filter(function (g) { return g.ownerMid === S.mid && g.status !== 'done'; }).sort(sorter);
     var save = function (ids) {   // 목표 문서에 ord 저장 → 목표관리 목록 · INFO · 구성원 화면 모두 같은 순서
       S.priv = Object.assign({}, S.priv, { goalOrder: ids });
       var b = db.batch();
@@ -112,7 +112,7 @@
     }));
     if (!goals.length) ul.appendChild(h('li', { class: 'empty', text: '내가 담당한 진행 중 목표가 없습니다.' }));
     return ui.panel('My order · 내 목표 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); G.ordering = false; HR.refresh(); } }), ul,
-      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 목표관리 목록 · INFO 첫 화면 · 구성원 화면 모두 이 순서로 보입니다(다른 구성원에게도 같음).' }));
+      h('p', { class: 'note', text: '↑ ↓로 바꾸면 바로 저장됩니다. 화면에서는 기간(단계) 순서가 먼저이고, 같은 기간 안의 목표끼리 이 순서를 따릅니다 — 목표관리 · INFO · 구성원 화면 공통.' }));
   }
 
   function detail(g) {
