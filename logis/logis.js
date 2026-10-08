@@ -119,8 +119,8 @@
       h('div', { class: 'lg-grid' },
         ui.panel('① 재고 · 재발주 시점', h('a', { class: 'link', href: '#stock', text: '재고 실사 →' }),
           ps.length ? stockMini(ps) : ui.empty('품목이 없습니다. 「재고 · 재발주」에서 추가하세요.')),
-        ui.panel('② 위킵 입고 — 바로 복사', h('a', { class: 'link', href: '#spec', text: '사양 전체 →' }),
-          quick.length ? h('div', { class: 'lg-specs' }, quick.map(specRow)) : ui.empty('「위킵 사양」에서 핀(★)을 꽂은 항목이 여기 나옵니다.')),
+        ui.panel('② 위킵 입고 — 바로 복사', h('div', { class: 'lg-btns' }, quick.length ? copyBtn(function () { return specText(quick); }, '전체 복사', 'lg-copy-main') : null, h('a', { class: 'link', href: '#spec', text: '사양 전체 →' })),
+          quick.length ? h('pre', { class: 'lg-mail lg-quick', text: specText(quick) }) : ui.empty('「위킵 사양」에서 핀(★)을 꽂은 항목이 여기 나옵니다.')),
         ui.panel('③ 발주 메일', h('a', { class: 'link', href: '#mail', text: '메일 쓰기 →' }),
           urgent.length ? h('ul', { class: 'list' }, urgent.map(function (p) {
             var v = vendor(p.it.vendorId);
@@ -166,42 +166,75 @@
   }
 
   /* ================= [stock] 재고 · 재발주 ================= */
+  // 엑셀형 시트: 한 줄 = 한 품목. 월 출고 · 리드 · 안전 · MOQ는 셀에서 바로 고치고(Enter · 칸 이동 시 저장), 맨 끝 칸에 수량을 넣고 Enter → 위에서 고른 모드(실사 · 입고 · 출고)로 기록
+  var SH = { mode: 'count', date: '' };
   function stock(view, parts) {
     if (wait(view)) return;
     if (parts[0] === 'edit') return itemForm(view, parts[1] === 'new' ? null : item(parts[1]));
-    var ps = G.items.map(plan);
-    head(view, '재고 · 재발주 주기', canEdit() ? h('a', { class: 'btn btn-sm', href: '#stock/edit/new', text: '+ 품목' }) : null);
+    var ps = G.items.map(plan), ed = canEdit();
+    if (!SH.date) SH.date = today();
+    var cnt = function (st) { return ps.filter(function (p) { return st.indexOf(p.state) >= 0; }).length; };
+    head(view, '재고 · 재발주 주기', ed ? h('a', { class: 'btn btn-sm', href: '#stock/edit/new', text: '+ 품목' }) : null);
+    var modeSel = h('div', { class: 'lg-seg', role: 'group', 'aria-label': '입력 모드' }, [['count', '실사 수량'], ['in', '입고 +'], ['out', '출고 −']].map(function (m) {
+      return h('button', { type: 'button', class: SH.mode === m[0] ? 'on' : '', text: m[1], onclick: function () { SH.mode = m[0]; HR.refresh(); } });
+    }));
+    var dateIn = ui.input({ type: 'date', value: SH.date, 'aria-label': '기록 날짜', onchange: function () { SH.date = this.value || today(); } });
+    var cols = [['품목', ''], ['상태', ''], ['현재고', 'num'], ['입고 대기', 'num'], ['월 출고', 'num ed'], ['하루 소진', 'num'], ['남은 일수', 'num'], ['리드', 'num ed'], ['안전', 'num ed'], ['재발주점', 'num'], ['발주할 날', ''], ['1회 발주량', 'num'], ['MOQ', 'num ed'], ['주기', 'num'], ['발주처', ''],
+      ed ? [{ count: '실사 입력', in: '입고 입력', out: '출고 입력' }[SH.mode], 'num ed lg-c-in'] : null].filter(Boolean);
     ui.put(view,
-      h('p', { class: 'lg-lead' }, '① 실사 수량을 넣는다 → ② 소진 속도가 자동 계산된다(기록이 2주 넘게 쌓이기 전에는 「월 출고 예상」을 씁니다) → ③ 리드타임 · 안전일수로 ', h('b', { text: '발주해야 하는 날' }), '과 ', h('b', { text: '1회 발주량 · 발주 주기' }), '가 나온다.'),
-      ps.length ? ps.map(stockCard) : ui.empty('품목이 없습니다.'),
-      h('p', { class: 'note' }, '재발주점 = 하루 소진 × (리드타임 + 안전일수). 발주 시점 = (현재고 + 입고 대기 − 재발주점) ÷ 하루 소진 뒤. 1회 발주량 = 하루 소진 × 커버 일수를 발주 단위로 올림, MOQ 이상. 부자재는 기준 품목 소진 × 제품 1개당 사용량을 따라갑니다.'));
+      h('div', { class: 'lg-sheet-bar' },
+        h('div', { class: 'lg-sheet-sum' },
+          h('span', null, '지금 발주 · 품절 위험 ', h('b', { class: cnt(['now', 'gap']) ? 'red' : '', text: String(cnt(['now', 'gap'])) })),
+          h('span', null, '2주 안 ', h('b', { text: String(cnt(['soon'])) })),
+          h('span', null, '여유 ', h('b', { text: String(cnt(['ok'])) })),
+          h('span', null, '속도 미입력 ', h('b', { text: String(cnt(['nodata'])) }))),
+        ed ? h('div', { class: 'lg-sheet-ctl' }, h('span', { class: 'meta', text: '맨 끝 칸 입력 →' }), modeSel, dateIn) : null),
+      ps.length ? h('div', { class: 'lg-sheet-wrap' }, h('table', { class: 'lg-sheet' },
+        h('thead', null, h('tr', null, cols.map(function (c) { return h('th', { class: c[1], text: c[0] }); }))),
+        h('tbody', null, ps.map(function (p) { return sheetRow(p, ed); })))) : ui.empty('품목이 없습니다.'),
+      h('p', { class: 'note' }, '노란 칸은 바로 고칠 수 있습니다(Enter 또는 다른 칸으로 이동하면 저장). 월 출고는 완제품만 넣으면 부자재(↳)는 제품 1개당 사용량만큼 따라갑니다. 실사 · 출고 기록이 14일 넘게 쌓이면 하루 소진은 실측값으로 바뀝니다. ' +
+        '재발주점 = 하루 소진 × (리드 + 안전) · 발주할 날 = (현재고 + 입고 대기 − 재발주점) ÷ 하루 소진 뒤 · 1회 발주량 = 하루 소진 × 커버 일수를 발주 단위로 올림(MOQ 이상) · 품목 이름을 누르면 설정 · 기록이 열립니다.'));
   }
-  function stockCard(p) {
-    var it = p.it, v = vendor(it.vendorId), lg = ledger(it), ed = canEdit();
-    var qIn = ui.input({ type: 'number', min: '0', inputmode: 'numeric', placeholder: '수량', 'aria-label': it.name + ' 수량' });
-    var dIn = ui.input({ type: 'date', value: today(), 'aria-label': '날짜' });
-    var act = function (type) { return function () { var q = qIn.value; if (q === '' || +q < 0) return ui.toast('수량을 넣어 주세요.'); addMove(it.id, type, q, dIn.value); qIn.value = ''; }; };
-    return h('section', { class: 'panel lg-card' },
-      h('div', { class: 'lg-card-h' },
-        h('div', null, h('div', { class: 'lg-card-name', text: it.name }), h('div', { class: 'meta', text: [nm(KIND, it.kind), nm(WHERE, it.where), v ? v.name : '', it.spec].filter(Boolean).join(' · ') })),
-        h('div', { class: 'lg-card-r' }, stTag(p), ed ? h('a', { class: 'btn btn-line btn-xs', href: '#stock/edit/' + it.id, text: '설정' }) : null)),
-      h('dl', { class: 'lg-nums' },
-        num('현재고', n0(p.stock) + (it.unit || '개'), p.lastCount ? '실사 ' + fmt.dot(p.lastCount) : '실사 기록 없음'),
-        num('하루 소진', p.d ? (p.d < 10 ? p.d.toFixed(1) : n0(p.d)) : '—', p.src || '월 출고 예상을 넣으세요'),
-        num('남은 일수', days(p.daysLeft), p.runout ? '소진 ' + fmt.dot(p.runout) : ''),
-        num('재발주점', p.rop != null ? n0(p.rop) : '—', '리드 ' + p.lead + ' + 안전 ' + p.safety + '일'),
-        num('발주할 날', p.orderBy ? fmt.dot(p.orderBy) : '—', p.onOrder ? '입고 대기 ' + n0(p.onOrder) + ' 포함' : '', p.state === 'now' ? 'red' : ''),
-        num('1회 발주량 · 주기', p.qty ? n0(p.qty) : '—', p.cycle ? '약 ' + Math.round(p.cycle) + '일마다 (' + (p.cycle / 30).toFixed(1) + '개월)' : '')),
-      ed ? h('div', { class: 'lg-move' }, qIn, dIn,
-        ui.btn('실사 수량', act('count'), 'btn-xs'), ui.btn('입고 +', act('in'), 'btn-line btn-xs'), ui.btn('출고 −', act('out'), 'btn-line btn-xs'),
-        p.state === 'now' || p.state === 'soon' ? h('a', { class: 'btn btn-xs lg-mail-go', href: '#mail/' + (it.vendorId || ''), text: '발주 메일 →' }) : null) : null,
-      lg.moves.length ? h('details', { class: 'lg-hist' }, h('summary', { text: '기록 ' + lg.moves.length + '건' }),
-        h('ul', { class: 'list' }, lg.moves.slice().reverse().slice(0, 30).map(function (m) {
-          return h('li', null, h('span', { class: 'nowrap meta', text: fmt.dot(m.date || '') }), h('span', { class: 'grow', text: { count: '실사 = ', in: '입고 + ', out: '출고 − ' }[m.type] + n0(m.qty) + (m.note ? ' · ' + m.note : '') }),
-            ed ? ui.confirmBtn('삭제', function () { db.collection('logis_moves').doc(m.id).delete(); }) : null);
-        }))) : null);
+  function sheetRow(p, ed) {
+    var it = p.it, v = vendor(it.vendorId), u = it.unit || '개';
+    var cell = function (field, val, title) {
+      if (!ed) return h('td', { class: 'num', text: val != null && val !== '' ? n0(val) : '' });
+      var inp = h('input', { type: 'number', min: '0', step: 'any', value: val != null ? val : '', class: 'lg-cell', title: title || '', 'aria-label': it.name + ' ' + (title || field) });
+      inp.addEventListener('change', function () {
+        var nv = inp.value === '' ? null : +inp.value; if (nv === (val != null && val !== '' ? +val : null)) return;
+        var d = {}; d[field] = nv; save(db.collection('logis_items').doc(it.id), d);
+      });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') inp.blur(); });
+      return h('td', { class: 'num ed' }, inp);
+    };
+    var monthlyTd = it.base && item(it.base) ? h('td', { class: 'num lg-c-base', title: '「' + item(it.base).name + '」을 따라감', text: '↳ ' + (+it.usePer || 1) + '×' }) : cell('monthly', it.monthly, '월 출고 예상');
+    var inTd = null;
+    if (ed) {
+      var q = h('input', { type: 'number', min: '0', class: 'lg-cell', placeholder: '수량', 'aria-label': it.name + ' 수량 입력' });
+      q.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || q.value === '') return;
+        var val = q.value; q.value = ''; addMove(it.id, SH.mode, val, SH.date);
+      });
+      inTd = h('td', { class: 'num ed lg-c-in' }, q);
+    }
+    return h('tr', { class: 'lg-r-' + p.state },
+      h('th', { scope: 'row', class: 'lg-c-name' }, h('a', { href: '#stock/edit/' + it.id, text: it.name }), h('span', { class: 'lg-c-sub', text: nm(WHERE, it.where) + (p.lastCount ? ' · 실사 ' + p.lastCount.slice(5).replace('-', '.') : '') })),
+      h('td', null, h('span', { class: 'lg-st ' + ST[p.state][1], title: ST[p.state][0], text: { gap: '품절 위험', now: '지금 발주', soon: '2주 안', ok: '여유', nodata: '미입력' }[p.state] })),
+      h('td', { class: 'num strong', text: n0(p.stock) + (u !== '개' ? u : '') }),
+      h('td', { class: 'num', text: p.onOrder ? n0(p.onOrder) : '', title: it.order && it.order.eta ? '입고 예정 ' + it.order.eta : '' }),
+      monthlyTd,
+      h('td', { class: 'num', text: p.d ? (p.d < 10 ? p.d.toFixed(1) : n0(p.d)) : '', title: p.src || '' }),
+      h('td', { class: 'num' + (p.d && p.daysLeft < p.lead ? ' red' : ''), text: p.d ? Math.floor(p.daysLeft) + '일' : '' }),
+      cell('leadDays', it.leadDays, '리드타임(일)'),
+      cell('safetyDays', it.safetyDays != null ? it.safetyDays : 14, '안전일수'),
+      h('td', { class: 'num', text: p.rop != null ? n0(p.rop) : '' }),
+      h('td', { class: 'nowrap' + (p.state === 'now' || p.state === 'gap' ? ' red strong' : ''), text: p.orderBy ? p.orderBy.slice(2).replace(/-/g, '.') : '' }),
+      h('td', { class: 'num', text: p.qty ? n0(p.qty) : '' }),
+      cell('moq', it.moq, 'MOQ'),
+      h('td', { class: 'num', text: p.cycle ? Math.round(p.cycle) + '일' : '' }),
+      h('td', { class: 'nowrap' }, v ? h('a', { href: '#mail/' + v.id, text: v.name }) : ''),
+      inTd);
   }
-  function num(t, v, sub, cls) { return h('div', null, h('dt', { text: t }), h('dd', { class: cls || '', text: v }), sub ? h('span', { class: 'meta', text: sub }) : null); }
 
   function itemForm(view, it) {
     if (!canEdit()) return HR.go('stock');
@@ -230,6 +263,10 @@
         ui.field('리드타임 (발주→입고, 일)', f.leadDays), ui.field('안전일수', f.safetyDays), ui.field('1회 발주로 버틸 기간 (일)', f.coverDays), ui.field('MOQ', f.moq), ui.field('발주 단위 (비우면 MOQ)', f.step))),
       ui.panel('진행 중 발주 (입고 전)', null, h('div', { class: 'lg-form' }, ui.field('발주 수량', f.oQty), ui.field('발주일', f.oDate), ui.field('입고 예정일', f.oEta))),
       ui.panel('메모', null, f.note),
+      it.id ? (function () { var lg = ledger(it); return ui.panel('실사 · 입고 · 출고 기록 ' + lg.moves.length + '건', null, lg.moves.length ? h('ul', { class: 'list' }, lg.moves.slice().reverse().map(function (m) {
+        return h('li', null, h('span', { class: 'nowrap meta', text: fmt.dot(m.date || '') }), h('span', { class: 'grow', text: { count: '실사 = ', in: '입고 + ', out: '출고 − ' }[m.type] + n0(m.qty) + (m.note ? ' · ' + m.note : '') }),
+          ui.confirmBtn('삭제', function () { db.collection('logis_moves').doc(m.id).delete(); }));
+      })) : ui.empty('기록이 없습니다.')); })() : null,
       h('div', { class: 'lg-actions' },
         ui.btn('저장', function () {
           if (!f.name.value.trim()) return ui.toast('품목명을 넣어 주세요.');
@@ -350,10 +387,7 @@
 
   /* ================= [spec] 위킵 사양 — 복사 ================= */
   var SP = { edit: false };
-  function specRow(s) {
-    return h('div', { class: 'lg-spec' }, h('div', { class: 'lg-spec-l' }, s.pin ? h('span', { class: 'lg-pin', text: '★' }) : null, s.label),
-      h('div', { class: 'lg-spec-v', text: s.value || '' }), copyBtn(s.value || ''));
-  }
+  function specText(list) { return list.map(function (s) { return s.label + ': ' + (s.value || ''); }).join('\n'); }
   function spec(view) {
     if (wait(view)) return;
     var groups = [];
@@ -363,8 +397,8 @@
       labelMaker(),
       groups.map(function (g) {
         var list = G.specs.filter(function (s) { return (s.group || '기타') === g; });
-        return ui.panel(g, copyBtn(function () { return list.map(function (s) { return s.label + ': ' + s.value; }).join('\n'); }, '묶음 전체 복사'),
-          h('div', { class: 'lg-specs' }, list.map(function (s) { return SP.edit ? specEdit(s) : specRow(s); })));
+        return ui.panel(g, copyBtn(function () { return specText(list); }, '전체 복사', 'lg-copy-main'),
+          SP.edit ? h('div', { class: 'lg-specs' }, list.map(specEdit)) : h('pre', { class: 'lg-mail lg-quick', text: specText(list) }));
       }),
       SP.edit ? specEdit({ group: groups[0] || '위킵 입고' }) : null,
       !G.specs.length ? ui.empty('사양이 없습니다.') : null);
