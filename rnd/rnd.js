@@ -225,6 +225,45 @@
       ui.put(view, src());
     };
   }
+  /* ---------- [임상] 클렌징 젤 · 클렌징 오일 — 특허(지오특허)와 약속한 시험을 임상 항목별로 ----------
+     clinical.{gel|oil} = { name, patent, claims, hypothesis[], tests[{kind: human|lab, area, item, method, compare, use, decision, why, status, who, due, source}], timeline[[날짜, 무엇]], notes[] } */
+  var DEC = { '하기로 함': 'go', '보류': 'hold', '안 하기로 함': 'no', '미정': 'tbd' };
+  function clinical(key) {
+    return function (view) {
+      if (wait(view)) return;
+      var c = (D().clinical || {})[key] || {}, tests = c.tests || [];
+      var kinds = [['human', '인체적용시험'], ['lab', '실험실 · 기기 시험']];
+      var dc = function (d) { return tests.filter(function (t) { return (t.decision || '미정') === d; }).length; };
+      ui.put(view, ui.head('임상 · ' + (c.name || ''), (c.name || '') + ' — 시험 항목',
+          h('button', { type: 'button', class: 'btn btn-sm no-print', text: '인쇄', onclick: function () { window.print(); } })),
+        c.patent ? h('div', { class: 'rd-cl-pat' }, h('span', { class: 'rd-k-st', text: '특허' }), h('span', { class: 'strong', text: c.patent }), c.claims ? h('p', { class: 'meta', text: c.claims }) : null) : null,
+        h('dl', { class: 'summary' }, [['하기로 함', dc('하기로 함')], ['보류', dc('보류')], ['안 하기로 함', dc('안 하기로 함')], ['미정', dc('미정')]].map(function (p) {
+          return h('div', null, h('dt', { text: p[0] }), h('dd', { text: p[1] + '건' }));
+        })),
+        (c.hypothesis || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '검증할 가설' }), h('ol', { class: 'rd-now' }, c.hypothesis.map(function (x) { return h('li', { text: x }); }))) : null,
+        kinds.map(function (k) {
+          var xs = tests.filter(function (t) { return (t.kind || 'human') === k[0]; });
+          if (!xs.length) return null;
+          return h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: k[1] + ' ' + xs.length + '건' }), h('ol', { class: 'rd-cl' }, xs.map(function (t) {
+            var d = t.decision || '미정';
+            return h('li', { class: 'rd-cl-' + (DEC[d] || 'tbd') },
+              h('div', { class: 'rd-q-head' }, h('span', { class: 'rd-cl-dec', text: d }), t.area ? h('span', { class: 'rd-cl-area', text: t.area }) : null, h('span', { class: 'strong', text: t.item || '' }), t.due ? badge(t.due) : null),
+              t.why ? h('p', { class: 'rd-q-why', text: t.why }) : null,
+              h('dl', { class: 'rd-cl-kv' }, [['방법', t.method], ['비교', t.compare], ['쓰임', t.use], ['상태', [t.status, t.who].filter(Boolean).join(' · ')], ['근거', t.source]].filter(function (r) { return r[1]; }).map(function (r) {
+                return h('div', null, h('dt', { text: r[0] }), h('dd', { text: r[1] }));
+              })));
+          })));
+        }),
+        (c.timeline || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '일정' }), h('ul', { class: 'list rd-due' }, c.timeline.map(function (r) {
+          var dt = /^\d{4}-\d{2}-\d{2}$/.test(r[0]) ? r[0] : '';
+          return h('li', null, dt ? badge(dt) : h('span', { class: 'rd-d rd-none', text: r[0] || '—' }), h('div', { class: 'grow' }, h('div', { text: r[1] }), dt ? h('div', { class: 'meta', text: dot(dt) }) : null));
+        }))) : null,
+        (c.notes || []).length ? h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '주의 · 미결' }), h('ul', { class: 'rd-now' }, c.notes.map(function (x) { return h('li', { text: x }); }))) : null,
+        tests.length ? null : empty('시험 항목을 정리하는 중입니다.'));
+    };
+  }
+  HR.register('gel', { render: clinical('gel') });
+  HR.register('oil', { render: clinical('oil') });
   HR.register('kibo', { render: kibo });
   HR.register('home', { render: combo('현황 — 인정 정보 · 진행', [home, timeline]) });
   HR.register('research', { render: combo('연구 — 과제 · 연구비 · 비품', [tasks, equip]) });
