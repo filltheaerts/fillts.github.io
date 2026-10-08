@@ -335,3 +335,7 @@ a.map-card:hover { border-color: var(--black); }
 .chk-row-done .strong { text-decoration: line-through; color: var(--gray-400); }
 .fin-form textarea { width: 100%; }
 .chk-cat { min-width: 52px; padding: 1px 6px; font-size: 11px; text-align: center; color: var(--gray-600, #555); background: var(--gray-100); white-space: nowrap; }
+.jg-table td { vertical-align: top; line-height: 1.6; }
+.jg-table .nowrap { white-space: nowrap; }
+.jg-table .jg-body { min-width: 220px; }
+.jg-table .jg-note { min-width: 200px; color: var(--gray-600, #555); }
