@@ -17,6 +17,8 @@
   // 목록 앞 짧은 분류 표시
   var CAT_SHORT = { '화장품법': '화장품', '연구개발': '연구개발', '세무 · 회계': '세무', '인사 · 노무': '인사', '법인 · 등기': '법인', '특허': '특허' };
   var catShort = function (c) { return CAT_SHORT[c] || c || '기타'; };
+  // 분야 탭: 주소 #chk/<key>
+  var CAT_TABS = [['cos', '화장품법'], ['tax', '세무 · 회계'], ['hr', '인사 · 노무'], ['rnd', '연구개발'], ['corp', '법인 · 등기'], ['ip', '특허'], ['etc', '기타']];
 
   // 상태: done 완료 · nodate 날짜 미정 · over 지남 · near 임박 · plan 예정
   function state(c, t) {
@@ -91,14 +93,19 @@
       ui.put(view, ui.head('[행정] 체크일정', cur ? '항목 수정' : '항목 추가'), ui.panel(null, null, form(cur, function () { HR.go('chk'); })));
       return;
     }
-    var all = F.chk.map(function (c) { return { c: c, s: state(c, t) }; });
+    var tab = CAT_TABS.filter(function (x) { return x[0] === parts[0]; })[0];
+    var catOf = function (c) { return CATS.indexOf(c.cat) >= 0 ? c.cat : '기타'; };
+    var openN = function (cat) { return F.chk.filter(function (c) { return !c.done && (!cat || catOf(c) === cat); }).length; };
+    var tabs = ui.tabs([['', '전체 ' + openN()]].concat(CAT_TABS.filter(function (x) { return F.chk.some(function (c) { return catOf(c) === x[1]; }); })
+      .map(function (x) { return [x[0], catShort(x[1]) + ' ' + openN(x[1])]; })), tab ? tab[0] : '', 'chk');
+    var all = F.chk.filter(function (c) { return !tab || catOf(c) === tab[1]; }).map(function (c) { return { c: c, s: state(c, t) }; });
     var byDue = function (a, b) { return (a.c.due || '9999') < (b.c.due || '9999') ? -1 : (a.c.due || '9999') > (b.c.due || '9999') ? 1 : (a.c.title < b.c.title ? -1 : 1); };
     var pick = function (ks) { return all.filter(function (x) { return ks.indexOf(x.s.k) >= 0; }).sort(byDue); };
     var hot = pick(['over', 'near']), plan = pick(['plan']), nodate = pick(['nodate']), done = pick(['done']).reverse();
     var within = function (n) { return all.filter(function (x) { return x.s.d != null && x.s.d >= 0 && x.s.d <= n; }).length; };
     var list = function (xs, empty) { return h('ul', { class: 'list chk-list' }, xs.length ? xs.map(function (x) { return row(x.c, x.s, ed); }) : h('li', { class: 'empty', text: empty })); };
     var next = hot.concat(plan)[0];
-    ui.put(view, ui.head('[행정] 체크일정', '법인 행정 체크리스트', ed ? ui.btn('+ 항목 추가', function () { HR.go('chk/new'); }, 'btn-sm') : null),
+    ui.put(view, ui.head('[행정] 체크일정', '법인 행정 체크리스트', ed ? ui.btn('+ 항목 추가', function () { HR.go('chk/new'); }, 'btn-sm') : null), tabs,
       F.kpi([['지남', String(pick(['over']).length) + '건', pick(['over']).length ? 'red' : '', '마감일이 지났는데 완료 안 함'],
         ['임박', String(pick(['near']).length) + '건', pick(['near']).length ? 'red' : '', '항목별 알림 기간 안'],
         ['90일 안', String(within(90)) + '건', '', next ? '다음: ' + next.c.title + ' ' + dLabel(next.s.d) : '예정 없음'],
