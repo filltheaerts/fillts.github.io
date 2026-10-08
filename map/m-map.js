@@ -12,24 +12,35 @@
   };
   var EXTRA = [['/', 'fillts.com', '회사 홈페이지 (공개)']];
 
+  // 분야별 구분 — 각 분야 아래 앱을 가로로 긴 한 줄씩 세로로 나열. 여기 없는 새 앱은 「기타」에 자동으로 붙는다
+  var GROUPS = [['HR', ['hr']], ['FINANCE', ['fin']], ['BRAND', ['vg']], ['MKT', ['mkt', 'inf']]];
+
+  function row(a) {
+    var can = HR.canApp(a.id), lv = HR.appLevel(a.id), off = a.soon || !can;
+    var state = a.soon ? '준비 중' : !can ? '권한 없음' : a.open ? '구성원 전원' : lv === 'edit' ? '편집 권한' : '열람 권한';
+    var links = off ? [] : (LINKS[a.id] || []);
+    return h('li', { class: 'map-row' + (off ? ' off' : '') },
+      h('div', { class: 'map-row-id' }, h('div', { class: 'map-name', text: a.name }), h('div', { class: 'map-path', text: 'fillts.com' + a.path }), ui.tag(state, off ? 'mute' : '')),
+      h('div', { class: 'map-row-body' }, h('p', { class: 'map-desc', text: a.desc }),
+        links.length ? h('ul', { class: 'map-links' }, links.map(function (l) { return h('li', null, h('a', { href: a.path + l[0], text: l[1] })); })) : null,
+        !a.soon && !can ? h('p', { class: 'meta', text: 'HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.' }) : null),
+      off ? h('span') : h('a', { class: 'btn btn-sm map-open', href: a.path, text: '열기 →' }));
+  }
+
   function render(view) {
     var me = S.members[S.mid] || {};
-    var cards = HR.APPS.map(function (a) {
-      var can = HR.canApp(a.id), lv = HR.appLevel(a.id);
-      var state = a.soon ? '준비 중' : !can ? '권한 없음' : a.open ? '구성원 전원' : lv === 'edit' ? '편집 권한' : '열람 권한';
-      var inner = [h('div', { class: 'row' }, h('span', { class: 'map-path grow', text: 'fillts.com' + a.path }), ui.tag(state, a.soon || !can ? 'mute' : '')),
-        h('div', { class: 'map-name', text: a.name }), h('p', { class: 'map-desc', text: a.desc })];
-      if (a.soon || !can) {
-        if (!a.soon) inner.push(h('p', { class: 'meta', text: 'HR 관리자에게 「설정 › 앱 접근」에서 권한을 요청하세요.' }));
-        return h('div', { class: 'map-card ' + (a.soon ? 'soon' : 'locked') }, inner);
-      }
-      var links = LINKS[a.id] || [];
-      if (links.length) inner.push(h('ul', { class: 'map-links' }, links.map(function (l) { return h('li', null, h('a', { href: a.path + l[0], text: l[1] })); })));
-      inner.push(h('a', { class: 'btn btn-sm', href: a.path, text: a.name + ' 열기 →' }));
-      return h('div', { class: 'map-card' }, inner);
+    var used = {}, secs = GROUPS.map(function (g) {
+      var apps = HR.APPS.filter(function (a) { return g[1].indexOf(a.id) >= 0; });
+      apps.forEach(function (a) { used[a.id] = true; });
+      return [g[0], apps];
     });
+    var rest = HR.APPS.filter(function (a) { return !used[a.id]; });
+    if (rest.length) secs.push(['기타', rest]);
     ui.put(view, ui.head('fillts', 'Sites', h('span', { class: 'meta', text: (me.name || S.user.email) + ' · 권한에 따라 보이는 앱이 다릅니다' })),
-      h('div', { class: 'map-grid' }, cards),
+      secs.filter(function (s) { return s[1].length; }).map(function (s) {
+        return h('section', { class: 'map-sec' }, h('div', { class: 'map-sec-head' }, h('span', { class: 'map-sec-name', text: s[0] }), h('span', { class: 'meta', text: s[1].map(function (a) { return a.name; }).join(' · ') })),
+          h('ul', { class: 'map-rows' }, s[1].map(row)));
+      }),
       ui.panel('Public · 공개 페이지', null, h('ul', { class: 'list' }, EXTRA.map(function (x) { return h('li', null, h('a', { class: 'grow', href: x[0], text: x[1] }), h('span', { class: 'meta', text: x[2] })); }))),
       S.realAdmin ? h('p', { class: 'note' }, '앱별 접근권한은 ', h('a', { href: '/hr/#admin/apps', text: 'HR › 설정 › 앱 접근' }), '에서 계정마다 지정합니다. 새 앱을 추가하면 이 화면에도 자동으로 나타납니다.') : null);
   }
