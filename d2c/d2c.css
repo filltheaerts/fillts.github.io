@@ -219,3 +219,45 @@
 .sa-imports { margin-top: 10px; }
 @media (max-width: 900px) { .sa-grid { grid-template-columns: 1fr; } .sa-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .sa-share li { grid-template-columns: 80px 1fr 84px; } .sa-iss-add { grid-template-columns: 1fr; } }
+
+/* ===== [매출] 광고 · 퍼포먼스 ===== */
+.sa-ad-kpi8 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.sa-ad-kpi8 > div:nth-child(n+5) { border-top: 1px solid var(--gray-200); }
+.sa-ad-kpi8 > div:nth-child(5) { border-left: none; }
+.sa-chart .sa-line-d { fill: none; stroke: var(--gray-400); stroke-width: 1.5; }
+.sa-chart .sa-line-7 { fill: none; stroke: var(--red); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.sa-chart .sa-goal-line { stroke: #0a0a0a; stroke-width: 1; stroke-dasharray: 5 4; }
+.sa-chart .sa-goal-t { fill: #0a0a0a; font-weight: 600; }
+.sa-chart .sa-line-lab { font-size: 12px; font-weight: 700; fill: var(--red); font-family: inherit; }
+.sa-chart .sa-cross { stroke: var(--gray-400); stroke-width: 1; }
+.sa-chart .sa-dot { fill: #fff; stroke: var(--gray-600); stroke-width: 2; }
+.sa-chart .sa-dot7 { fill: var(--red); stroke: #fff; stroke-width: 2; }
+.sw-line-d { height: 2px !important; width: 16px !important; background: var(--gray-400); border-radius: 0 !important; }
+.sw-line-7 { height: 3px !important; width: 16px !important; background: var(--red); border-radius: 0 !important; }
+.sw-goal { height: 0 !important; width: 16px !important; border-top: 1px dashed #0a0a0a; border-radius: 0 !important; }
+.sa-media { font-size: 12px; }
+.sa-media th, .sa-media td { white-space: nowrap; }
+.sa-media td:first-child { white-space: normal; min-width: 130px; }
+.sa-media .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sa-media th.sa-grp { text-align: center; border-bottom: 1px solid var(--gray-200); font-weight: 600; }
+.sa-media .sa-real { background: #fff7f8; }
+.sa-media th.sa-real { color: var(--red); }
+.sa-media tr.sa-tot td { font-weight: 700; border-top: 2px solid #0a0a0a; }
+.sa-note { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--gray-600); word-break: keep-all; }
+.sa-funnel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.sa-fn-h { display: flex; justify-content: space-between; font-size: 13px; }
+.sa-fn-v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sa-fn-b { height: 10px; background: var(--gray-100); border-radius: 5px; overflow: hidden; margin: 4px 0 2px; }
+.sa-fn-b span { display: block; height: 100%; background: #3a3a3a; border-radius: 5px; }
+.sa-funnel li:last-child .sa-fn-b span { background: var(--red); }
+.sa-funnel .meta { font-size: 11px; color: var(--gray-600); }
+.sa-adin { margin-top: 16px; }
+.sa-adin > summary { cursor: pointer; list-style: none; }
+.sa-adin > summary::-webkit-details-marker { display: none; }
+.sa-ad-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 12px; align-items: end; margin: 8px 0; }
+.sa-ad-go { padding-bottom: 14px; }
+.sa-ad-bulk { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 12px; }
+.sa-bulk { flex: 1; min-height: 84px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; padding: 8px; }
+.sa-ad-list { font-size: 12px; }
+.sa-ad-list .num { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .sa-ad-kpi8 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sa-ad-bulk { flex-direction: column; } }

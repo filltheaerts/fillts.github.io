@@ -397,5 +397,15 @@
     return d;
   }
 
+  // 광고 대시보드(d2c-ads.js)가 같은 기간 · 주문 · 예시 데이터를 쓰도록 공유
+  HR.D2C = { G: G, won: won, man: man, pct: pct, addDays: addDays, WD: WD, niceStep: niceStep, kpi: kpi, delta: delta, filters: filters, canEdit: canEdit, stats: stats, inR: inR,
+    period: function () {
+      var ds = dataset(), valid = prep(ds.orders), all = ds.orders;
+      var last = valid.length ? valid[valid.length - 1].date : fmt.today(), anchor = ds.demo ? last : fmt.today(), first = valid.length ? valid[0].date : anchor;
+      var R = rangeOf(anchor, first), len = L.daysBetween(R[0], R[1]) + 1;
+      var P = G.range === 'month' || G.range === 'prev' ? [L.addMonths(R[0], -1), addDays(R[0], -1)] : [addDays(R[0], -len), addDays(R[0], -1)];
+      return { demo: ds.demo, valid: valid, all: all, last: last, anchor: anchor, first: first, R: R, P: P,
+        cur: valid.filter(function (o) { return inR(o, R[0], R[1]); }), prev: valid.filter(function (o) { return inR(o, P[0], P[1]); }) };
+    } };
   HR.register('sales', { render: render });
 })();
