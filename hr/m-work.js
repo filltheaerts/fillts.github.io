@@ -5,6 +5,7 @@
   var T = { who: null, month: null, data: null, req: 0, all: null };
   var mode = 'office';
   try { mode = localStorage.getItem('hrMode') || 'office'; } catch (e) { /* 무시 */ }
+  if (mode === 'remote') mode = 'office';   // 재택은 「재택 출근 신청」으로만 (대표 승인)
 
   /* ---------- 출퇴근 ---------- */
   /* 출근 위치 제한: 설정 › 회사 기준의 요일(기본 월~목)에는 사무실 반경 안에서만 출근. 퇴근·신청은 제한 없음 */
@@ -47,6 +48,41 @@
     b.commit().then(function () { ui.toast(kind === 'in' ? A.modeName(mode) + ' 출근을 기록했습니다.' : '퇴근을 기록했습니다. 수고하셨습니다.'); })
       .catch(function (e) { ui.fail(e, msgEl); btns.forEach(function (x) { x.disabled = false; }); });
   }
+  /* 재택 출근 신청: 신청과 동시에 재택 출근 기록(시간 카운팅) → 대표 승인 시 그날 근무 전체 인정, 반려 시 미반영 */
+  var REMOTE_RULES = [
+    '갑자기 사정(가족 돌봄·건강·교통·기상 등)이 생긴 날, 출근 전에 신청합니다.',
+    '신청과 동시에 재택 출근이 기록되고 근무시간이 카운팅됩니다. 위치 제한은 적용되지 않습니다.',
+    '대표가 승인하면 그날 근무 전체가 인정되고, 반려되면 그날 근무 기록은 반영되지 않습니다.',
+    '근무시간·휴게·자동 퇴근은 사무실과 같고, 연장·야간은 따로 신청합니다.',
+    '근무 중에는 Slack에 바로 응답할 수 있어야 하며, 그날 한 일은 퇴근 전 Slack에 공유합니다.'
+  ];
+  function remoteModal() {
+    var old = document.getElementById('remoteModal'); if (old) old.remove();
+    var t = fmt.today(), ah = +S.cfg.autoOutHours || 8;
+    var rsn = h('textarea', { rows: '3', maxlength: '200', placeholder: '예: 아이가 아파 병원 동행 후 집에서 근무' }), m = ui.msg();
+    var go = h('button', { type: 'button', class: 'btn', text: '신청하고 재택 출근' });
+    var wrap;
+    function close() { wrap.remove(); }
+    go.onclick = function () {
+      if (!rsn.value.trim()) return ui.err(m, '사유를 입력하세요.');
+      go.disabled = true;
+      var now = new Date(), b = db.batch();
+      b.set(db.collection('hr_ot').doc(), { memberId: S.mid, date: t, kind: 'remote', from: L.kstHM(now), to: L.kstHM(new Date(now.getTime() + ah * 3600000)), reason: rsn.value.trim(), status: 'pending', createdAt: FV.serverTimestamp() });
+      b.set(db.collection('hr_punch').doc(), { memberId: S.mid, kind: 'in', mode: 'remote', dk: fmt.dk(t), ym: fmt.ymNum(t), at: FV.serverTimestamp(), uid: S.user.uid });
+      b.set(db.doc('hr_presence/' + S.mid), { state: 'in', mode: 'remote', dk: fmt.dk(t), at: FV.serverTimestamp() });
+      b.commit().then(function () { close(); ui.toast('재택 출근을 기록하고 승인 요청을 보냈습니다.'); })
+        .catch(function (e) { go.disabled = false; ui.fail(e, m); });
+    };
+    var panel = h('div', { class: 'sm-panel remote-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': '재택 출근 신청' },
+      h('div', { class: 'sm-head' }, h('span', { class: 'sm-kicker', text: 'REMOTE · ' + fmt.date(t) }), h('button', { type: 'button', class: 'sm-x', 'aria-label': '닫기', text: '×', onclick: close })),
+      h('h3', { class: 'sm-view-title', text: '재택 출근 신청' }),
+      h('div', { class: 'field' }, h('label', { text: '사유' }), rsn), m,
+      h('ol', { class: 'remote-rules' }, REMOTE_RULES.map(function (x) { return h('li', { text: x }); })),
+      h('div', { class: 'row sm-actions' }, go, ui.btn('취소', close, 'btn-line')));
+    wrap = h('div', { id: 'remoteModal', class: 'sm-wrap', onclick: function (e) { if (e.target === wrap) close(); } }, panel);
+    document.body.appendChild(wrap);
+    setTimeout(function () { rsn.focus(); }, 0);
+  }
   function punchCard() {
     var t = fmt.today(), me = S.members[S.mid] || {}, live = A.live(me);
     var days = A.days(S.myPunches, S.myFixes, { member: me, from: L.addDays(t, -1), to: t, leaves: HR.leavesOf(S.mid) });
@@ -56,6 +92,7 @@
     var autoOutToday = live.st === 'out' && live.auto && live.today;
     var td = days[working || autoOutToday ? fmt.dkToDate(live.dk) : t];
     var ah = +S.cfg.autoOutHours || 0;
+    var remReq = otsOf(S.mid, working || autoOutToday ? fmt.dkToDate(live.dk) : t).filter(function (o) { return o.kind === 'remote' && o.status !== 'canceled'; })[0];
     if (working) state.append('근무 중 · ', h('b', { text: (td && td.inHM) || live.sinceHM || '' }), ' 출근 · ' + A.modeName(live.mode) + (live.until ? ' · ' + L.kstHM(new Date(live.until)) + ' 자동 퇴근' : ''));
     else if (autoOutToday) state.append('자동 퇴근 처리 · ', h('b', { text: (td ? td.inHM : '') + ' – ' + L.kstHM(new Date(live.at)) }), ' · 더 일했다면 퇴근을 눌러 실제 시각을 남기세요');
     else if (td && td.outHM) state.append('오늘 ', h('b', { text: td.inHM + ' – ' + td.outHM }), ' · 근로 ' + L.minToHM(td.calc ? td.calc.work : 0));
@@ -65,18 +102,23 @@
     var holToday = !L.isWorkday(t, S.hmap), holOk = otsOf(S.mid, t).some(function (o) { return o.kind === 'hol' && o.status === 'approved'; });
     bIn.disabled = working || autoOutToday || !!days[t] || (holToday && !holOk);
     if (holToday && !holOk && !working) { ui.clear(state); state.append((S.hmap[t] ? S.hmap[t] + ' · ' : '') + '쉬는 날입니다 · 휴일근무는 사전 승인 후 출근할 수 있습니다'); } bOut.disabled = !working && !autoOutToday;
+    var bRem = ui.btn('재택 출근 신청', remoteModal, 'btn-line btn-remote');
+    bRem.disabled = bIn.disabled;
+    if (remReq) state.append(' ', ui.tag('재택 ' + (OTS[remReq.status] || [''])[0], (OTS[remReq.status] || ['', 'mute'])[1]));
     bIn.onclick = function () { punch('in', [bIn, bOut], msgEl); };
     bOut.onclick = function () { punch('out', [bIn, bOut], msgEl); };
     var modes = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '근무 형태' });
-    [['office', '사무실'], ['remote', '재택'], ['field', '외근']].forEach(function (m) {
+    [['office', '사무실'], ['field', '외근']].forEach(function (m) {
       modes.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': String(mode === m[0]), class: mode === m[0] ? 'on' : '', text: m[1], disabled: working ? true : null,
         onclick: function () { mode = m[0]; try { localStorage.setItem('hrMode', mode); } catch (e) { /* 무시 */ } HR.refresh(); } }));
     });
     return h('section', { class: 'panel punch' },
       h('div', { class: 'panel-head' }, head, modes), clock,
-      state, h('div', { class: 'row' }, bIn, bOut), msgEl,
+      state, h('div', { class: 'row' }, bIn, bOut, bRem), msgEl,
       ah ? h('p', { class: 'muted att-note', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null,
-      geoRule(t) ? h('p', { class: 'muted att-note', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다' }) : null);
+      geoRule(t) ? h('p', { class: 'muted att-note', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다' }) : null,
+      h('div', { class: 'remote-rule-box' }, h('div', { class: 'remote-rule-h', text: '재택근무 규정' }),
+        h('ol', { class: 'remote-rules' }, REMOTE_RULES.map(function (x) { return h('li', { text: x }); }))));
   }
   function weekPanel() {
     var t = fmt.today(), mon = L.mondayOf(t), days = A.days(S.myPunches, S.myFixes, { member: S.members[S.mid], from: mon, to: L.addDays(mon, 6), leaves: HR.leavesOf(S.mid) }), w = A.week(days, mon);
@@ -146,7 +188,7 @@
       var pf = fixes.filter(function (f) { return f.date === d && f.status === 'pending'; })[0];
       var dayOts = otsOf(T.who, d).filter(function (o) { return o.status !== 'canceled'; });
       var st = lv ? ui.tag(HR.policy(lv.type).name + (lv.unit && lv.unit !== 'day' ? ' ' + HR.unitText(lv) : ''), 'red')
-        : r && r.blocked ? ui.tag('휴일근무 미승인 · 미반영', 'red')
+        : r && r.blocked ? ui.tag(r.blocked === 'remote' ? '재택 미승인 · 미반영' : '휴일근무 미승인 · 미반영', 'red')
         : pf ? ui.tag('정정 대기', 'warn') : r && r.src === 'fix' ? ui.tag('정정됨', 'ok')
         : r && r.open && d < t ? ui.tag('퇴근 누락', 'red') : r && r.open ? ui.tag('근무 중', 'ok')
         : (!r && !hol && !sat && d < t && !S.hmap[d]) ? ui.tag('기록 없음', 'mute') : null;
@@ -259,10 +301,10 @@
   HR.work.fixItem = fixItem;
 
   /* ---------- 연장 · 야간 · 휴일근무 사전 신청 (관리자 승인분만 근무로 인정) ---------- */
-  var OTK = { ot: '연장근무', night: '야간근무', hol: '휴일근무' };
+  var OTK = { ot: '연장근무', night: '야간근무', hol: '휴일근무', remote: '재택근무' };
   var OTS = { pending: ['승인 대기', 'warn'], approved: ['승인', 'ok'], rejected: ['반려', 'red'], canceled: ['취소', 'mute'] };
   function otsOf(mid, date) { return (S.ots || []).filter(function (o) { return o.memberId === mid && (!date || o.date === date); }); }
-  function otRange(o) { return o.from + '–' + o.to + (L.hmToMin(o.to) <= L.hmToMin(o.from) ? '(+1)' : ''); }
+  function otRange(o) { if (o.kind === 'remote') return o.from + ' 출근'; return o.from + '–' + o.to + (L.hmToMin(o.to) <= L.hmToMin(o.from) ? '(+1)' : ''); }
   function otTag(o) { var st = OTS[o.status] || ['', 'mute']; return ui.tag(OTK[o.kind].replace('근무', '') + ' ' + st[0] + ' ' + otRange(o), st[1]); }
   var otPanel;
   function openOt(view, date, kind) {
@@ -304,7 +346,7 @@
     return h('li', null,
       h('div', { class: 'grow' }, h('div', null, ui.tag(st[0], st[1]), ' ', (approve ? HR.name(o.memberId) + ' · ' : '') + OTK[o.kind] + ' · ' + fmt.date(o.date) + ' ' + otRange(o)), h('div', { class: 'meta', text: o.reason })),
       approve ? h('div', { class: 'actions' }, ui.btn('승인', function () { otDecide(o, 'approved'); }, 'btn-xs'), ui.btn('반려', function () { otDecide(o, 'rejected'); }, 'btn-line btn-xs'))
-        : o.status === 'pending' && o.memberId === S.mid ? ui.btn('취소', function () { db.doc('hr_ot/' + o.id).update({ status: 'canceled' }).catch(ui.fail); }, 'btn-line btn-xs') : null);
+        : o.status === 'pending' && o.memberId === S.mid && o.kind !== 'remote' ? ui.btn('취소', function () { db.doc('hr_ot/' + o.id).update({ status: 'canceled' }).catch(ui.fail); }, 'btn-line btn-xs') : null);
   }
   HR.work.otItem = otItem;
   function otHistory(view) {
@@ -325,10 +367,10 @@
         h('td', { class: 'muted small', text: fmt.ts(o.createdAt) }),
         h('td', { class: 'muted small', text: o.decidedBy ? HR.name(o.decidedBy) + ' · ' + fmt.ts(o.decidedAt) : '' })));
     });
-    if (!all.length) body.appendChild(h('tr', null, h('td', { colspan: '8', class: 'empty', text: '연장·야간·휴일근무 신청 내역이 없습니다. 내 근무 표의 날짜 옆 버튼으로 신청합니다.' })));
+    if (!all.length) body.appendChild(h('tr', null, h('td', { colspan: '8', class: 'empty', text: '연장·야간·휴일·재택근무 신청 내역이 없습니다. 내 근무 표의 날짜 옆 버튼으로 신청합니다.' })));
     tb.appendChild(body);
     ui.put(view, ui.panel('History · 전체 내역', null, h('div', { class: 'table-wrap flat' }, tb)),
-      h('p', { class: 'note', text: '출근 후 8시간이 지나면 자동 퇴근됩니다. 연장(8시간 초과)·야간(22:00~06:00)·휴일(휴무일·공휴일) 근무는 사전에 신청해 관리자가 승인한 시간대만 근무 기록에 반영됩니다. 신청·승인·반려·취소 이력은 모두 남습니다.' }));
+      h('p', { class: 'note', text: '출근 후 8시간이 지나면 자동 퇴근됩니다. 연장(8시간 초과)·야간(22:00~06:00)·휴일(휴무일·공휴일) 근무는 사전에 신청해 관리자가 승인한 시간대만 근무 기록에 반영됩니다. 재택근무는 신청과 동시에 출근이 기록되고, 대표가 승인하면 그날 근무 전체가 인정됩니다(반려 시 미반영). 신청·승인·반려·취소 이력은 모두 남습니다.' }));
   }
 
   function fixes(view) {
@@ -361,7 +403,7 @@
       var sub = parts[0] || '';
       var pendingN = S.isAdmin ? S.fixes.length : 0;
       var otN = S.isAdmin ? (S.ots || []).filter(function (o) { return o.status === 'pending'; }).length : 0;
-      ui.put(view, ui.head('Work', '근무'), ui.tabs([['', '내 근무'], S.isLead ? ['team', '팀 현황'] : null, ['fix', '정정 요청' + (pendingN ? ' ' + pendingN : '')], ['ot', '연장·야간·휴일 신청' + (otN ? ' ' + otN : '')]], sub, 'work'));
+      ui.put(view, ui.head('Work', '근무'), ui.tabs([['', '내 근무'], S.isLead ? ['team', '팀 현황'] : null, ['fix', '정정 요청' + (pendingN ? ' ' + pendingN : '')], ['ot', '연장·야간·휴일·재택 신청' + (otN ? ' ' + otN : '')]], sub, 'work'));
       if (sub === 'team' && S.isLead) team(view);
       else if (sub === 'ot') otHistory(view);
       else if (sub === 'fix') fixes(view);

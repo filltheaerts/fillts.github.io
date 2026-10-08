@@ -2,7 +2,8 @@
 (function () {
   'use strict';
   var HR = window.HR, S = HR.S, L = HR.L, ui = HR.ui, h = ui.h, fmt = HR.fmt, db = HR.db, FV = HR.FV;
-  var G = { period: null, level: '*', sel: null, creating: false, editing: null, draft: null, oneSel: null };
+  var G = { period: '*', level: '*', sel: null, creating: false, editing: null, draft: null, oneSel: null, hideDone: true };   // 기본 = 전체 기간 · 완료 숨김
+  try { G.hideDone = localStorage.getItem('hrGoalHideDone') !== '0'; } catch (e) { /* 무시 */ }
   function num(n) { return (+n || 0).toLocaleString('ko-KR'); }
   var LEVEL = { company: ['전사', 'red'], team: ['팀', 'warn'], personal: ['개인', 'mute'] };
   var STAT = { on: ['순항', 'ok'], risk: ['주의', 'warn'], off: ['위험', 'red'], done: ['완료', 'mute'] };
@@ -19,13 +20,19 @@
   function pctText(v) { var p = v * 100; return (p > 0 && p < 1 ? Math.round(p * 100) / 100 : Math.round(p * 10) / 10) + '%'; }
   function krPct(k) { var span = (+k.target) - (+k.start || 0); if (!span) return +k.current >= +k.target ? 1 : 0; return Math.max(0, Math.min(1, ((+k.current || 0) - (+k.start || 0)) / span)); }
   function pct(g) { var ks = g.krs || []; if (!ks.length) return g.status === 'done' ? 1 : 0; return ks.reduce(function (s, k) { return s + krPct(k); }, 0) / ks.length; }
+  // 딱지: [전사] [팀 이름(예: 컨텐츠)] [개인] — 팀 목표는 작성자 조직 이름
+  function levelName(g) {
+    if (g.level === 'team') { var m = S.members[g.ownerMid]; return (m && m.orgId && HR.orgName(m.orgId)) || '팀'; }
+    return (LEVEL[g.level] || ['목표'])[0];
+  }
+  function levelTag(g) { return h('span', { class: 'goal-badge gb-' + (g.level || 'personal'), text: levelName(g) }); }
   function canEdit(g) { return S.isAdmin || g.ownerMid === S.mid || (S.role === 'manager' && g.level === 'team'); }
   function bar(p) { var f = h('div', { class: 'bar-fill' }); f.style.width = Math.round(p * 100) + '%'; return h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(Math.round(p * 100)), 'aria-valuemin': '0', 'aria-valuemax': '100' }, f); }
 
   function mini(g) {
     var p = pct(g), st = STAT[g.status] || STAT.on;
     return h('li', null, h('a', { class: 'grow goal-mini', href: '#goals/g/' + g.id },
-      h('div', null, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), ' ', g.title),
+      h('div', null, levelTag(g), ' ', g.title),
       h('div', { class: 'row' }, bar(p), h('span', { class: 'mono small', text: pctText(p) }), ui.tag(st[0], st[1]))));
   }
   HR.goals = { mini: mini };
@@ -37,20 +44,26 @@
     var byParent = {};
     all.forEach(function (g) { var k = g.parentId && all.some(function (x) { return x.id === g.parentId; }) ? g.parentId : ''; (byParent[k] = byParent[k] || []).push(g); });
     var order = { company: 0, team: 1, personal: 2 };
+    var mine = (S.priv && S.priv.goalOrder) || [], rk = function (g) { var i = mine.indexOf(g.id); return i < 0 ? 999 : i; };   // 내 순서(INFO 첫 화면과 같음)
+    // 순서: 진행 중 먼저 → 전사·팀·개인 → 기간 빠른 순 → 내 목표 순서 → 제목
+    var sorter = function (a, b) { return (a.status === 'done') - (b.status === 'done') || order[a.level] - order[b.level] || String(a.period || '').localeCompare(String(b.period || '')) || rk(a) - rk(b) || (a.title || '').localeCompare(b.title || '', 'ko'); };
+    var doneN = all.filter(function (g) { return g.status === 'done'; }).length;
     function card(g, depth) {
-      var p = pct(g), st = STAT[g.status] || STAT.on, kids = (byParent[g.id] || []).sort(function (a, b) { return order[a.level] - order[b.level]; });
+      var p = pct(g), st = STAT[g.status] || STAT.on;
+      var kids = (byParent[g.id] || []).slice().sort(sorter).map(function (k) { return card(k, depth + 1); }).filter(Boolean);
       if (G.level !== '*' && g.level !== G.level && !kids.length) return null;
+      if (G.hideDone && g.status === 'done' && !kids.length) return null;
       return h('li', { class: 'goal-node' },
-        h('a', { class: 'goal-card' + (g.id === selId ? ' active' : ''), href: '#goals/g/' + g.id },
-          h('div', { class: 'goal-top' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), h('span', { class: 'meta', text: (every ? periodName(g.period) + ' · ' : '') + HR.name(g.ownerMid) + ' · 핵심결과 ' + (g.krs || []).length + '개' }), ui.tag(st[0], st[1])),
+        h('a', { class: 'goal-card' + (g.id === selId ? ' active' : '') + (g.status === 'done' ? ' is-done' : ''), href: '#goals/g/' + g.id },
+          h('div', { class: 'goal-top' }, levelTag(g), h('span', { class: 'meta', text: (every ? periodName(g.period) + ' · ' : '') + HR.name(g.ownerMid) + ' · 핵심결과 ' + (g.krs || []).length + '개' }), ui.tag(st[0], st[1])),
           h('div', { class: 'goal-title', text: g.title }),
           h('div', { class: 'row' }, bar(p), h('span', { class: 'mono', text: pctText(p) }))),
-        kids.length ? h('ul', { class: 'goal-children' }, kids.map(function (k) { return card(k, depth + 1); })) : null);
+        kids.length ? h('ul', { class: 'goal-children' }, kids) : null);
     }
-    var mine = (S.priv && S.priv.goalOrder) || [], rk = function (g) { var i = mine.indexOf(g.id); return i < 0 ? 999 : i; };   // 내 순서(INFO 첫 화면과 같음)
-    var roots = (byParent[''] || []).sort(function (a, b) { return order[a.level] - order[b.level] || rk(a) - rk(b) || (a.title || '').localeCompare(b.title || '', 'ko'); });
-    var tree = h('ul', { class: 'goal-tree' }, roots.map(function (g) { return card(g, 0); }));
-    if (!roots.length) tree.appendChild(h('li', { class: 'empty', text: '이 기간의 목표가 없습니다. 전사 목표부터 세우고, 팀·개인 목표를 연결해 보세요.' }));
+    var roots = (byParent[''] || []).slice().sort(sorter);
+    var nodes = roots.map(function (g) { return card(g, 0); }).filter(Boolean);
+    var tree = h('ul', { class: 'goal-tree' }, nodes);
+    if (!nodes.length) tree.appendChild(h('li', { class: 'empty', text: roots.length ? '진행 중인 목표가 없습니다. 「완료 숨기기」를 끄면 완료된 목표가 보입니다.' : '이 기간의 목표가 없습니다. 전사 목표부터 세우고, 팀·개인 목표를 연결해 보세요.' }));
 
     var sel = all.filter(function (g) { return g.id === selId; })[0] || S.goals.filter(function (g) { return g.id === selId; })[0];
     var right = G.ordering ? orderPanel() : G.creating ? goalForm(null) : sel && G.editing === sel.id ? goalForm(sel) : sel ? detail(sel) : ui.panel('How it works', null,
@@ -60,6 +73,8 @@
       h('div', { class: 'toolbar' },
         ui.field('기간', ui.select([['*', '전체 기간']].concat(periods()), G.period, { id: 'glPeriod', onchange: function () { G.period = this.value; HR.refresh(); } }), 'inline'),
         ui.field('수준', ui.select([['*', '전체'], ['company', '전사'], ['team', '팀'], ['personal', '개인']], G.level, { id: 'glLevel', onchange: function () { G.level = this.value; HR.refresh(); } }), 'inline'),
+        h('label', { class: 'check goal-hide-done' }, h('input', { type: 'checkbox', id: 'glHideDone', checked: G.hideDone, onchange: function () { G.hideDone = this.checked; try { localStorage.setItem('hrGoalHideDone', G.hideDone ? '1' : '0'); } catch (e) { /* 무시 */ } HR.refresh(); } }),
+          ' 완료 숨기기' + (doneN ? ' (' + doneN + ')' : '')),
         ui.btn('내 목표 순서', function () { G.ordering = !G.ordering; G.creating = false; HR.refresh(); }, 'btn-line btn-sm'),
         ui.btn('목표 추가', function () { G.creating = true; G.ordering = false; G.editing = null; G.draft = null; HR.go('goals'); HR.refresh(); }, 'btn-sm')),
       h('div', { class: 'one-grid' }, h('div', null, tree), right));
@@ -75,7 +90,7 @@
       return h('li', { class: 'goal-order' }, h('div', { class: 'link-edit-order' },
         h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↑', 'aria-label': '위로', disabled: i === 0, onclick: move(-1) }),
         h('button', { type: 'button', class: 'btn btn-line btn-xs', text: '↓', 'aria-label': '아래로', disabled: i === goals.length - 1, onclick: move(1) })),
-        h('div', { class: 'grow' }, ui.tag(LEVEL[g.level][0], LEVEL[g.level][1]), ' ', g.title));
+        h('div', { class: 'grow' }, levelTag(g), ' ', g.title));
     }));
     if (!goals.length) ul.appendChild(h('li', { class: 'empty', text: '내가 담당한 진행 중 목표가 없습니다.' }));
     return ui.panel('My order · 내 목표 순서', h('a', { href: '#', class: 'link', text: '닫기', onclick: function (e) { e.preventDefault(); G.ordering = false; HR.refresh(); } }), ul,
@@ -134,7 +149,7 @@
     if (!cl.children.length) cl.appendChild(h('li', { class: 'empty', text: '아직 체크인이 없습니다.' }));
     var parent = g.parentId ? S.goals.filter(function (x) { return x.id === g.parentId; })[0] : null;
     return h('section', { class: 'panel one-detail' },
-      h('div', { class: 'panel-head' }, h('div', null, h('div', { class: 'label', text: LEVEL[g.level][0] + ' 목표 · ' + g.period + ' · ' + HR.name(g.ownerMid) }), h('h3', { text: g.title })),
+      h('div', { class: 'panel-head' }, h('div', null, h('div', { class: 'label', text: levelName(g) + ' 목표 · ' + g.period + ' · ' + HR.name(g.ownerMid) }), h('h3', { text: g.title })),
         edit ? h('div', { class: 'row' },
           ui.btn('수정', function () { G.editing = g.id; G.creating = false; G.draft = null; HR.refresh(); }, 'btn-line btn-xs'),
           ui.confirmBtn('삭제', function () { db.doc('hr_goals/' + g.id).delete().then(function () { HR.go('goals'); }).catch(ui.fail); })) : null),
@@ -161,7 +176,7 @@
     var title = ui.input({ id: 'ngTitle', maxlength: '120', value: D.title, placeholder: '예: 2027년 1분기 매출 3억 원', oninput: function () { D.title = this.value; } });
     var desc = h('textarea', { id: 'ngDesc', rows: '2', maxlength: '1000', placeholder: '왜 중요한가 (선택)', oninput: function () { D.desc = this.value; } }); desc.value = D.desc;
     var period = ui.select(periods().concat(periods().some(function (p) { return p[0] === D.period; }) ? [] : [[D.period, D.period]]), D.period, { id: 'ngPeriod', onchange: function () { D.period = this.value; } });
-    var parent = ui.select([['', '(연결 안 함)']].concat(S.goals.filter(function (x) { return x.level !== 'personal' && (!g || x.id !== g.id); }).map(function (x) { return [x.id, '[' + LEVEL[x.level][0] + '] ' + x.title]; })), D.parentId, { id: 'ngParent', onchange: function () { D.parentId = this.value; } });
+    var parent = ui.select([['', '(연결 안 함)']].concat(S.goals.filter(function (x) { return x.level !== 'personal' && (!g || x.id !== g.id); }).map(function (x) { return [x.id, '[' + levelName(x) + '] ' + x.title]; })), D.parentId, { id: 'ngParent', onchange: function () { D.parentId = this.value; } });
     var krBox = h('div', { class: 'stack sm' }), m = ui.msg();
     function drawKr() {
       ui.clear(krBox);

@@ -212,7 +212,7 @@
         if (r.src !== 'punch') return;   // 승인된 정정 기록은 그대로
         var lim = HR.att.limit(mid, k, r.inMs);
         r.ots = lim.ots;
-        if (lim.blocked) { r.blocked = 'hol'; r.open = false; r.span = null; return; }
+        if (lim.blocked) { r.blocked = lim.blocked === 'remote' ? 'remote' : 'hol'; r.open = false; r.span = null; return; }
         var endMs = r.open ? null : r.inMs + r.span * 60000;
         if (r.open && lim.end <= nowMs) { r.open = false; r.autoOut = true; endMs = lim.end; }
         else if (endMs != null && endMs > lim.end) { r.capped = true; endMs = lim.end; }
@@ -267,6 +267,9 @@
       var ao = Math.round((+S.cfg.autoOutHours || 8) * 60), end = inMs + ao * 60000;
       var has = function (k) { return ots.filter(function (o) { return o.kind === k; }); };
       if (!L.isWorkday(date, S.hmap) && !has('hol').length) return { blocked: true, end: inMs, ots: ots };
+      // 재택 출근: 신청이 대기·승인이면 인정, 반려·취소만 남았으면 그날 근무 미반영
+      var rem = (S.ots || []).filter(function (o) { return o.memberId === mid && o.date === date && o.kind === 'remote'; });
+      if (rem.length && !rem.some(function (o) { return o.status === 'pending' || o.status === 'approved'; })) return { blocked: 'remote', end: inMs, ots: ots };
       has('hol').concat(has('ot')).forEach(function (o) { end = Math.max(end, endOf(o)); });   // 승인된 연장·휴일 종료 시각까지
       var nightStart = at('22:00');
       if (has('night').length) has('night').forEach(function (o) { end = Math.max(end, endOf(o)); });
