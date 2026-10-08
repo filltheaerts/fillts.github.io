@@ -59,7 +59,7 @@
     var vImp = list.filter(function (x) { return x.format === 'video'; }).reduce(function (s, x) { return s + (+x.imp || 0); }, 0);
     var avg = { ctr: T.imp ? T.clk / T.imp : 0, cvr: T.clk ? T.conv / T.clk : 0 };
     ui.put(view, ui.head('D2C · 데이터', '광고 성과', h('span', { class: 'meta', text: demo ? '예시 소재 · 저장 안 됨' : '소재 ' + list.length + '개 · 누적' })));
-    if (demo) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 소재입니다.' }), ' Meta 6 · GDN 3 · 카카오모먼트 3, 소재 12개를 가정했습니다(그림은 예시 일러스트). 아래 「소재 입력」에 넣거나, 나중에 Meta API 연동으로 자동으로 채워지면 사라집니다.'));
+    if (demo) ui.put(view, h('div', { class: 'sa-demo' }, h('strong', { text: '예시 소재입니다.' }), ' Meta 6 · GDN 3 · 카카오모먼트 3, 소재 12개를 가정했습니다(그림은 예시 일러스트). 아래 「소재 입력」에 넣거나, 「소재 › 매체에서 가져오기」(Meta · GDN · 카카오모먼트 API)가 연결되면 자동으로 채워지고 사라집니다.'));
     ui.put(view,
       h('dl', { class: 'summary sa-kpi' },
         kpiBox('소재', list.length + '개', list.filter(function (x) { return x.status !== '중지'; }).length + '개 게재 중'),
@@ -69,7 +69,7 @@
         kpiBox('구매 전환율', pc(T.conv, T.clk, 2), '구매 ' + n0(T.conv) + '건 · CPA ' + won(T.conv ? T.spend / T.conv : 0)),
         kpiBox('ROAS (매체 보고)', T.spend ? (T.rev / T.spend).toFixed(2) + '배' : '—', '전환 매출 ' + won(T.rev))),
       h('p', { class: 'meta sa-period', text: '소재 단위 수치는 매체(Meta · GDN · 카카오모먼트) 보고값입니다 — 자사몰 실측 매출 · 광고비 비중은 「퍼포먼스」 메뉴에서 봅니다.' }),
-      ui.panel('소재 순위', sortBar(), cards(list, avg)),
+      ui.panel('매체별 CTR 순위 — 같은 매체 안에서 비교', h('span', { class: 'meta', text: '매체마다 지면 · 형식이 달라 CTR 기준이 다릅니다 · 이미지는 「소재」 메뉴' }), byMedia(list)),
       ui.panel('반응 × 전환 — 소재를 네 무리로', h('span', { class: 'meta', text: '가로 CTR · 세로 구매 전환율 · 원 크기 = 광고비' }), quadrant(list, avg)),
       ui.panel('전체 소재', h('span', { class: 'meta', text: '머리줄을 누르면 정렬' }), table(list)),
       apiBox(), input());
@@ -114,6 +114,39 @@
     }));
   }
 
+
+  /* ---------- 매체별 CTR 순위 (Meta · GDN · 카카오모먼트 세 칸) ---------- */
+  function byMedia(list) {
+    var cols = ['meta', 'gdn', 'kakao'].map(function (k) {
+      var xs = list.filter(function (x) { return x.media === k && x.imp; }).sort(function (a, b) { return b.ctr - a.ctr; });
+      var imp = xs.reduce(function (s, x) { return s + (+x.imp || 0); }, 0), clk = xs.reduce(function (s, x) { return s + (+x.clk || 0); }, 0), sp = xs.reduce(function (s, x) { return s + (+x.spend || 0); }, 0);
+      return { k: k, xs: xs, avg: imp ? clk / imp : 0, imp: imp, clk: clk, spend: sp, max: xs.length ? xs[0].ctr : 0 };
+    });
+    var maxAvg = Math.max.apply(null, cols.map(function (c) { return c.avg; })) || 1;
+    return h('div', null,
+      h('div', { class: 'cm-avg' }, cols.map(function (c) {
+        return h('div', { class: 'cm-avg-r' }, h('span', { class: 'as-media as-m-' + c.k, text: MEDIA[c.k] }),
+          h('span', { class: 'cm-avg-b' }, h('span', { style: 'width:' + (c.avg / maxAvg * 100) + '%' })),
+          h('span', { class: 'cm-avg-v', text: '평균 CTR ' + (Math.round(c.avg * 10000) / 100) + '%' }), h('span', { class: 'meta', text: '노출 ' + n0(c.imp) + ' · 클릭 ' + n0(c.clk) + ' · ' + won(c.spend) }));
+      })),
+      h('div', { class: 'cm-cols' }, cols.map(function (c) {
+        return h('section', { class: 'cm-col' },
+          h('div', { class: 'cm-col-h' }, h('span', { class: 'as-media as-m-' + c.k, text: MEDIA_FULL[c.k] || MEDIA[c.k] }), h('span', { class: 'meta', text: c.xs.length + '개' })),
+          c.xs.length ? h('ol', { class: 'cm-list' }, c.xs.map(function (x, i) {
+            var rel = c.avg ? x.ctr / c.avg : 0;
+            return h('li', { class: 'cm-item' + (i === 0 ? ' top' : '') + (x.status === '중지' ? ' off' : '') },
+              h('span', { class: 'cm-rank', text: i + 1 }),
+              x.thumb ? h('img', { class: 'cm-th', src: x.thumb, alt: '' }) : h('span', { class: 'cm-th' }),
+              h('div', { class: 'cm-main' },
+                h('div', { class: 'cm-name', text: x.headline || x.name }),
+                h('div', { class: 'meta', text: (FORMAT[x.format] || '') + ' · ' + (x.status || '') + ' · 노출 ' + n0(x.imp) + ' · 클릭 ' + n0(x.clk) }),
+                h('div', { class: 'cm-bar' }, h('span', { class: rel >= 1 ? 'up' : '', style: 'width:' + (c.max ? x.ctr / c.max * 100 : 0) + '%' }))),
+              h('div', { class: 'cm-v' }, h('div', { class: 'cm-ctr', text: (Math.round(x.ctr * 10000) / 100) + '%' }),
+                h('div', { class: 'cm-rel' + (rel >= 1 ? ' up' : ''), text: rel ? (rel >= 1 ? '평균의 ' : '평균의 ') + rel.toFixed(1) + '배' : '—' })));
+          })) : ui.empty('이 매체의 광고가 없습니다.'));
+      })),
+      h('p', { class: 'meta sa-note', text: 'CTR = 클릭 ÷ 노출(매체 보고). Meta 피드와 GDN · 카카오 배너는 지면이 달라 CTR 수준 자체가 다르므로 매체 안에서만 순위를 매기고, 「평균의 n배」로 그 매체 평균과 비교합니다. 빨간 막대 = 매체 평균 이상.' }));
+  }
   /* ---------- 4분면 (CTR × 구매 전환율, 원 크기 = 광고비) ---------- */
   function quadrant(list, avg) {
     var pts = list.filter(function (x) { return x.imp && x.clk; });

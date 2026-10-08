@@ -423,3 +423,32 @@
 .ci-rs-v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .as-img.as-gdn, .as-img.as-kakao { aspect-ratio: auto; min-height: 120px; }
 .as-img.as-gdn img, .as-img.as-kakao img { height: auto; }
+
+/* ===== [데이터] 광고 — 매체별 CTR 순위 ===== */
+.cm-avg { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.cm-avg-r { display: grid; grid-template-columns: 110px 1fr 150px 260px; gap: 12px; align-items: center; font-size: 12px; }
+.cm-avg-b { height: 10px; background: var(--gray-100); border-radius: 5px; overflow: hidden; }
+.cm-avg-b span { display: block; height: 100%; background: #3a3a3a; border-radius: 5px; }
+.cm-avg-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cm-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.cm-col { border: 1px solid var(--gray-200); background: var(--paper, #fff); min-width: 0; }
+.cm-col-h { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--gray-200); }
+.cm-list { list-style: none; margin: 0; padding: 0; }
+.cm-item { display: grid; grid-template-columns: 22px 64px 1fr 72px; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--gray-100); }
+.cm-item:first-child { border-top: none; }
+.cm-item.top { background: #fff7f8; }
+.cm-item.off { opacity: .55; }
+.cm-rank { font-size: 13px; font-weight: 700; text-align: center; color: var(--gray-600); }
+.cm-item.top .cm-rank { color: var(--red); }
+.cm-th { width: 64px; height: 64px; object-fit: contain; background: #f3f3f2; border: 1px solid var(--gray-200); display: block; }
+.cm-main { min-width: 0; }
+.cm-name { font-size: 13px; font-weight: 600; line-height: 1.4; word-break: keep-all; }
+.cm-main .meta { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+.cm-bar { height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+.cm-bar span { display: block; height: 100%; background: #9ca3af; border-radius: 3px; }
+.cm-bar span.up { background: var(--red); }
+.cm-v { text-align: right; }
+.cm-ctr { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cm-rel { font-size: 11px; color: var(--gray-400); }
+.cm-rel.up { color: var(--red); font-weight: 600; }
+@media (max-width: 1100px) { .cm-cols { grid-template-columns: 1fr; } .cm-avg-r { grid-template-columns: 100px 1fr 130px; } .cm-avg-r .meta { display: none; } }
