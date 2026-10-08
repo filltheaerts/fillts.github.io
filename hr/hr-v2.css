@@ -1678,7 +1678,8 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 @media (pointer: coarse) { .tl-empty-hint::after { content: ' (길게 눌러)'; } }
 
 /* 재택 출근 신청 */
-.punch .row .btn-remote { margin-left: auto; }
+.punch .punch-btns { display: grid; grid-template-columns: 1fr 1fr 1.35fr; gap: 8px; }
+.punch .punch-btns .btn { padding: 0 8px; white-space: nowrap; letter-spacing: 0.04em; min-width: 0; }
 .remote-rule-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
 .remote-rule-h { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--gray-200); margin-bottom: 6px; }
 .remote-rules { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: var(--gray-400); }

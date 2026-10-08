@@ -114,7 +114,7 @@
     });
     return h('section', { class: 'panel punch' },
       h('div', { class: 'panel-head' }, head, modes), clock,
-      state, h('div', { class: 'row' }, bIn, bOut, bRem), msgEl,
+      state, h('div', { class: 'punch-btns' }, bIn, bOut, bRem), msgEl,
       ah ? h('p', { class: 'muted att-note', text: '출근 후 ' + ah + '시간이 지나면 자동 퇴근 처리됩니다. 휴게시간은 법정 기준으로 자동 공제합니다.' }) : null,
       geoRule(t) ? h('p', { class: 'muted att-note', text: '오늘은 ' + (S.cfg.geo.label || '사무실') + ' 반경 ' + (S.cfg.geo.radius || 500) + 'm 안에서만 출근 버튼이 기록됩니다' }) : null,
       h('div', { class: 'remote-rule-box' }, h('div', { class: 'remote-rule-h', text: '재택근무 규정' }),
