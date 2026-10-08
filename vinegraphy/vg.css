@@ -197,3 +197,22 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-filter { display: flex; flex-wrap: wrap; gap: 6px; }
 .vg-filter .chip { padding: 4px 12px; font-size: 12px; }
 .vg-filter .chip.on { background: var(--vg-deep); border-color: var(--vg-deep); color: #fff; }
+
+/* 묶음 사이 구분선 · 카피라이팅은 마지막에 다른 결로 */
+.vg-divider { border: none; height: 1px; background: var(--gray-200); margin: 36px 0 32px; position: relative; overflow: visible; }
+.vg-divider::after { content: "⁂"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 0 14px; background: var(--white); color: var(--vg-lilac); font-size: 14px; }
+.vg-group { margin-bottom: 0; }
+.vg-group-copy { background: var(--vg-mist); border: 1px solid var(--vg-lilac); padding: 24px 24px 20px; }
+.vg-group-copy .vg-group-head .label { font-size: 13px; letter-spacing: 0.18em; color: var(--vg-deep); }
+.vg-group-copy .vg-pts { background: transparent; border: none; gap: 0; }
+.vg-group-copy .vg-pt { background: var(--paper); border-left: none; border-top: none; border-bottom: 1px solid var(--vg-mist); padding: 14px 16px 12px 10px; }
+.vg-group-copy .vg-pt:hover, .vg-group-copy .vg-pt.can-edit:hover { background: #fff; box-shadow: inset 3px 0 0 var(--vg-wine); }
+.vg-group-copy .vg-pt-top { flex-direction: column; align-items: flex-start; gap: 4px; }
+.vg-group-copy .vg-pt-chip { background: transparent; border: none; padding: 0; font-size: 10px; letter-spacing: 0.12em; color: var(--vg-wine); }
+.vg-group-copy .vg-pt-title { font-size: 19px; font-weight: 500; line-height: 1.45; letter-spacing: -0.01em; color: var(--vg-deep); }
+.vg-group-copy .vg-pt-title::before { content: "“"; color: var(--vg-lilac); margin-right: 2px; }
+.vg-group-copy .vg-pt-title::after { content: "”"; color: var(--vg-lilac); margin-left: 2px; }
+.vg-group-copy .vg-pt-proof { font-size: 11px; color: var(--gray-400); }
+.vg-group-copy .vg-pt-no { font-size: 11px; line-height: 18px; }
+.vg-group-copy .vg-add { background: var(--paper); }
+@media (max-width: 900px) { .vg-group-copy { padding: 18px 14px; } .vg-group-copy .vg-pt-title { font-size: 17px; } }

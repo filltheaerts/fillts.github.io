@@ -332,7 +332,7 @@
       return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter[kind] = o[0]; HR.refresh(); } });
     })) : null;
     if (adding) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (list.length + 1)).slice(-2) }), inlineEdit(prod, kind, list, null)));
-    return h('section', { class: 'vg-group' },
+    return h('section', { class: 'vg-group vg-group-' + kind },
       h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개' })),
       h('p', { class: 'muted small', text: K.lead }),
       filter,
@@ -437,7 +437,8 @@
     var name = G ? G.name : '클렌징 젤';
     ui.put(view, ui.head(name, '핵심 포인트', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
-    ui.put(view, keywords(prod), group(prod, 'appeal'), group(prod, 'copy'), group(prod, 'target'));
+    var hr = function () { return h('hr', { class: 'vg-divider' }); };
+    ui.put(view, keywords(prod), hr(), group(prod, 'appeal'), hr(), group(prod, 'target'), hr(), group(prod, 'copy'));
   }
   function mktPanel(prod, list) {
     var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });
