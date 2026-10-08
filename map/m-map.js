@@ -8,12 +8,13 @@
     fin: [['#home', 'Overview'], ['#plan', '자금조달'], ['#runway', '런웨이'], ['#flow', '현금흐름'], ['#sched', '지출예정'], ['#tx', '거래내역'], ['#tax', '세무사 전달']],
     mkt: [['', '마케팅 맵']],
     inf: [['#home', 'Overview'], ['#find', '탐색'], ['#pipe', '파이프라인'], ['#mail', '메일']],
+    rnd: [['#home', '현황'], ['#timeline', '진행'], ['#equip', '비품'], ['#tasks', '연구과제'], ['#due', '일정'], ['#renew', '27.4 연장'], ['#report', '28.4 조사표'], ['#docs', '서류'], ['#check', '검증']],
     vg: [['#brand', '브랜드'], ['#gel-spec', '클렌징 젤 · 사양'], ['#gel-pdp', '상세페이지'], ['#gel-points', '핵심 소구점'], ['#gel-check', '검수']]
   };
   var EXTRA = [['/', 'fillts.com', '회사 홈페이지 (공개)']];
 
   // 분야별 구분 — 각 분야 아래 앱을 가로로 긴 한 줄씩 세로로 나열. 여기 없는 새 앱은 「기타」에 자동으로 붙는다
-  var GROUPS = [['HR', ['hr']], ['FINANCE', ['fin']], ['BRAND', ['vg']], ['MKT', ['mkt', 'inf']]];
+  var GROUPS = [['HR', ['hr']], ['FINANCE & ADMIN', ['fin', 'rnd']], ['BRAND', ['vg']], ['MKT', ['mkt', 'inf']]];
 
   function row(a) {
     var can = HR.canApp(a.id), lv = HR.appLevel(a.id), off = a.soon || !can;

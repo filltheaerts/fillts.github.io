@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://yt3.ggpht.com https://yt3.googleusercontent.com https://i.ytimg.com; connect-src 'self' https://asia-northeast3-fillts-web.cloudfunctions.net https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://fillts-web.firebaseapp.com https://drive.google.com https://docs.google.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://asia-northeast3-fillts-web.cloudfunctions.net https://*.googleapis.com https://apis.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://fillts-web.firebaseapp.com https://drive.google.com https://docs.google.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0a0a0a">
-  <title>fillts Influencer</title>
+  <title>fillts R&amp;D · 연구개발전담부서</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../hr/hr.css?v=2610071700">
-  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610071700">
-  <link rel="stylesheet" href="inf.css?v=2610075300">
+  <link rel="stylesheet" href="../hr/hr.css?v=2610073600">
+  <link rel="stylesheet" href="../hr/hr-v2.css?v=2610081100">
+  <link rel="stylesheet" href="rnd.css?v=2610082500">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -24,11 +24,11 @@
     <div class="auth-side">
       <a href="/" class="logo">fillts</a>
       <div>
-        <div class="label">Fillts Influencer</div>
-        <h1 class="auth-title">Creators, <span class="accent">fill</span>ed<br>from search to seeding<span class="accent">.</span></h1>
-        <p class="auth-sub">비슷한 유튜버 찾기 · 컨택 · 메일 문의 · 계약 · 시딩 · 업로드까지. HR과 같은 계정으로 로그인합니다.</p>
+        <div class="label">R&amp;D · 연구개발전담부서</div>
+        <h1 class="auth-title">Research &amp; <span class="accent">D</span>evelopment<span class="accent">.</span></h1>
+        <p class="auth-sub">연구개발전담부서 — 진행 · 비품 · 연구과제 · 일정 · 연장 · 조사표 · 서류. HR과 같은 계정으로 로그인합니다.</p>
       </div>
-      <div class="auth-foot">&copy; 2026 fillts Inc. &nbsp;|&nbsp; 임직원 전용 &nbsp;|&nbsp; <span class="yt-attr">▶ YouTube API 서비스 사용</span> &nbsp;|&nbsp; <a href="privacy.html" class="foot-link">개인정보처리방침</a> &nbsp;|&nbsp; <a href="terms.html" class="foot-link">이용약관</a></div>
+      <div class="auth-foot">&copy; 2026 fillts Inc. &nbsp;|&nbsp; 임직원 전용 &nbsp;|&nbsp; 접속 기록이 보관됩니다</div>
     </div>
 
     <div class="auth-main">
@@ -82,7 +82,7 @@
   <!-- ============ 앱 ============ -->
   <div class="app" id="appView" hidden>
     <nav class="nav">
-      <a href="#home" class="logo">fillts <span class="logo-sub">Influencer</span></a>
+      <a href="#home" class="logo">fillts <span class="logo-sub">R&amp;D</span></a>
       <div class="nav-right">
         <div class="bell-wrap">
           <button class="bell" id="bell" type="button" aria-label="알림">
@@ -94,24 +94,23 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
-        <li><a href="#home" data-menu="home">Overview</a></li>
-        <li><a href="#find" data-menu="find">탐색</a></li>
-        <li><a href="#list" data-menu="list">리스트</a></li>
-        <li><a href="#pipe" data-menu="pipe">파이프라인</a></li>
-        <li><a href="#done" data-menu="done">완료 콘텐츠</a></li>
-        <li><a href="#mail" data-menu="mail">메일</a></li>
-        <li><a href="#algo" data-menu="algo">알고리즘</a></li>
-        <li><a href="#celeb" data-menu="celeb" class="nav-celeb">셀럽</a></li>
-        <li><a href="#strat" data-menu="strat" class="nav-strat">전략</a></li>
-        <li><a href="#tree" data-menu="tree" class="nav-tree">구조화</a></li>
+        <li><a href="#home" data-menu="home">현황</a></li>
+        <li><a href="#timeline" data-menu="timeline">진행</a></li>
+        <li><a href="#equip" data-menu="equip">비품</a></li>
+        <li><a href="#tasks" data-menu="tasks">연구과제</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[기한]</li>
+        <li><a href="#due" data-menu="due">일정</a></li>
+        <li><a href="#renew" data-menu="renew">27.4 연장</a></li>
+        <li><a href="#report" data-menu="report">28.4 조사표</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[관리]</li>
+        <li><a href="#docs" data-menu="docs">서류</a></li>
+        <li><a href="#check" data-menu="check">검증</a></li>
         <li class="nav-sep"><a href="/hr/" target="_blank" rel="opener" class="nav-ext">HR ↗</a></li>
-        <li class="nav-ext-hide"><a href="/mkt/" target="_blank" rel="opener" class="nav-ext">MKT ↗</a></li>
         <li><a href="/map/" target="_blank" rel="opener" class="nav-ext">Map ↗</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
       </ul>
     </nav>
     <main class="main" id="view" tabindex="-1"></main>
-    <footer class="in-foot">이 서비스는 <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube API 서비스</a>를 사용합니다 · <a href="privacy.html" target="_blank">개인정보처리방침</a> · <a href="terms.html" target="_blank">이용약관</a> · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google 개인정보처리방침</a> · 점수 · 추세는 fillts가 자체 계산한 값입니다</footer>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -119,20 +118,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=2610074500"></script>
-  <script src="../hr/firebase-config.js?v=2610071700"></script>
-  <script src="../hr/labor.js?v=2610071700"></script>
+  <script src="app.js?v=2610082500"></script>
+  <script src="../hr/firebase-config.js?v=2610071600"></script>
+  <script src="../hr/labor.js?v=2610071600"></script>
   <script src="../hr/core.js?v=2610082500"></script>
-  <script src="i-core.js?v=2610082500"></script>
-  <script src="i-find.js?v=2610075000"></script>
-  <script src="i-pipe.js?v=2610075000"></script>
-  <script src="i-mail.js?v=2610072600"></script>
-  <script src="i-algo.js?v=2610072700"></script>
-  <script src="i-list.js?v=2610074900"></script>
-  <script src="i-done.js?v=2610072800"></script>
-  <script src="i-celeb.js?v=2610074900"></script>
-  <script src="i-strat-data.js?v=2610074500"></script>
-  <script src="i-strat.js?v=2610074500"></script>
-  <script src="i-tree.js?v=2610074700"></script>
+  <script src="rnd.js?v=2610082500"></script>
 </body>
 </html>
