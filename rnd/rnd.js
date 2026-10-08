@@ -29,6 +29,39 @@
     return h('span', { class: 'rd-d' + (n < 0 ? ' rd-over' : n <= 90 ? ' rd-near' : ''), text: n < 0 ? '지남' : dday(dt) });
   }
 
+  /* ---------- [quick] 가장 시급한 것 + 인쇄 · 편철할 문서 ----------
+     quick = { root, urgent: [{t, due, why, path}], print: [{no, name, file, pages, bind, sign, note}] } — 경로는 '/'로 저장, 화면은 Windows 형식
+     브라우저는 보안상 https 페이지에서 내 PC 폴더(file://)를 직접 열 수 없다 → 「경로 복사」 후 탐색기 주소창(Win+E → Ctrl+L)에 붙여넣기 */
+  var win = function (p) { return String(p || '').replace(/\//g, '\\'); };
+  function pathRow(root, rel) {
+    var full = win(root + (rel ? '/' + rel : ''));
+    return h('div', { class: 'rd-path' }, h('code', { text: full }),
+      h('button', { type: 'button', class: 'btn btn-line btn-xs no-print', text: '경로 복사', onclick: function () {
+        var b = this;
+        (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(function () { b.textContent = '복사됨 ✓'; setTimeout(function () { b.textContent = '경로 복사'; }, 1500); })
+          .catch(function () { ui.toast('복사하지 못했습니다 — 경로를 직접 선택해 복사하세요.'); });
+      } }));
+  }
+  function quick(view) {
+    if (wait(view)) return;
+    var q = D().quick || {}, root = q.root || '';
+    var urgent = (q.urgent || []).slice().sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; });
+    head(view, '[quick] 지금 가장 시급한 것', h('button', { type: 'button', class: 'btn btn-sm no-print', text: '인쇄', onclick: function () { window.print(); } }));
+    ui.put(view,
+      h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '1. 시급한 일 ' + urgent.length + '건' }),
+        h('ol', { class: 'rd-q-list' }, urgent.map(function (u) {
+          return h('li', null, h('div', { class: 'rd-q-head' }, badge(u.due), h('span', { class: 'strong', text: u.t }), u.due ? h('span', { class: 'meta', text: dot(u.due) }) : null),
+            u.why ? h('p', { class: 'rd-q-why', text: u.why }) : null, u.path ? pathRow(root, u.path) : null);
+        }))),
+      h('section', { class: 'rd-q' }, h('h2', { class: 'rd-q-h', text: '2. 출력 · 편철할 문서 — 그대로 인쇄' }),
+        table(['#', '문서', '쪽', '편철', '서명'], (q.print || []).map(function (p) {
+          return h('tr', null, h('td', { class: 'nowrap strong', text: p.no }),
+            h('td', null, h('div', { class: 'strong', text: p.name }), p.note ? h('div', { class: 'meta', text: p.note }) : null, pathRow(root, p.file)),
+            h('td', { class: 'num', text: p.pages ? String(p.pages) : '' }), h('td', { text: p.bind || '' }), h('td', { class: p.sign ? 'red nowrap' : '', text: p.sign || '—' }));
+        }))),
+      root ? h('p', { class: 'note no-print' }, '폴더 바로 열기: 「경로 복사」 → 탐색기 열기(Win+E) → 주소창(Ctrl+L)에 붙여넣기. 브라우저는 보안상 웹페이지에서 내 PC 폴더를 직접 열지 못합니다. 기준 PC = Windows(대표 PC) · 루트 ', h('code', { text: win(root) })) : null);
+  }
+
   /* ---------- 현황 ---------- */
   function home(view) {
     if (wait(view)) return;
@@ -156,6 +189,7 @@
       }), src());
   }
 
+  HR.register('quick', { render: quick });
   HR.register('home', { render: home });
   HR.register('timeline', { render: timeline });
   HR.register('equip', { render: equip });
