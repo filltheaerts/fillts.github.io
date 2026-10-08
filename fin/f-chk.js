@@ -18,7 +18,7 @@
   var CAT_SHORT = { '화장품법': '화장품', '연구개발': '연구개발', '세무 · 회계': '세무', '인사 · 노무': '인사', '법인 · 등기': '법인', '정관': '정관', '특허': '특허' };
   var catShort = function (c) { return CAT_SHORT[c] || c || '기타'; };
   // 분야 탭: 주소 #chk/<key>
-  var CAT_TABS = [['cos', '화장품법'], ['tax', '세무 · 회계'], ['hr', '인사 · 노무'], ['rnd', '연구개발'], ['corp', '법인 · 등기'], ['bylaw', '정관'], ['ip', '특허'], ['etc', '기타']];
+  var CAT_TABS = [['cos', '화장품법'], ['tax', '세무 · 회계'], ['hr', '인사 · 노무'], ['rnd', '연구개발'], ['corp', '법인 · 등기'], ['ip', '특허'], ['etc', '기타']];
 
   // 상태: done 완료 · nodate 날짜 미정 · over 지남 · near 임박 · plan 예정
   function state(c, t) {
@@ -94,11 +94,12 @@
       return;
     }
     var tab = CAT_TABS.filter(function (x) { return x[0] === parts[0]; })[0];
+    var src = F.chk.filter(function (c) { return c.cat !== '정관'; });   // 정관 변경은 선택 사항 — [행정] 정관 화면에서만
     var catOf = function (c) { return CATS.indexOf(c.cat) >= 0 ? c.cat : '기타'; };
-    var openN = function (cat) { return F.chk.filter(function (c) { return !c.done && (!cat || catOf(c) === cat); }).length; };
-    var tabs = ui.tabs([['', '전체 ' + openN()]].concat(CAT_TABS.filter(function (x) { return F.chk.some(function (c) { return catOf(c) === x[1]; }); })
+    var openN = function (cat) { return src.filter(function (c) { return !c.done && (!cat || catOf(c) === cat); }).length; };
+    var tabs = ui.tabs([['', '전체 ' + openN()]].concat(CAT_TABS.filter(function (x) { return src.some(function (c) { return catOf(c) === x[1]; }); })
       .map(function (x) { return [x[0], catShort(x[1]) + ' ' + openN(x[1])]; })), tab ? tab[0] : '', 'chk');
-    var all = F.chk.filter(function (c) { return !tab || catOf(c) === tab[1]; }).map(function (c) { return { c: c, s: state(c, t) }; });
+    var all = src.filter(function (c) { return !tab || catOf(c) === tab[1]; }).map(function (c) { return { c: c, s: state(c, t) }; });
     var byDue = function (a, b) { return (a.c.due || '9999') < (b.c.due || '9999') ? -1 : (a.c.due || '9999') > (b.c.due || '9999') ? 1 : (a.c.title < b.c.title ? -1 : 1); };
     var pick = function (ks) { return all.filter(function (x) { return ks.indexOf(x.s.k) >= 0; }).sort(byDue); };
     var hot = pick(['over', 'near']), plan = pick(['plan']), nodate = pick(['nodate']), done = pick(['done']).reverse();
@@ -142,16 +143,16 @@
       h('tbody', null, refs.length ? refs.map(function (r) {
         return h('tr', null, h('td', { class: 'strong nowrap', text: (r.art || '') + (r.title ? ' ' + r.title : '') }), h('td', { class: 'jg-body', text: r.body || '' }), h('td', { class: 'jg-note', text: r.note || '' }));
       }) : h('tr', null, h('td', { colspan: '3', class: 'empty', text: '정관 요약이 아직 없습니다.' }))));
-    ui.put(view, ui.head('[행정] 정관', '정관 기준 — 언제까지 해야 하나',
+    ui.put(view, ui.head('[행정] 정관', '정관 변경 계획 — 하려면 언제까지',
         h('div', { class: 'row' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', class: 'btn btn-line btn-sm', text: '정관 원본 ↗' }) : null,
           ed ? ui.btn('+ 일정 추가', function () { HR.go('jg/new'); }, 'btn-sm') : null)),
-      F.kpi([['진행 중', live.length + '건', '', '정관 변경 · 정관상 기한'], ['임박 · 지남', live.filter(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }).length + '건', live.some(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }) ? 'red' : '', '항목별 알림 기간 안'],
+      F.kpi([['계획', live.length + '건', '', '필수 아님 · 하기로 하면 이 날짜까지'], ['임박 · 지남', live.filter(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }).length + '건', live.some(function (x) { return x.s.k === 'near' || x.s.k === 'over'; }) ? 'red' : '', '항목별 알림 기간 안'],
         ['다음 마감', next ? dLabel(next.s.d) : '—', '', next ? next.c.title : '날짜 있는 항목 없음']], 'three'),
-      ui.panel('하려는 것 · 언제까지', null, list(live, '등록된 정관 일정이 없습니다.')),
+      ui.panel('하려는 것 · 언제까지 (선택)', null, list(live, '등록된 정관 변경 계획이 없습니다.')),
       done.length ? ui.panel('완료 ' + done.length + '건', null, list(done, '')) : null,
       ui.panel('지금 정관 · 날짜와 절차가 걸린 조항', url ? h('span', { class: 'meta', text: '원본 기준 요약' }) : null, h('div', { class: 'table-wrap flat' }, refTb)),
       F.readOnlyNote(),
-      h('p', { class: 'note', text: '정관 변경은 주주총회 특별결의 사항이지만, 자본금 10억 미만이라 주주 전원 서면결의로 갈음할 수 있습니다(정관 제23조④). 등기할 사항은 결의일부터 2주 안에 등기해야 하며, 여러 건을 한 번에 묶으면 등기 비용이 한 번만 듭니다.' }));
+      h('p', { class: 'note', text: '여기는 하고 싶을 때 하는 정관 변경 계획입니다. 꼭 해야 하는 신고 · 등기 · 정기주총은 [행정] 체크일정에 있습니다. 정관 변경은 주주총회 특별결의 사항이지만, 자본금 10억 미만이라 주주 전원 서면결의로 갈음할 수 있습니다(정관 제23조④). 등기할 사항은 결의일부터 2주 안에 등기해야 하며, 여러 건을 한 번에 묶으면 등기 비용이 한 번만 듭니다.' }));
   }
   HR.register('jg', { render: bylaw });
 })();
