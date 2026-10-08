@@ -334,3 +334,4 @@ a.map-card:hover { border-color: var(--black); }
 .chk-how { margin-top: 4px; font-size: 12px; line-height: 1.6; color: var(--gray-400); white-space: pre-line; }
 .chk-row-done .strong { text-decoration: line-through; color: var(--gray-400); }
 .fin-form textarea { width: 100%; }
+.chk-cat { min-width: 52px; padding: 1px 6px; font-size: 11px; text-align: center; color: var(--gray-600, #555); background: var(--gray-100); white-space: nowrap; }

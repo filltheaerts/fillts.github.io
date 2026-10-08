@@ -14,6 +14,9 @@
   var CATS = ['화장품법', '연구개발', '세무 · 회계', '인사 · 노무', '법인 · 등기', '특허', '기타'];
   var REPEAT = [['0', '한 번'], ['1', '매월'], ['6', '반기마다'], ['12', '매년']];
   var V = { showDone: false };
+  // 목록 앞 짧은 분류 표시
+  var CAT_SHORT = { '화장품법': '화장품', '연구개발': '연구개발', '세무 · 회계': '세무', '인사 · 노무': '인사', '법인 · 등기': '법인', '특허': '특허' };
+  var catShort = function (c) { return CAT_SHORT[c] || c || '기타'; };
 
   // 상태: done 완료 · nodate 날짜 미정 · over 지남 · near 임박 · plan 예정
   function state(c, t) {
@@ -68,8 +71,8 @@
     return h('li', { class: 'chk-row chk-row-' + st.k },
       h('span', { class: dCls, text: st.k === 'done' ? '완료' : st.k === 'nodate' ? '미정' : dLabel(st.d) }),
       h('div', { class: 'grow' },
-        h('div', { class: 'chk-title' }, h('a', { href: ed ? '#chk/edit/' + c.id : null, class: 'strong', text: c.title }),
-          st.k === 'over' ? ui.tag('지남', 'red') : st.k === 'near' ? ui.tag('임박', 'red') : null, ui.tag(c.cat || '기타', 'mute')),
+        h('div', { class: 'chk-title' }, h('span', { class: 'chk-cat', text: catShort(c.cat) }), h('a', { href: ed ? '#chk/edit/' + c.id : null, class: 'strong', text: c.title }),
+          st.k === 'over' ? ui.tag('지남', 'red') : st.k === 'near' ? ui.tag('임박', 'red') : null),
         h('div', { class: 'meta', text: [c.due ? fmt.dot(c.due) + ' (' + '일월화수목금토'[L.weekday(c.due)] + ')' : '날짜 미정', repName(c.repeat), c.owner ? '담당 ' + c.owner : '', c.done && c.doneOn ? fmt.dot(c.doneOn) + ' 처리' : ''].filter(Boolean).join(' · ') }),
         c.cond ? h('p', { class: 'chk-cond', text: c.cond }) : null,
         c.how ? h('p', { class: 'chk-how', text: '▸ ' + c.how }) : null),
