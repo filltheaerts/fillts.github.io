@@ -194,3 +194,6 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
   .vg-kw-x { visibility: visible !important; }
 }
 .vg-pt-act.keep { opacity: 1; }
+.vg-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+.vg-filter .chip { padding: 4px 12px; font-size: 12px; }
+.vg-filter .chip.on { background: var(--vg-deep); border-color: var(--vg-deep); color: #fff; }

@@ -212,7 +212,7 @@
       lead: '누구의 어떤 순간을 잡을까. 위 소구점이 가장 크게 들리는 사람부터 적습니다.',
       ph: '한 줄 타겟 — 예) 세안 후 당김이 고민인 30대 수부지', ph2: '설명 — 지금 쓰는 것 · 불만 · 사는 순간 (선택)' }
   };
-  var ptEdit = null, mktOpen = false;   // ptEdit = 문서 id | 'new:<kind>'
+  var ptEdit = null, mktOpen = false, tagFilter = {};   // tagFilter[kind] = 분류 (빈 값 = 전체)   // ptEdit = 문서 id | 'new:<kind>'
   HR.APP.onStart = function (sub) {
     sub(db.collection('vg_points'), function (s) { VG.points = HR.rows(s); VG.loaded = true; });
     if (HR.canApp('mkt')) sub(db.collection('mkt_items').where('board', '==', 'appeal'), function (s) { VG.mkt = HR.rows(s); VG.mktOk = true; });
@@ -323,12 +323,19 @@
   function group(prod, kind) {
     var K = KINDS[kind];
     var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === kind; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-    var adding = ptEdit === 'new:' + kind;
-    var rows = list.map(function (x, i) { return row(prod, kind, list, x, i); });
+    var adding = ptEdit === 'new:' + kind, f = tagFilter[kind] || '';
+    var shown = f ? list.filter(function (p) { return p.tag === f; }) : list;
+    // 분류로 걸러 보는 중에는 끌어서 순서 바꾸기를 끈다 (숨은 줄과 순서가 섞이지 않게)
+    var rows = shown.map(function (x, i) { var r = row(prod, kind, list, x, f ? list.indexOf(x) : i); if (f) { var g = r.querySelector('.vg-pt-grip'); if (g) { g.className = 'vg-pt-grip off'; g.textContent = ''; } } return r; });
+    var counts = {}; list.forEach(function (p) { counts[p.tag] = (counts[p.tag] || 0) + 1; });
+    var filter = list.length > 8 ? h('div', { class: 'vg-filter' }, [['', '전체 ' + list.length]].concat(K.tags.filter(function (t) { return counts[t]; }).map(function (t) { return [t, t + ' ' + counts[t]]; })).map(function (o) {
+      return h('button', { type: 'button', class: 'chip' + (o[0] === f ? ' on' : ''), text: o[1], onclick: function () { tagFilter[kind] = o[0]; HR.refresh(); } });
+    })) : null;
     if (adding) rows.push(h('li', { class: 'vg-pt editing new' }, h('span', { class: 'vg-pt-grip off' }), h('span', { class: 'vg-pt-no', text: ('0' + (list.length + 1)).slice(-2) }), inlineEdit(prod, kind, list, null)));
     return h('section', { class: 'vg-group' },
       h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: K.label + ' · ' + K.title }), h('span', { class: 'meta', text: list.length + '개' })),
       h('p', { class: 'muted small', text: K.lead }),
+      filter,
       rows.length ? h('ol', { class: 'vg-pts' }, rows) : null,
       h('div', { class: 'vg-add-row' },
         adding ? null : h('button', { type: 'button', class: 'vg-add', text: '+ 추가', onclick: function () { startEdit('new:' + kind); } }),
