@@ -1723,14 +1723,13 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 .nav-right .nav-map:hover { background: var(--black); color: #fff; }
 .nav-right .nav-toggle { order: 100; }
 
-/* 모바일 상단바 순서 (261009) — 햄버거를 맨 왼쪽으로: ☰ · 로고 · … · 알림 · MAP. 페이지가 가로로 넓어져도 햄버거는 항상 화면 안. PC(901px~)는 그대로 */
+/* 모바일 상단바 (261009) — 로고 · … · 알림 · MAP · ☰(맨 오른쪽 끝). 헤더는 고정하지 않는다. PC(901px~)는 그대로 */
 @media (max-width: 900px) {
-  .nav { gap: 12px; justify-content: flex-start; }
-  .nav-right { display: contents; }
-  .nav-toggle { order: -2; margin-left: -8px; }
-  .nav .logo { order: -1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nav-right .bell-wrap { order: 1; margin-left: auto; }
-  .nav-right .nav-map { order: 2; }
-  /* 페이지 전체가 좌우로 밀리지 않게 — 넓은 보드 · 표는 본문 안에서만 옆으로 넘긴다(헤더는 그대로 위아래로 같이 움직임) */
+  .nav { gap: 12px; }
+  .nav .logo { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-right { flex: 0 0 auto; margin-left: auto; }
+  .nav-right .nav-map { order: 1; }
+  .nav-right .nav-toggle { order: 2; margin-right: -8px; }
+  /* 페이지 전체가 좌우로 밀리지 않게 — 넓은 보드 · 표는 본문 안에서만 옆으로 넘긴다 → 헤더 오른쪽 끝(☰)이 항상 화면 안 */
   .main { overflow-x: auto; }
 }
