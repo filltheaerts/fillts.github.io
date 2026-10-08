@@ -205,6 +205,9 @@
     appeal: { label: 'Appeal', title: '핵심 소구점', tags: ['컨셉', '성분', '효과', '신뢰', '감성'], def: '효과',
       lead: '한 문장 약속 + 믿게 만드는 근거. 상세페이지 · 광고 · 인플루언서 브리프는 이 목록에서 고릅니다. 쓰지 않는 말은 제품 사양 › Claims를 확인하세요.',
       ph: '한 문장 소구점 — 예) 씻고 나서도 당기지 않는 약산성 젤', ph2: '근거 — 성분 · 수치 · 시험 · 원본 문서 (선택)' },
+    copy: { label: 'Copy', title: '핵심 카피라이팅', tags: ['메인', '서브', '훅', '태그라인', '바디'], def: '메인', max: 300,
+      lead: '그대로 가져다 쓰는 확정 문장. 줄 오른쪽 「복사」로 바로 복사합니다. 아래는 쓰는 곳 · 메모.',
+      ph: '카피 문장 — 예) Born of the vineyard. Reserved for your skin.', ph2: '쓰는 곳 · 메모 — 상세 Hero · 단상자 · 광고 (선택)' },
     target: { label: 'Target', title: '타겟 소비자', tags: ['핵심', '피부', '상황', '심리'], def: '피부',
       lead: '누구의 어떤 순간을 잡을까. 위 소구점이 가장 크게 들리는 사람부터 적습니다.',
       ph: '한 줄 타겟 — 예) 세안 후 당김이 고민인 30대 수부지', ph2: '설명 — 지금 쓰는 것 · 불만 · 사는 순간 (선택)' }
@@ -237,11 +240,13 @@
   function inlineEdit(prod, kind, list, x) {
     var K = KINDS[kind];
     var tg = ui.select(K.tags.map(function (k) { return [k, k]; }), x ? x.tag : K.def, { class: 'vg-ie-tag', 'aria-label': '분류' });
-    var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x ? x.title : '', maxlength: 120, placeholder: K.ph, 'aria-label': K.title });
+    var t = ui.input({ id: 'vgEditT', class: 'vg-ie-title', value: x ? x.title : '', maxlength: K.max || 120, placeholder: K.ph, 'aria-label': K.title });
     var pr = h('textarea', { class: 'vg-ie-proof', rows: 2, maxlength: 1000, placeholder: K.ph2, 'aria-label': '근거' }); pr.value = x ? x.proof || '' : '';
-    var cancel = function () { ptEdit = null; HR.refresh(); };
+    // 입력칸에 포커스가 있으면 core.js가 다시 그리기를 미룬다 → 저장 · 취소 때 먼저 포커스를 뺀다
+    var cancel = function () { ptEdit = null; blurNow(); HR.refresh(); };
     var save = function () {
       var title = t.value.trim(); if (!title) { t.focus(); return; }
+      blurNow();
       if (x && title === x.title && pr.value.trim() === (x.proof || '') && tg.value === x.tag) return cancel();
       var data = { product: prod, kind: kind, title: title, proof: pr.value.trim(), tag: tg.value };
       if (!x) data.order = nextOrder(list);
@@ -310,7 +315,8 @@
         h('div', { class: 'vg-pt-top' }, h('span', { class: 'vg-pt-chip', text: x.tag }), h('b', { class: 'vg-pt-title', text: x.title }),
           x.src === 'mkt' ? ui.tag('MKT', 'mute') : null),
         x.proof || who ? h('p', { class: 'vg-pt-proof' }, x.proof || '', who ? h('span', { class: 'vg-pt-who', text: who }) : null) : null),
-      h('div', { class: 'vg-pt-act' },
+      h('div', { class: 'vg-pt-act' + (kind === 'copy' ? ' keep' : '') },
+        kind === 'copy' ? ui.btn('복사', function () { copyText(x.title, '카피를 복사했습니다.'); }, 'btn-xs') : null,
         canEditPt(x) ? ui.btn('수정', function () { startEdit(x.id); }, 'btn-line btn-xs') : null,
         canEditPt(x) ? ui.confirmBtn('삭제', function () { db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('삭제했습니다.'); }, ui.fail); }) : null));
   }
@@ -330,12 +336,101 @@
           onclick: function () { mktOpen = !mktOpen; HR.refresh(); } }) : null),
       kind === 'appeal' && mktOpen ? mktPanel(prod, list) : null);
   }
+  /* 핵심 키워드 — 칩 모양. 쉼표로 여러 개 한 번에 추가, 칩을 누르면 #해시태그 복사, 전체는 해시태그 · 쉼표 목록으로 복사
+     끌어서 순서 · 더블클릭 수정 · × 삭제(작성자 · 관리자) */
+  var kwEdit = null;
+  function blurNow() { var a = document.activeElement; if (a && a.blur) a.blur(); }
+  function hashtag(k) { return '#' + String(k).replace(/[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ_]/g, ''); }
+  function copyText(text, msg) {
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { ui.toast(msg || '복사했습니다.'); }, function () { ui.toast('복사하지 못했습니다. 직접 선택해 주세요.'); });
+  }
+  function kwDrag(e, list) {
+    if (e.button && e.button !== 0) return;
+    var chip = e.currentTarget, box = chip.parentNode, sx = e.clientX, sy = e.clientY, on = false, before = null;
+    function ids() { return Array.prototype.map.call(box.querySelectorAll('.vg-kw[data-id]'), function (n) { return n.dataset.id; }); }
+    function onMove(ev) {
+      if (!on) { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return; on = true; before = ids(); chip.classList.add('dragging'); document.body.classList.add('vg-dragging'); }
+      ev.preventDefault();
+      var others = Array.prototype.filter.call(box.querySelectorAll('.vg-kw[data-id]'), function (n) { return n !== chip; }), next = null;
+      for (var k = 0; k < others.length; k++) {
+        var r = others[k].getBoundingClientRect();
+        if (ev.clientY < r.top) { next = others[k]; break; }
+        if (ev.clientY <= r.bottom && ev.clientX < r.left + r.width / 2) { next = others[k]; break; }
+      }
+      if (!next) next = box.querySelector('.vg-kw-in') || null;
+      if (next !== chip.nextSibling) box.insertBefore(chip, next);
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onUp);
+      if (!on) return;
+      chip.classList.remove('dragging'); document.body.classList.remove('vg-dragging');
+      chip.dataset.dragged = '1'; setTimeout(function () { delete chip.dataset.dragged; }, 50);   // 끈 뒤의 click(복사)은 무시
+      var after = ids(); if (after.join() === before.join()) return;
+      var byId = {}; list.forEach(function (p) { byId[p.id] = p; });
+      var batch = db.batch(), n = 0;
+      after.forEach(function (id, k) { var o = (k + 1) * 10, p = byId[id]; if (p && p.order !== o) { batch.update(db.collection('vg_points').doc(id), { order: o, updatedBy: S.mid, updatedAt: FV.serverTimestamp() }); p.order = o; n++; } });
+      if (n) batch.commit().then(function () { ui.toast('순서를 바꿨습니다.'); }, function (err) { ui.fail(err); HR.refresh(); });
+    }
+    document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onUp);
+  }
+  function keywords(prod) {
+    var list = VG.points.filter(function (p) { return p.product === prod && kindOf(p) === 'keyword'; }).sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    var words = list.map(function (x) { return x.title; });
+    var input = ui.input({ class: 'vg-kw-in', maxlength: 400, placeholder: list.length ? '+ 키워드 (쉼표로 여러 개)' : '키워드 입력 — 쉼표로 여러 개, Enter', 'aria-label': '키워드 추가' });
+    input.addEventListener('keydown', function (e) {
+      if (e.isComposing || e.key !== 'Enter') return;
+      e.preventDefault();
+      var have = {}; words.forEach(function (w) { have[w.replace(/\s/g, '').toLowerCase()] = 1; });
+      var add = input.value.split(/[,，\n]/).map(function (s) { return s.replace(/^#/, '').trim(); }).filter(function (s) {
+        var k = s.replace(/\s/g, '').toLowerCase(); if (!s || have[k]) return false; have[k] = 1; return true;
+      });
+      if (!add.length) { input.value = ''; return; }
+      input.value = ''; blurNow();
+      var batch = db.batch(), o = nextOrder(list);
+      add.forEach(function (w, i) {
+        batch.set(db.collection('vg_points').doc(), { product: prod, kind: 'keyword', title: w.slice(0, 120), proof: '', tag: '키워드', order: o + i * 10, src: '', mktId: '',
+          by: S.mid, at: FV.serverTimestamp(), updatedBy: S.mid, updatedAt: FV.serverTimestamp() });
+      });
+      batch.commit().then(function () { ui.toast(add.length + '개 추가했습니다.'); setTimeout(function () { var el = document.querySelector('.vg-kw-in'); if (el) el.focus(); }, 150); }, ui.fail);
+    });
+    var chips = list.map(function (x) {
+      if (kwEdit === x.id) {
+        var ed = ui.input({ id: 'vgKwEdit', class: 'vg-kw-edit', value: x.title, maxlength: 120, 'aria-label': '키워드 수정' });
+        var done = function (save) {
+          var v = ed.value.replace(/^#/, '').trim(); kwEdit = null; blurNow();
+          if (save && v && v !== x.title) savePt(x.id, { product: prod, kind: 'keyword', title: v, proof: x.proof || '', tag: '키워드' }).then(function () { HR.refresh(); });
+          else HR.refresh();
+        };
+        ed.addEventListener('keydown', function (e) { if (e.isComposing) return; if (e.key === 'Enter') { e.preventDefault(); done(true); } else if (e.key === 'Escape') { e.preventDefault(); done(false); } });
+        ed.addEventListener('blur', function () { if (kwEdit === x.id) done(true); });
+        return ed;
+      }
+      var mine = canEditPt(x);
+      return h('span', { class: 'vg-kw', 'data-id': x.id, tabindex: '0', role: 'button', title: '누르면 ' + hashtag(x.title) + ' 복사 · 끌어서 순서' + (mine ? ' · 더블클릭 수정' : ''),
+        onpointerdown: function (e) { if (!e.target.closest('.vg-kw-x')) kwDrag(e, list); },
+        onclick: function (e) { if (e.currentTarget.dataset.dragged || e.target.closest('.vg-kw-x')) return; copyText(hashtag(x.title), hashtag(x.title) + ' 복사'); },
+        onkeydown: function (e) { if (e.key === 'Enter') copyText(hashtag(x.title), hashtag(x.title) + ' 복사'); },
+        ondblclick: mine ? function () { kwEdit = x.id; HR.refresh(); setTimeout(function () { var el = document.getElementById('vgKwEdit'); if (el) { el.focus(); el.select(); } }, 120); } : null },
+        h('span', { class: 'vg-kw-h', text: '#' }), x.title,
+        mine ? h('button', { type: 'button', class: 'vg-kw-x', title: '삭제', 'aria-label': x.title + ' 삭제', text: '×', onclick: function () {
+          db.collection('vg_points').doc(x.id).delete().then(function () { ui.toast('「' + x.title + '」 삭제'); }, ui.fail);
+        } }) : null);
+    });
+    return h('section', { class: 'vg-group vg-kw-group' },
+      h('div', { class: 'vg-group-head' }, h('div', { class: 'label', text: 'Keyword · 핵심 키워드' }),
+        h('div', { class: 'row vg-kw-copy' }, h('span', { class: 'meta', text: list.length + '개' }),
+          list.length ? ui.btn('# 해시태그 전체 복사', function () { copyText(words.map(hashtag).join(' '), '해시태그 ' + list.length + '개 복사'); }, 'btn-xs') : null,
+          list.length ? ui.btn('쉼표로 복사', function () { copyText(words.join(', '), '키워드 ' + list.length + '개 복사'); }, 'btn-line btn-xs') : null)),
+      h('p', { class: 'muted small', text: '검색 · 해시태그 · 광고 키워드로 반복해서 쓰는 말. 칩을 누르면 그 키워드 하나가 #해시태그로 복사됩니다.' }),
+      h('div', { class: 'vg-kws' }, chips, input),
+      list.length ? h('p', { class: 'vg-kw-preview', text: words.map(hashtag).join(' ') }) : null);
+  }
   function points(view, prod) {
     var V = doc('vinegraphy'), G = V && V.products ? V.products[prod] : null;
     var name = G ? G.name : '클렌징 젤';
-    ui.put(view, ui.head(name, '핵심 소구점', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
+    ui.put(view, ui.head(name, '핵심 포인트', h('span', { class: 'meta', text: '구성원 누구나 추가 · 끌어서 순서 변경 · 더블클릭 수정' })));
     if (!VG.loaded) return ui.put(view, ui.empty('불러오는 중…'));
-    ui.put(view, group(prod, 'appeal'), group(prod, 'target'));
+    ui.put(view, keywords(prod), group(prod, 'appeal'), group(prod, 'copy'), group(prod, 'target'));
   }
   function mktPanel(prod, list) {
     var taken = {}; list.forEach(function (p) { if (p.mktId) taken[p.mktId] = 1; });

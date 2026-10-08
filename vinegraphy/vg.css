@@ -165,3 +165,32 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
 .vg-add.ghost { flex: 0 0 auto; padding: 0 14px; color: var(--gray-600); border-color: var(--gray-200); }
 .vg-add.ghost:hover { color: var(--vg-wine); }
 .vg-mkt { border: 1px solid var(--gray-200); background: var(--paper); padding: 12px 16px; }
+
+/* 핵심 키워드 — 칩 (소구점 · 타겟의 줄 목록과 다르게) */
+.vg-kw-group { background: var(--vg-deep); color: #fff; padding: 18px 20px 16px; }
+.vg-kw-group .label { color: var(--vg-lilac); }
+.vg-kw-group .muted, .vg-kw-group .meta { color: #cdb6d4; }
+.vg-kw-copy { align-items: center; gap: 6px; }
+.vg-kw-copy .btn { height: 26px; }
+.vg-kw-copy .btn:not(.btn-line) { background: #fff; color: var(--vg-deep); border-color: #fff; }
+.vg-kw-copy .btn-line { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.vg-kw-copy .btn-line:hover { background: #fff; color: var(--vg-deep); }
+.vg-kws { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.vg-kw { display: inline-flex; align-items: center; gap: 1px; padding: 5px 6px 5px 11px; font-size: 14px; font-weight: 500; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(216, 180, 226, 0.45); border-radius: 18px; cursor: pointer; user-select: none; touch-action: none; transition: background 0.15s, border-color 0.15s; }
+.vg-kw:hover, .vg-kw:focus-visible { background: rgba(255, 255, 255, 0.2); border-color: var(--vg-lilac); outline: none; }
+.vg-kw.dragging { background: #fff; color: var(--vg-deep); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); cursor: grabbing; }
+.vg-kw-h { color: var(--vg-lilac); margin-right: 1px; }
+.vg-kw.dragging .vg-kw-h { color: var(--vg-wine); }
+.vg-kw-x { width: 18px; height: 18px; margin-left: 4px; border: none; background: transparent; color: rgba(255, 255, 255, 0.4); font-size: 14px; line-height: 1; cursor: pointer; border-radius: 50%; padding: 0; }
+.vg-kw-x:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.vg-kw:not(:hover) .vg-kw-x { visibility: hidden; }
+.vg-kw-in, .vg-kw-edit { font: inherit; font-size: 14px; color: #fff; background: transparent; border: 1px dashed rgba(216, 180, 226, 0.6); border-radius: 18px; padding: 5px 12px; min-width: 220px; flex: 1 1 220px; }
+.vg-kw-edit { flex: 0 1 200px; min-width: 120px; border-style: solid; background: rgba(255, 255, 255, 0.12); }
+.vg-kw-in::placeholder { color: rgba(216, 180, 226, 0.75); }
+.vg-kw-in:focus, .vg-kw-edit:focus { outline: none; border-color: #fff; }
+.vg-kw-preview { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 12px; line-height: 1.7; color: #cdb6d4; word-break: break-all; user-select: all; }
+@media (max-width: 900px) {
+  .vg-kw-group .vg-group-head { flex-wrap: wrap; }
+  .vg-kw-x { visibility: visible !important; }
+}
+.vg-pt-act.keep { opacity: 1; }
