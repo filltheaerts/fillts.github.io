@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../hr/hr.css?v=2610073600">
   <link rel="stylesheet" href="../hr/hr-v2.css?v=2610081100">
-  <link rel="stylesheet" href="d2c.css?v=2610101000">
+  <link rel="stylesheet" href="d2c.css?v=2610102000">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -94,17 +94,17 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
-        <li class="nav-grp dc-only-m" aria-hidden="true">[데이터]</li>
-        <li class="dc-only-m"><a href="#sales" data-menu="sales">현황</a></li>
-        <li class="dc-only-m"><a href="#ads" data-menu="ads">퍼포먼스</a></li>
-        <li class="dc-only-m"><a href="#creative" data-menu="creative">광고</a></li>
-        <li class="dc-only-m"><a href="#assets" data-menu="assets">소재</a></li>
-        <li class="nav-sep nav-grp dc-only-m" aria-hidden="true">[CRM]</li>
-        <li class="dc-only-m"><a href="#crmdata" data-menu="crmdata">고객 데이터</a></li>
-        <li class="nav-sep nav-grp dc-only-m" aria-hidden="true">[지표]</li>
-        <li class="dc-only-m"><a href="#repeat" data-menu="repeat">재구매</a></li>
-        <li class="dc-only-m"><a href="#kpi" data-menu="kpi">LTV</a></li>
-        <li class="nav-sep dc-strat dc-only-m" id="dcStrat">
+        <li class="nav-grp" aria-hidden="true">[데이터]</li>
+        <li><a href="#sales" data-menu="sales">현황</a></li>
+        <li><a href="#ads" data-menu="ads">퍼포먼스</a></li>
+        <li><a href="#creative" data-menu="creative">광고</a></li>
+        <li><a href="#assets" data-menu="assets">소재</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[CRM]</li>
+        <li><a href="#crmdata" data-menu="crmdata">고객 데이터</a></li>
+        <li class="nav-sep nav-grp" aria-hidden="true">[지표]</li>
+        <li><a href="#repeat" data-menu="repeat">재구매</a></li>
+        <li><a href="#kpi" data-menu="kpi">LTV</a></li>
+        <li class="nav-sep dc-strat" id="dcStrat">
           <button type="button" class="dc-strat-btn" id="dcStratBtn" aria-expanded="false" aria-controls="dcStratPop">[핵심전략] <span class="dc-strat-ar">열기 ▾</span></button>
           <div class="dc-strat-pop" id="dcStratPop" hidden>
             <div class="dc-strat-h"><span>핵심전략 · 체크리스트</span><button type="button" class="dc-strat-x" id="dcStratX">닫기 ✕</button></div>
@@ -125,29 +125,6 @@
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
       </ul>
     </nav>
-    <aside class="dc-side" aria-label="D2C 메뉴">
-      <div class="dc-side-g">[데이터]</div>
-      <a href="#sales" data-menu="sales">현황</a>
-      <a href="#ads" data-menu="ads">퍼포먼스</a>
-      <a href="#creative" data-menu="creative">광고</a>
-      <a href="#assets" data-menu="assets">소재</a>
-      <div class="dc-side-g">[CRM]</div>
-      <a href="#crmdata" data-menu="crmdata">고객 데이터</a>
-      <div class="dc-side-g">[지표]</div>
-      <a href="#repeat" data-menu="repeat">재구매</a>
-      <a href="#kpi" data-menu="kpi">LTV</a>
-      <details class="dc-side-strat" id="dcSideStrat">
-        <summary><span class="dc-side-g">[핵심전략]</span><span class="dc-side-tg"></span></summary>
-        <a href="#home" data-menu="home">한판</a>
-        <a href="#plan" data-menu="plan">로드맵</a>
-        <a href="#store" data-menu="store">자사몰 전환</a>
-        <a href="#aov" data-menu="aov">크로스셀</a>
-        <a href="#retain" data-menu="retain">재구매</a>
-        <a href="#crm" data-menu="crm">CRM 메시지</a>
-        <a href="#cs" data-menu="cs">CS</a>
-        <a href="#cohort" data-menu="cohort">코호트 · 지표</a>
-      </details>
-    </aside>
     <main class="main" id="view" tabindex="-1"></main>
   </div>
 
@@ -160,7 +137,7 @@
   <script src="../hr/firebase-config.js?v=2610071600"></script>
   <script src="../hr/labor.js?v=2610071600"></script>
   <script src="../hr/core.js?v=2610091000"></script>
-  <script src="d2c.js?v=2610101000"></script>
+  <script src="d2c.js?v=2610102000"></script>
   <script src="d2c-sales.js?v=2610098000"></script>
   <script src="d2c-ads.js?v=2610098000"></script>
   <script src="d2c-creative.js?v=2610099000"></script>

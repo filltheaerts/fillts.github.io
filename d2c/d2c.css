@@ -308,7 +308,7 @@
 .dc-strat-ar { font-weight: 400; color: var(--gray-600); margin-left: 2px; }
 .dc-strat:has(a.active) .dc-strat-btn { border-bottom-color: var(--red); }
 .dc-strat.open .dc-strat-btn .dc-strat-ar { color: var(--red); }
-.dc-strat-pop { position: absolute; right: -40px; top: calc(100% + 18px); width: 560px; background: var(--paper, #fff); border: 1px solid #0a0a0a; box-shadow: 0 12px 32px rgba(0,0,0,.12); padding: 14px 16px 16px; z-index: 50; }
+.dc-strat-pop { position: absolute; right: 0; top: calc(100% + 18px); width: 560px; background: var(--paper, #fff); border: 1px solid #0a0a0a; box-shadow: 0 12px 32px rgba(0,0,0,.12); padding: 14px 16px 16px; z-index: 50; }
 .dc-strat-pop[hidden] { display: none; }
 .dc-strat-h { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
 .dc-strat-x { border: none; background: none; font: inherit; font-size: 12px; color: var(--gray-600); cursor: pointer; }
@@ -423,23 +423,3 @@
 .ci-rs-v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .as-img.as-gdn, .as-img.as-kakao { aspect-ratio: auto; min-height: 120px; }
 .as-img.as-gdn img, .as-img.as-kakao img { height: auto; }
-
-/* ===== 왼쪽 세로 메뉴 — 묶음과 메뉴가 같은 왼쪽 선에서 시작 (데스크톱) ===== */
-.dc-side { display: none; }
-@media (min-width: 901px) {
-  .nav-links li.dc-only-m { display: none; }
-  .dc-side { display: flex; flex-direction: column; position: fixed; top: 72px; left: 0; bottom: 0; width: 200px; padding: 28px 0 40px 32px; border-right: 1px solid var(--gray-200); background: #fafafa; overflow-y: auto; z-index: 20; }
-  .dc-side a { display: block; padding: 6px 0 6px 12px; font-size: 14px; color: var(--gray-600); text-decoration: none; border-left: 2px solid transparent; }
-  .dc-side a:hover { color: #0a0a0a; }
-  .dc-side a.active { color: #0a0a0a; font-weight: 600; border-left-color: var(--red); }
-  .dc-side-g { font-size: 12px; font-weight: 700; color: #0a0a0a; margin: 18px 0 4px; letter-spacing: .02em; }
-  .dc-side > .dc-side-g:first-child { margin-top: 0; }
-  .dc-side-strat { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--gray-200); padding-right: 16px; }
-  .dc-side-strat > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; }
-  .dc-side-strat > summary::-webkit-details-marker { display: none; }
-  .dc-side-strat > summary .dc-side-g { margin-top: 18px; }
-  .dc-side-tg::after { content: "열기 ▾"; font-size: 11px; color: var(--gray-600); }
-  .dc-side-strat[open] .dc-side-tg::after { content: "닫기 ▴"; color: var(--red); }
-  .dc-side-strat:not([open]):has(a.active) .dc-side-g { color: var(--red); }
-  .main { margin-left: 200px; max-width: none; padding-left: 48px; padding-right: 48px; }
-}
