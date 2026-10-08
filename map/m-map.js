@@ -7,7 +7,7 @@
     hr: [['#info', 'INFO'], ['#notice', '공지사항'], ['#work', '근무'], ['#leave', '휴가'], ['#ws', 'WORK'], ['#ai', '+AI'], ['#payreq', '입금요청']],
     fin: [['#home', 'Overview'], ['#plan', '자금조달'], ['#runway', '런웨이'], ['#flow', '현금흐름'], ['#sched', '지출예정'], ['#tx', '거래내역'], ['#tax', '세무사 전달']],
     mkt: [['', '마케팅 맵']],
-    d2c: [['#store', '매출'], ['#retain', 'CRM'], ['#cs', 'CS'], ['#home', '핵심 · 한판'], ['#cohort', '지표']],
+    d2c: [['#sales', '매출 현황'], ['#store', '자사몰'], ['#retain', 'CRM'], ['#cs', 'CS'], ['#home', '핵심 · 한판'], ['#cohort', '지표']],
     inf: [['#home', 'Overview'], ['#find', '탐색'], ['#pipe', '파이프라인'], ['#mail', '메일']],
     rnd: [['#gel', '임상 · 젤'], ['#oil', '임상 · 오일'], ['#kibo', '기보/벤처'], ['#quick', 'Quick'], ['#home', '현황'], ['#research', '연구'], ['#due', '기한'], ['#docs', '서류 · 검증']],
     logis: [['#home', '한판'], ['#stock', '재고 · 재발주'], ['#wekeep', '위킵'], ['#mail', '발주 메일'], ['#order', '창고 · 발주 현황']],
