@@ -65,6 +65,7 @@ inf_insta/g-list.js
 inf_insta/g-conn.js
 inf_insta/g-home.js
 inf_insta/g-pipe.js
+inf_insta/g-celeb.js
 logis/logis.js
 map/m-map.js
 mkt/mkt.js
