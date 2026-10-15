@@ -689,3 +689,9 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 .in-pls-sec li:hover .in-pls-add, .in-pls-add:focus { opacity: 1; }
 .in-pls-add:hover { color: #1a56db; border-color: #1a56db; }
 @media (hover: none) { .in-pls-add { opacity: 1; } }
+
+/* 인스타 DM — 사람별 문구 펼침(초안) · 보냄 체크 (g-dm.js) */
+.g-dmedit { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--gray-200); }
+.g-dmedit textarea { width: 100%; font: inherit; line-height: 1.6; }
+.g-dmchk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.g-dmchk input { width: 16px; height: 16px; accent-color: var(--red, #c8102e); }
