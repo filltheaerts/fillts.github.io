@@ -28,7 +28,7 @@
   function ownerLocked() { return !!OWNER_ONLY && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }
   // 잠금 예외 (261013): 지정한 사람에게만 여는 보기 전용 앱 — 잠금 중에도 관리자 + hr_users.apps[id] 받은 계정도 들어온다
   // (functions/appsrc.js LOCK_FREE · firestore.rules vgvView()와 같이)
-  var LOCK_FREE = { vgv: 1, inf: 1 };   // inf (261015): apps.inf를 직접 받은 계정만 Influencer 사용
+  var LOCK_FREE = { vgv: 1, inf: 1, vg: 1 };   // inf · vg (261015): apps[앱]을 직접 받은 계정만 사용
   var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
   firebase.initializeApp(window.FILLTS_FIREBASE);
@@ -49,7 +49,7 @@
     var a = HR.appInfo(app);
     if (app !== 'hr' && ((ownerLocked() && !LOCK_FREE[app]) || S.viewAsStaff)) return '';   // 「사원처럼 보기」 = 앱 권한 없는 일반 구성원 화면
     if (app !== 'hr' && !LOCK_FREE[app] && S.viewMid && OWNER_ONLY && (S.viewEmail || '').toLowerCase() !== OWNER_ONLY) return '';   // 그 사람도 잠금 대상
-    if ((S.viewMid ? S.isAdmin : S.realAdmin) || (a && a.open) || app === 'map') return 'edit';
+    if ((S.viewMid ? S.isAdmin : S.realAdmin) || (a && a.open && !(OWNER_ONLY && LOCK_FREE[app])) || app === 'map') return 'edit';   // 잠금 중 예외 앱은 「구성원 전원」이어도 받은 사람만
     return (S.apps || {})[app] || '';
   };
   HR.canApp = function (app) { var l = HR.appLevel(app); return l === 'view' || l === 'edit'; };
