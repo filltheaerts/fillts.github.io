@@ -3,6 +3,7 @@
 (function () {
   var FN = 'https://asia-northeast3-fillts-web.cloudfunctions.net/appsrc';
   var OWNER_ONLY = 'kjw@fillts.com';   // hr/core.js · functions/appsrc.js와 같은 값 (잠금을 풀면 셋 다 '')
+  var LOCK_FREE = { mkt: 1 };   // 잠금 예외 (261015) — 권한(apps.mkt)은 서버(appsrc)가 확인한다
   var dir = (location.pathname.match(/^\/([a-z0-9]+)\//) || [0, 'hr'])[1];
   if (!firebase.apps.length) firebase.initializeApp(window.FILLTS_FIREBASE);   // 화면 코드보다 먼저 auth를 써야 하므로 여기서 초기화 (261014)
   var auth = firebase.auth(), started = false;
@@ -25,7 +26,7 @@
   }
   auth.onAuthStateChanged(function (u) {
     if (started) return;
-    if (!u || !u.emailVerified || (OWNER_ONLY && (u.email || '').toLowerCase() !== OWNER_ONLY)) { toHr(); return; }
+    if (!u || !u.emailVerified || (OWNER_ONLY && (u.email || '').toLowerCase() !== OWNER_ONLY && !LOCK_FREE[dir])) { toHr(); return; }
     started = true;
     u.getIdToken().then(function (t) {
       return fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ app: dir }) });
