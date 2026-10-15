@@ -1775,3 +1775,22 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   .view-as-bar { top: 0; }
   .view-menu { position: fixed; top: 64px; left: 16px; right: 16px; max-width: none; min-width: 0; }
 }
+
+/* WORK 목록 — 할 일 체크 · 완료 가로줄 · 서브 줄 */
+.ws-pcheckcell { display: inline-flex; align-items: center; gap: 6px; }
+.ws-pcheck { flex: none; width: 16px; height: 16px; padding: 0; border: 1.5px solid var(--gray-400); background: var(--paper); cursor: pointer; position: relative; }
+.ws-pcheck:hover:not(:disabled) { border-color: var(--black); }
+.ws-pcheck:disabled { cursor: default; opacity: 0.45; }
+.ws-pcheck.on { background: var(--black); border-color: var(--black); }
+.ws-pcheck.on::after { content: ''; position: absolute; left: 4px; top: 0; width: 4px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.ws-prow.checked .ws-ptitle-t { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--gray-400); }
+.ws-prow.checked .ws-pmeta, .ws-prow.checked .ws-pdate { color: var(--gray-400); }
+.ws-psub { padding-top: 6px; padding-bottom: 6px; font-size: 12px; background: #fcfcfc; }
+.ws-psub .ws-pcheckcell { padding-left: 20px; }
+.ws-psub .ws-ptitle { font-weight: 400; }
+.ws-psub-no { flex: none; font-size: 10px; color: var(--gray-400); margin-right: 7px; letter-spacing: 0.04em; }
+@media (max-width: 760px) {
+  .ws-psub .ws-pcheckcell { padding-left: 14px; }
+  .ws-psub .ws-ptitle { flex: 1 1 0; }
+  .ws-psub > span:empty { display: none; }
+}
