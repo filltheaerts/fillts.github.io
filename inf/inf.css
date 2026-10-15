@@ -423,8 +423,10 @@ td.in-ell { display: table-cell; }
 .in-foot a { color: var(--gray-600); }
 
 /* 실행안 (i-plan.js) — VINEGRAPHY 마케팅 전략과 같은 묶음 목록, 흑백 */
-.nav-links a.nav-plan { color: var(--black); font-weight: 300; }
-.nav-links a.nav-plan::after { background: var(--black); }
+.nav-links a.nav-plan { color: #1a56db; font-weight: 700; }
+.nav-links a.nav-plan::after { background: #1a56db; }
+.nav-links a.nav-conn { color: var(--black); font-weight: 700; }
+.nav-links a.nav-conn::after { background: var(--black); }
 .in-pl { display: flex; flex-direction: column; gap: 8px; background: var(--paper); border: 1px solid var(--gray-200); padding: 24px 24px 20px; }
 .in-pl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .in-pl-head .label { font-size: 13px; letter-spacing: 0.18em; color: var(--black); }
