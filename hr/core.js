@@ -14,8 +14,8 @@
     { id: 'hr', name: 'HR', path: '/hr/', open: true, desc: '출퇴근 · 휴가 · 공지 · 구성원 · 목표 · WORK · +AI · 입금요청' },
     { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
-    { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 로드맵 · LTV' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 유튜브 · 인스타 통합 리스팅(소구점별 선택) + 세부: /inf_youtube 비슷한 채널 탐색 · /inf_insta 비슷한 계정 탐색 → 컨택 · 메일/DM · 계약 · 시딩 · 업로드 관리' },
+    { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 로드맵 · LTV' },
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
@@ -28,7 +28,7 @@
   function ownerLocked() { return !!OWNER_ONLY && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }
   // 잠금 예외 (261013): 지정한 사람에게만 여는 보기 전용 앱 — 잠금 중에도 관리자 + hr_users.apps[id] 받은 계정도 들어온다
   // (functions/appsrc.js LOCK_FREE · firestore.rules vgvView()와 같이)
-  var LOCK_FREE = { vgv: 1 };
+  var LOCK_FREE = { vgv: 1, inf: 1 };   // inf (261015): apps.inf를 직접 받은 계정만 Influencer 사용
   var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
   firebase.initializeApp(window.FILLTS_FIREBASE);
