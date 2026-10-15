@@ -563,3 +563,17 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
   .g-aprow-more { padding-left: 4px; }
   .g-apkv { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
+
+/* 통합 리스팅 줄기 타일 — 낮은 직사각형(한 줄: 이름 · 태그 … 개수 / 아래 ▶·◎), 「전체」는 위 별도 띠 (261015) */
+.g-tilewrap { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.g-tilewrap .g-tiles { margin: 0; gap: 6px; }
+.g-tilewrap .g-tile { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; padding: 6px 10px; }
+.g-tilewrap .g-tile-name { font-size: 12px; flex-wrap: nowrap; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: block; }
+.g-tilewrap .g-tile-name small { margin-left: 5px; font-size: 10px; }
+.g-tilewrap .g-tile-n { font-size: 14px; grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.g-tilewrap .g-tile-sub { font-size: 10px; grid-column: 1; }
+.g-tilewrap .g-tile-all { grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; }
+.g-tilewrap .g-tile-all .g-tile-n { grid-row: auto; grid-column: auto; }
+.g-tilewrap .g-tile-all .g-tile-sub { grid-column: auto; }
+.g-tilewrap .g-tile-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.g-tilewrap .g-tile-sub small { font-size: 10px; color: var(--gray-600); margin-right: 6px; }
