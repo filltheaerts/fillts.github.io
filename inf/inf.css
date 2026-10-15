@@ -615,3 +615,28 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 .in-apgrp .meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .in-apedit { border-top: 1px dashed var(--gray-200); background: var(--paper); }
 .in-r-tags .g-apcell .in-chip { font-size: 11px; }
+
+/* 완료 콘텐츠 (#done) — 주소 넣기 · 6칸 요약 · 분석(접기) · 한 목록 (261015) */
+.g-done-add { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.g-done-add textarea { min-height: 44px; resize: vertical; }
+.g-done-ig { gap: 8px; flex-wrap: wrap; align-items: center; }
+.g-done-ig input[type=number] { width: 96px; }
+.g-done-man { gap: 4px; align-items: center; }
+.g-done-kpi { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.g-done-ana { margin: 0 0 16px; border-bottom: 1px solid var(--gray-200); padding-bottom: 8px; }
+.g-done-ana > summary { cursor: pointer; padding: 6px 0; list-style-position: inside; }
+.g-ana-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px 24px; margin-top: 8px; }
+.g-ana .label { margin: 0 0 4px; }
+.g-anat th, .g-anat td { padding: 4px 8px; font-size: 12px; }
+.g-anat th[scope=row] { font-weight: 500; white-space: nowrap; }
+.g-done .g-done-t { display: inline-block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; color: inherit; }
+.g-done td.in-ell { max-width: 180px; }
+.g-plat.web { background: var(--gray-100, #f2f2f2); color: var(--black); }
+.g-done-edit { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.g-done-edit .row { gap: 8px; flex-wrap: wrap; }
+.g-done-edit input[type=number] { width: 150px; }
+@media (max-width: 720px) {
+  .g-done-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-done-kpi > div:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .g-ana-grid { grid-template-columns: minmax(0, 1fr); }
+}
