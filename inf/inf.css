@@ -695,3 +695,15 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 .g-dmedit textarea { width: 100%; font: inherit; line-height: 1.6; }
 .g-dmchk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .g-dmchk input { width: 16px; height: 16px; accent-color: var(--red, #c8102e); }
+
+/* 인스타 공구 메뉴 (#gonggu) — 보라 굵게 · 명부 카테고리 태그 (261015) */
+.nav-links a.nav-gonggu { color: #6b2fbf; font-weight: 700; }
+.nav-links a.nav-gonggu::after { background: #6b2fbf; }
+.g-gg-kpi { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g-gg-cat { font-size: 10px; padding: 0 6px; background: var(--paper); border: 1px solid var(--gray-200); color: var(--gray-600); }
+.g-gg-cat.gg, .g-gg-on { color: #6b2fbf; border-color: #6b2fbf; font-weight: 600; }
+.g-gg-on { font-size: 10px; padding: 0 6px; background: var(--paper); border: 1px solid #6b2fbf; }
+.g-gg-row .in-r-tags { flex-wrap: wrap; gap: 3px; }
+.g-gg-tg { gap: 4px; align-items: center; white-space: nowrap; }
+.g-gg-more { justify-content: center; margin: 12px 0 24px; }
+@media (max-width: 720px) { .g-gg-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
