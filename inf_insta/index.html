@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../hr/hr.css?v=2610071700">
   <link rel="stylesheet" href="../hr/hr-v2.css?v=2610092800">
-  <link rel="stylesheet" href="../inf/inf.css?v=2610151730">
+  <link rel="stylesheet" href="../inf/inf.css?v=2610151900">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -82,7 +82,7 @@
   <!-- ============ 앱 ============ -->
   <div class="app" id="appView" hidden>
     <nav class="nav">
-      <a href="#find" class="logo">fillts <span class="logo-sub">Influencer<sup class="logo-tm">Instagram</sup></span></a>
+      <a href="#ap" class="logo">fillts <span class="logo-sub">Influencer<sup class="logo-tm">Instagram</sup></span></a>
       <div class="nav-right">
         <div class="bell-wrap">
           <button class="bell" id="bell" type="button" aria-label="알림">
@@ -94,9 +94,12 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
+        <li><a href="#ap" data-menu="ap" class="nav-ap">소구점</a></li>
         <li><a href="#find" data-menu="find">탐색</a></li>
         <li><a href="#list" data-menu="list">리스트</a></li>
         <li><a href="#pipe" data-menu="pipe">파이프라인</a></li>
+        <li><a href="#done" data-menu="done">완료 콘텐츠</a></li>
+        <li><a href="#dm" data-menu="dm">DM</a></li>
         <li><a href="#celeb" data-menu="celeb" class="nav-celeb">셀럽</a></li>
         <li><a href="#plan" data-menu="plan" class="nav-plan">실행안</a></li>
         <li><a href="#conn" data-menu="conn" class="nav-conn">연결</a></li>
@@ -114,7 +117,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=2610151710"></script>
+  <script src="app.js?v=2610151900"></script>
   <script src="../hr/firebase-config.js?v=2610071700"></script>
   <script src="../hr/labor.js?v=2610071700"></script>
   <script src="../hr/core.js?v=2610141330"></script>

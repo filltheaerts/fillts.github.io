@@ -666,3 +666,8 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 .g-stlist-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--black); margin-bottom: 4px; }
 @media (max-width: 1100px) { .g-stflow { grid-template-columns: minmax(0, 1fr); gap: 8px; } .g-stflow-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g-stflow-steps .g-stbox::after { content: none !important; } }
 @media (max-width: 600px) { .g-stflow-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } .g-stbox-n { font-size: 20px; } }
+
+/* 소구점 = 세 창(통합 · YouTube · Instagram) 공통 첫 메뉴 — 메뉴에서 공통 항목임을 구분 · 화면 위 공통 안내 */
+.nav-links a.nav-ap { font-weight: 600; }
+@media (min-width: 900px) { .nav-links li:has(> a.nav-ap) { margin-right: 6px; padding-right: 14px; border-right: 1px solid var(--gray-200); } }
+.g-apshared b { color: var(--red, #c8102e); }
