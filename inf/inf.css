@@ -640,3 +640,27 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
   .g-done-kpi > div:nth-child(odd) { border-left: 0; padding-left: 0; }
   .g-ana-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* 통합 현황 — 단계 박스 (표 대신 프로세스 순서로 풀어 놓은 박스, 누르면 목록 필터) (261015) */
+.g-stflow { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; margin: 8px 0 20px; }
+.g-stflow-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.g-stflow-steps { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; }
+.g-stbox { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; min-width: 0;
+  border: 1px solid var(--gray-200); background: var(--paper); position: relative; }
+.g-stbox:hover { border-color: var(--black); }
+.g-stbox:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.g-stbox.on { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.g-stbox-k { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-stbox-k small { font-size: 10px; color: var(--gray-400); margin-right: 5px; font-variant-numeric: tabular-nums; }
+.g-stbox-n { font-size: 24px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.g-stbox-sub { font-size: 10px; color: var(--gray-600); white-space: nowrap; }
+.g-stbox.on .g-stbox-n, .g-stbox.deal .g-stbox-n { color: var(--red); }
+.g-stbox.zero .g-stbox-n { color: var(--gray-400); }
+.g-stbox.sum { background: var(--gray-50, #fafafa); border-color: var(--gray-400); }
+.g-stbox.sum .g-stbox-k { font-weight: 700; }
+.g-stbox.mute { border-style: dashed; }
+.g-stflow-steps .g-stbox:not(:last-child):not(.mute)::after { content: '›'; position: absolute; right: -8px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--gray-400); width: 8px; text-align: center; }
+.g-stflow-steps .g-stbox:nth-last-child(2)::after { content: none !important; }
+.g-stlist-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--black); margin-bottom: 4px; }
+@media (max-width: 1100px) { .g-stflow { grid-template-columns: minmax(0, 1fr); gap: 8px; } .g-stflow-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); } .g-stflow-steps .g-stbox::after { content: none !important; } }
+@media (max-width: 600px) { .g-stflow-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } .g-stbox-n { font-size: 20px; } }
