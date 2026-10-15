@@ -57,6 +57,7 @@ inf/i-strat.js
 inf/i-tree.js
 inf/h-hub.js
 inf/h-ap.js
+inf/h-stat.js
 inf_insta/g-core.js
 inf_insta/g-find.js
 inf_insta/g-list.js

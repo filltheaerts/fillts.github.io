@@ -4,4 +4,4 @@
   var m = (location.hash || '').slice(1).split('/')[0];
   if (['find', 'list', 'pipe', 'done', 'mail', 'algo', 'celeb', 'strat', 'tree', 'plan', 'c'].indexOf(m) >= 0) location.replace('/inf_youtube/' + location.hash);
 })();
-window.HR_APP = { id: 'inf', title: 'fillts Influencer', home: 'ap', lite: true, menus: ['ap', 'home', 'picks'] };
+window.HR_APP = { id: 'inf', title: 'fillts Influencer', home: 'ap', lite: true, menus: ['ap', 'home', 'stat'] };
