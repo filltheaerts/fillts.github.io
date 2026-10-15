@@ -246,3 +246,11 @@ button.mx-chip { cursor: pointer; }
 /* 열람 권한(view)만 있는 계정: 쓰기 버튼 숨김 — 실제 차단은 서버 규칙 */
 .mx-ro .mx-head-right, .mx-ro .mx-add, .mx-ro .mx-task-add, .mx-ro .mx-pjb-act, .mx-ro .mx-task-act, .mx-ro .mx-edit, .mx-ro .mx-like, .mx-ro .sm-actions .btn:first-child, .mx-ro .mx-worksec { display: none !important; }
 .mx-newver { font: inherit; font-size: 11px; font-weight: 600; padding: 5px 10px; border: 1px solid var(--red); color: var(--red); background: var(--paper); cursor: pointer; margin-right: 8px; }
+
+/* 끌어서 순서 바꾸기 */
+.mx-grip { flex: none; cursor: grab; touch-action: none; user-select: none; color: var(--gray-400); font-size: 15px; line-height: 1; padding: 3px 4px; margin-left: -4px; }
+.mx-grip:hover { color: var(--black); }
+.mx-sorting, .mx-sorting * { cursor: grabbing !important; user-select: none; }
+.mx-dragging { background: var(--gray-100) !important; outline: 1px dashed var(--gray-400); position: relative; z-index: 2; }
+.mx-pjb-sublist .mx-grip { margin-top: 1px; }
+body.mx-ro .mx-grip { display: none; }
