@@ -1794,3 +1794,4 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   .ws-psub .ws-ptitle { flex: 1 1 0; }
   .ws-psub > span:empty { display: none; }
 }
+.ws-phead-check { min-width: 24px; text-align: center; }
