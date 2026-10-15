@@ -7,7 +7,10 @@
   var dir = (location.pathname.match(/^\/([a-z0-9]+)\//) || [0, 'hr'])[1];
   if (!firebase.apps.length) firebase.initializeApp(window.FILLTS_FIREBASE);   // 화면 코드보다 먼저 auth를 써야 하므로 여기서 초기화 (261014)
   var auth = firebase.auth(), started = false;
-  function toHr() {
+  function toHr(why) {
+    // 무한 왕복 방지 (261015): HR이 30초 안에 이리 보냈는데 또 HR로 보내야 하면 멈추고 이유를 보여 준다
+    var jumped = 0; try { jumped = +sessionStorage.getItem('hrNextJump') || 0; } catch (e) { /* 무시 */ }
+    if (Date.now() - jumped < 30000) { fail(why + ' — HR로 다시 보내지 않고 멈췄습니다. 상단 주소 /hr/ 에서 로그인 상태를 확인한 뒤 다시 열어 주세요'); return; }
     try { localStorage.setItem('hrNext', JSON.stringify({ to: location.pathname + (location.hash || ''), at: Date.now() })); } catch (e) { /* 무시 */ }
     location.replace('/hr/');
   }
@@ -26,7 +29,9 @@
   }
   auth.onAuthStateChanged(function (u) {
     if (started) return;
-    if (!u || !u.emailVerified || (OWNER_ONLY && (u.email || '').toLowerCase() !== OWNER_ONLY && !LOCK_FREE[dir])) { toHr(); return; }
+    if (!u) { toHr('이 창에서 로그인 상태를 찾지 못했습니다'); return; }
+    if (!u.emailVerified) { toHr('이메일 인증이 끝나지 않은 계정입니다'); return; }
+    if (OWNER_ONLY && (u.email || '').toLowerCase() !== OWNER_ONLY && !LOCK_FREE[dir]) { toHr('검토 기간이라 이 화면은 대표 계정만 열립니다'); return; }
     started = true;
     u.getIdToken().then(function (t) {
       return fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ app: dir }) });

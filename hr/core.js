@@ -699,7 +699,12 @@
     // /mkt 등 다른 화면에서 로그인하러 왔으면 로그인 직후 그 화면으로 돌려보낸다 (15분 안, 같은 사이트 경로만)
     try {
       var nx = JSON.parse(localStorage.getItem('hrNext') || 'null'); localStorage.removeItem('hrNext');
-      if (nx && /^\/mkt\/[#a-z\/]*$/.test(nx.to) && Date.now() - nx.at < 15 * 60000) { location.replace(nx.to); return; }
+      if (nx && /^\/mkt\/[#a-z\/]*$/.test(nx.to) && Date.now() - nx.at < 15 * 60000) {
+        // 무한 왕복 방지 (261015): 30초 안에 이미 한 번 보냈는데 또 돌아왔으면 /mkt가 못 연 것 → HR에 머물고 알린다
+        var jumped = 0; try { jumped = +sessionStorage.getItem('hrNextJump') || 0; } catch (e2) { /* 무시 */ }
+        if (Date.now() - jumped > 30000) { try { sessionStorage.setItem('hrNextJump', String(Date.now())); } catch (e2) { /* 무시 */ } location.replace(nx.to); return; }
+        setTimeout(function () { toast('Marketing 화면을 열지 못해 HR에 머뭅니다 — 상단 ↻ 새로고침 뒤 다시 열어 보고, 계속되면 관리자에게 알려 주세요.'); }, 800);
+      }
     } catch (e) { /* 무시 */ }
     stopAll();
     S.mid = hu.memberId; S.role = hu.role || 'employee'; S.apps = hu.apps || {};
