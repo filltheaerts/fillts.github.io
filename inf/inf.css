@@ -608,3 +608,10 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
   .g-stat th[scope=row] small { display: none; }
   .g-stat td.num { width: auto; }
 }
+
+/* 유튜브 리스트 — 소구점별 묶음 머리줄 · ✎ 소구점 고치기 줄 (i-list.js) */
+.in-apgrp { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; border-top: 1px solid var(--gray-200); background: var(--gray-100); flex-wrap: wrap; }
+.in-apgrp > b { font-size: 14px; }
+.in-apgrp .meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.in-apedit { border-top: 1px dashed var(--gray-200); background: var(--paper); }
+.in-r-tags .g-apcell .in-chip { font-size: 11px; }
