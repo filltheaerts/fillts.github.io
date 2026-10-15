@@ -536,3 +536,30 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 @media (max-width: 720px) { .g-apgrid { grid-template-columns: minmax(0, 1fr); } }
 /* 로고 플랫폼 표기 — Influencer 오른쪽 위 TM처럼 작게 */
 .logo-tm { font-size: 8px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: super; line-height: 0; margin-left: 2px; color: var(--gray-600); }
+
+/* 소구점 — 한 줄 가로 행 (Map 형식) · 기본 접힘, 행 클릭 또는 모두 펼치기로 세부 */
+.g-aprows { list-style: none; margin: 12px 0 0; padding: 0; border-top: 2px solid var(--black); }
+.g-aprow, .g-aprow-form { border-bottom: 1px solid var(--gray-200); }
+.g-aprow-form .g-apform { margin: 12px 0; }
+.g-aprow-line { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: 28px 190px minmax(0, 1fr) auto 16px; gap: 20px; align-items: center; padding: 14px 4px; }
+.g-aprow-line:hover { background: var(--gray-50, #fafafa); }
+.g-aprow-line:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+.g-aprow-no { font-size: 11px; color: var(--gray-400); font-variant-numeric: tabular-nums; }
+.g-aprow-id { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.g-aprow .g-apname { font-size: 15px; font-weight: 600; }
+.g-aprow-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.g-aprow .g-apmsg { font-size: 14px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-apwho { font-size: 12px; color: var(--gray-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-aprow-arr { font-size: 12px; color: var(--gray-400); }
+.g-aprow.open .g-aprow-line { background: var(--gray-50, #fafafa); }
+.g-aprow.open .g-apmsg, .g-aprow.open .g-apwho { white-space: normal; }
+.g-aprow-more { display: flex; flex-direction: column; gap: 8px; padding: 4px 4px 16px 48px; }
+.g-apkv { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.g-apkv .label { margin: 0; }
+@media (max-width: 760px) {
+  .g-aprow-line { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .g-aprow-no, .g-aprow-arr { display: none; }
+  .g-aprow-body { grid-column: 1 / -1; grid-row: 2; }
+  .g-aprow-more { padding-left: 4px; }
+  .g-apkv { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
