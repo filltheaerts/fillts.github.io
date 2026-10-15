@@ -671,3 +671,21 @@ body.in-pl-dragging, body.in-pl-dragging * { cursor: grabbing !important; user-s
 .nav-links a.nav-ap { font-weight: 600; }
 @media (min-width: 900px) { .nav-links li:has(> a.nav-ap) { margin-right: 6px; padding-right: 14px; border-right: 1px solid var(--gray-200); } }
 .g-apshared b { color: var(--red, #c8102e); }
+
+/* 실행안 맨 위 「전략 요약」 (i-strat.js I.stratBox) — 탭마다 접힘 · 핵심 한 줄 · 「+ 실행안」 */
+.in-pls { background: var(--paper); border: 1px solid var(--gray-200); border-left: 3px solid #1a56db; padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.in-pls-tab { border-top: 1px solid var(--gray-200); }
+.in-pls-tab > summary { cursor: pointer; padding: 10px 0; display: flex; gap: 10px; align-items: baseline; list-style: none; }
+.in-pls-tab > summary::-webkit-details-marker { display: none; }
+.in-pls-tab > summary::before { content: '▸'; color: var(--gray-400); width: 10px; }
+.in-pls-tab[open] > summary::before { content: '▾'; }
+.in-pls-body { padding: 0 0 14px 20px; display: flex; flex-direction: column; gap: 12px; }
+.in-pls-st { font-size: 11px; color: var(--gray-600); margin-bottom: 4px; }
+.in-pls-sec ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.in-pls-sec li { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; }
+.in-pls-sec li.on .in-pls-k { color: #1a56db; }
+.in-pls-k { flex: 1; min-width: 0; }
+.in-pls-add { border: 1px solid var(--gray-200); background: none; font: inherit; font-size: 11px; padding: 1px 8px; cursor: pointer; color: var(--gray-600); opacity: 0; flex: none; }
+.in-pls-sec li:hover .in-pls-add, .in-pls-add:focus { opacity: 1; }
+.in-pls-add:hover { color: #1a56db; border-color: #1a56db; }
+@media (hover: none) { .in-pls-add { opacity: 1; } }
