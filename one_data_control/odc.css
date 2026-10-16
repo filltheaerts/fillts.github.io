@@ -19,7 +19,12 @@
 .odc-lv { display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--gray-400); }
 .odc-lv-err { background: var(--red); border-color: var(--red); color: #fff; }
 .odc-lv-warn { border-color: var(--red); color: var(--red); }
-.odc-table td { vertical-align: top; font-size: 13px; line-height: 1.55; }
+.odc-table { width: 100%; table-layout: auto; }
+.odc-table td, .odc-table th { white-space: normal; vertical-align: top; font-size: 13px; line-height: 1.55; }
+.odc-table td:first-child { min-width: 240px; word-break: keep-all; overflow-wrap: anywhere; }
+.odc-table td:last-child { width: 1%; }
+.odc-table td:nth-child(3) { min-width: 84px; }
+.odc-lock { font-size: 11px; color: var(--gray-600); border: 1px dashed var(--gray-400); padding: 3px 8px; white-space: nowrap; display: inline-block; }
 .odc-table .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .odc-table tr.off td { color: var(--gray-400); }
 .odc-sw { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--black); cursor: pointer; padding: 0; background: none; font-family: inherit; }
