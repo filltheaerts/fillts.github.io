@@ -286,3 +286,43 @@
 .odc-cb-none { margin: 0; padding: 14px; font-size: 12px; color: var(--gray-400); }
 @media (max-width: 1100px) { .odc-cb { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .odc-cb { grid-template-columns: 1fr; } }
+/* 현황 (#vi) — 다섯 줄 비교 · 접기 (261016) */
+.cx-wrap { overflow-x: auto; border: 1px solid var(--gray-200); background: var(--paper); }
+.cx { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cx th { font-size: 11px; font-weight: 500; color: var(--gray-600); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+.cx td { padding: 12px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+.cx .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cx th.n { text-align: right; }
+.cx-row { cursor: pointer; }
+.cx-row:hover td { background: var(--gray-100); }
+.cx-row.open td { background: var(--gray-100); border-bottom-color: transparent; }
+.cx-row.bench { cursor: default; }
+.cx-row.bench:hover td { background: none; }
+.cx-row.bench td { color: var(--gray-600); }
+.cx-row.bench + .cx-row.bench td, .cx-row:not(.bench) + .cx-row.bench td { border-top: 1px dashed var(--gray-200); }
+.cx-name { display: flex; gap: 8px; align-items: flex-start; min-width: 240px; }
+.cx-name b { display: block; font-size: 15px; font-weight: 600; color: var(--black); }
+.cx-name small { display: block; font-size: 11px; color: var(--gray-600); margin-top: 2px; max-width: 320px; word-break: keep-all; }
+.cx-tg { width: 12px; flex: none; color: var(--gray-600); padding-top: 2px; }
+.cx-sp { width: 160px; }
+.cx-detrow > td { background: var(--gray-100); padding: 0 16px 16px 32px; }
+.cx-det { background: var(--paper); border: 1px solid var(--gray-200); padding: 14px 16px; }
+.cx-chars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--gray-200); }
+.cx-chars > div { padding: 8px 12px; border-left: 1px solid var(--gray-200); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cx-chars > div:first-child { border-left: none; }
+.cx-chars span { font-size: 11px; color: var(--gray-600); }
+.cx-chars b { font-size: 14px; font-weight: 600; word-break: keep-all; }
+.cx-note { margin: 8px 0 14px; }
+.cx-fold { border: 1px solid var(--gray-200); background: var(--paper); padding: 10px 14px; margin: 0 0 10px; font-size: 13px; }
+.cx-fold summary { cursor: pointer; color: var(--gray-800); }
+.cx-fold ul { margin: 10px 0 2px; }
+.cx-fold > ul:not(.vx-voices) { padding-left: 18px; color: var(--gray-600); font-size: 12px; }
+@media (max-width: 760px) { .cx-chars { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cx-detrow > td { padding: 0 8px 12px; } }
+/* 수익률 › 실제 vs 규칙대로 — PC 한 줄 5칸, 좁으면 3 + 2 (261016) */
+.pf-cards.pf-cards5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .pf-cards.pf-cards5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .pf-cards.pf-cards5 { grid-template-columns: minmax(0, 1fr); } }
+/* 수익률 › 실제 vs 규칙대로 — PC 한 줄 5칸, 좁으면 3 + 2 (261016) */
+.pf-cards.pf-cards5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .pf-cards.pf-cards5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .pf-cards.pf-cards5 { grid-template-columns: minmax(0, 1fr); } }
