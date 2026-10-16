@@ -118,3 +118,13 @@
 .odc-core-form { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; max-width: 980px; }
 .odc-core-ta { flex: 1; font: inherit; font-size: 13px; line-height: 1.5; padding: 8px 10px; border: 1px solid var(--gray-400); resize: vertical; min-height: 40px; background: var(--paper); }
 @media (max-width: 760px) { .odc-core { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; } .odc-core-rank { font-size: 22px; } .odc-core-form { flex-direction: column; align-items: stretch; } }
+.odc-core-kind { font-size: 11px; font-weight: 600; padding: 2px 7px; border: 1px solid var(--gray-400); color: var(--gray-800); white-space: nowrap; }
+.odc-core-kind.one { background: var(--black); border-color: var(--black); color: #fff; }
+.odc-core-subs { margin: 10px 0 0; max-width: 980px; }
+.odc-core-subs ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.odc-core-subs li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 14px; line-height: 1.6; }
+.odc-core-subs .ck { width: 14px; height: 14px; border: 1px solid var(--gray-400); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; }
+.odc-core-subs li.ok .ck { background: var(--black); border-color: var(--black); color: #fff; }
+.odc-core-subs li.ok .t { color: var(--gray-400); text-decoration: line-through; }
+.odc-core-subs .d { font-size: 12px; color: var(--gray-600); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-core-subs .d.red { color: var(--red); font-weight: 600; }
