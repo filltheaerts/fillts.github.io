@@ -1,0 +1,9 @@
+/* fillts One Data Dashboard — 대시보드 HTML을 화면 가득 */
+.odd-page .main { max-width: none; padding: 0; }
+.odd-page .main > * + * { margin-top: 0; }
+.odd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px var(--gutter); border-bottom: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-600); }
+.odd-bar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--gray-400); background: #fff; color: var(--black); }
+.odd-bar button, .odd-bar a { font: inherit; font-size: 12px; border: 1px solid var(--gray-400); background: none; padding: 4px 10px; cursor: pointer; color: var(--gray-800); text-decoration: none; }
+.odd-bar .sp { flex: 1 1 auto; }
+.odd-frame { display: block; width: 100%; height: calc(100dvh - 72px - 41px); border: 0; background: #0a0e17; }
+.odd-msg { padding: 48px var(--gutter); }
