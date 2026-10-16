@@ -19,7 +19,8 @@
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
-    { id: 'vgv', name: 'VINEGRAPHY View', path: '/vinegraphy_view/', viewOnly: true, desc: '바인그라피 보기 전용 — 브랜드 · 클렌징 젤 제품 사양 · 상세페이지 · 소구점 요약 (수정 불가)' }
+    { id: 'vgv', name: 'VINEGRAPHY View', path: '/vinegraphy_view/', viewOnly: true, desc: '바인그라피 보기 전용 — 브랜드 · 클렌징 젤 제품 사양 · 상세페이지 · 소구점 요약 (수정 불가)' },
+    { id: 'odc', name: '필츠원', path: '/one_data_control/', adminOnly: true, desc: 'One Data Control — 자동화 결과 피드 · 항목별 켜기/끄기 · 한판 정리 (관리자 전용)' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
@@ -47,7 +48,8 @@
   HR.appInfo = function (id) { return APPS.filter(function (a) { return a.id === id; })[0] || null; };
   HR.appLevel = function (app) {
     var a = HR.appInfo(app);
-    if (app !== 'hr' && ((ownerLocked() && !LOCK_FREE[app]) || S.viewAsStaff)) return '';   // 「사원처럼 보기」 = 앱 권한 없는 일반 구성원 화면
+    if (app !== 'hr' && ((ownerLocked() && !LOCK_FREE[app]) || S.viewAsStaff)) return '';
+    if (a && a.adminOnly) return (S.viewMid ? S.isAdmin : S.realAdmin) ? 'edit' : '';   // 관리자 전용 앱 — 계정별 권한으로 열 수 없다   // 「사원처럼 보기」 = 앱 권한 없는 일반 구성원 화면
     if (app !== 'hr' && !LOCK_FREE[app] && S.viewMid && OWNER_ONLY && (S.viewEmail || '').toLowerCase() !== OWNER_ONLY) return '';   // 그 사람도 잠금 대상
     if ((S.viewMid ? S.isAdmin : S.realAdmin) || (a && a.open && !(OWNER_ONLY && LOCK_FREE[app])) || app === 'map') return 'edit';   // 잠금 중 예외 앱은 「구성원 전원」이어도 받은 사람만
     return (S.apps || {})[app] || '';
