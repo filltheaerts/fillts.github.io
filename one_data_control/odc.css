@@ -61,3 +61,28 @@
 .odc-live-mem { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
 .odc-live-mem .k { font-size: 11px; color: var(--gray-600); margin-right: 4px; }
 .odc-live-how { margin: 6px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; }
+.odc-datebar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.odc-date { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--gray-400); background: var(--paper); }
+.odc-vcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.odc-vcard { border: 1px solid var(--gray-200); padding: 12px 14px; min-width: 0; }
+.odc-vcard .hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.odc-vcard .who { font-weight: 600; font-size: 15px; }
+.odc-vcard .role { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+.odc-vcard .say { font-size: 13px; line-height: 1.6; margin: 8px 0 0; overflow-wrap: anywhere; }
+.odc-say { font-size: 14px; font-weight: 600; line-height: 1.6; margin: 0 0 4px; }
+.odc-spark { display: block; overflow: visible; }
+.odc-spark .ln { fill: none; stroke: var(--black); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.odc-spark .base { stroke: var(--gray-400); stroke-width: 1; stroke-dasharray: 2 3; }
+.odc-spark .end { fill: var(--black); stroke: var(--paper); stroke-width: 1.5; }
+.odc-spark .hit { fill: transparent; }
+.odc-spark .hit:hover { fill: rgba(0, 0, 0, .06); }
+.odc-holds { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.odc-hold summary { cursor: pointer; font-size: 13px; }
+.odc-seen { display: flex; gap: 2px; }
+.odc-seen i { width: 9px; height: 14px; display: block; }
+.odc-seen i.y { background: var(--black); }
+.odc-seen i.n { border: 1px solid var(--red); }
+.odc-seen i.w { background: var(--gray-200); }
+.odc-table .red { color: var(--red); }
+.tab-head:has(.odc-datebar) { flex-wrap: wrap; gap: 12px; }
+.odc-datebar { flex-wrap: nowrap; }
