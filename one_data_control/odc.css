@@ -57,3 +57,7 @@
   .odc-tl .bt { grid-column: 2; text-align: left; }
   .odc-hide-m { display: none; }
 }
+.odc-live-act { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.odc-live-mem { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+.odc-live-mem .k { font-size: 11px; color: var(--gray-600); margin-right: 4px; }
+.odc-live-how { margin: 6px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; }
