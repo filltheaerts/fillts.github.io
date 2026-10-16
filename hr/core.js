@@ -203,7 +203,9 @@
   };
   HR.unitText = function (l) { return l.unit === 'am' ? '오전 반차' : l.unit === 'pm' ? '오후 반차' : l.unit === 'hours' ? (l.hours + '시간') : ''; };
   HR.myOnes = function () {
-    var all = S.isAdmin ? S.onesAll : S.onesM.concat(S.onesL), seen = {};
+    // 실제 관리자는 화면 모드와 관계없이 전체를 받아 둔다 — 사용자 모드에서는 내가 리더·구성원인 것만
+    var all = S.realAdmin && !S.viewMid ? (S.isAdmin ? S.onesAll : S.onesAll.filter(function (o) { return o.memberId === S.mid || o.leaderId === S.mid; }))
+      : S.onesM.concat(S.onesL), seen = {};
     return all.filter(function (o) { if (seen[o.id]) return false; seen[o.id] = 1; return true; })
       .sort(function (a, b) { return (a.date + (a.time || '')) < (b.date + (b.time || '')) ? 1 : -1; });
   };
@@ -773,12 +775,14 @@
       sub(db.collection('hr_ot').where('memberId', '==', S.mid), function (s) { S.ots = HR.rows(s); });
     }
     if (S.isAdmin) {
-      sub(db.collection('hr_11'), function (s) { S.onesAll = HR.rows(s); });
       sub(db.collection('hr_pay'), function (s) { S.pay = {}; HR.rows(s).forEach(function (p) { S.pay[p.id] = p; }); });
       sub(db.collection('hr_users'), function (s) { S.users = {}; HR.rows(s).forEach(function (u) { S.users[u.id] = u; }); });
       sub(db.collection('hr_invites'), function (s) { S.invites = {}; HR.rows(s).forEach(function (i) { S.invites[i.id] = i; }); });
       sub(db.doc('hr_status/main'), function (s) { S.status = s.exists ? s.data() : null; });
-    } else {
+    }
+    // 원온원: 관리자 ↔ 사용자 모드를 오가도 목록이 비지 않게 실제 권한 기준으로 구독한다
+    if (S.realAdmin && !S.viewMid) sub(db.collection('hr_11'), function (s) { S.onesAll = HR.rows(s); });
+    else {
       sub(db.collection('hr_11').where('memberId', '==', S.mid), function (s) { S.onesM = HR.rows(s); });
       if (S.isLead) sub(db.collection('hr_11').where('leaderId', '==', S.mid), function (s) { S.onesL = HR.rows(s); });
     }
