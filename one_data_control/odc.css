@@ -86,3 +86,7 @@
 .odc-table .red { color: var(--red); }
 .tab-head:has(.odc-datebar) { flex-wrap: wrap; gap: 12px; }
 .odc-datebar { flex-wrap: nowrap; }
+.odc-au td { vertical-align: top; }
+.odc-au .odc-au-topic { min-width: 220px; max-width: 340px; word-break: keep-all; overflow-wrap: anywhere; }
+.odc-au .odc-au-sum { min-width: 280px; font-size: 12px; color: var(--gray-800); line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .odc-au .odc-au-topic, .odc-au .odc-au-sum { min-width: 0; } }
