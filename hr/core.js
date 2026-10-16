@@ -354,7 +354,7 @@
     'auth/weak-password': '비밀번호는 10자 이상으로 정하세요.', 'auth/too-many-requests': '시도가 너무 많습니다. 잠시 후 다시 시도하세요.',
     'auth/network-request-failed': '네트워크 연결을 확인하세요.',
     'auth/unauthorized-domain': '이 주소(fillts.com)가 로그인 허용 도메인에 아직 등록되지 않았습니다. 관리자에게 알려 주세요.',
-    'auth/operation-not-allowed': '이 로그인 방식이 아직 켜져 있지 않습니다. 이메일로 로그인하세요.',
+    'auth/operation-not-allowed': '이메일 가입·로그인은 꺼져 있습니다. Google(회사 계정)로 로그인하세요.',
     'auth/popup-blocked': '브라우저가 로그인 창을 막았습니다. 다시 한 번 누르거나, 설정에서 팝업 차단을 끈 뒤 시도하세요.',
     'auth/web-storage-unsupported': '이 브라우저 설정(쿠키·저장소 차단)으로는 Google 로그인이 안 됩니다. Safari·Chrome 기본 브라우저로 열어 주세요.'
   };
