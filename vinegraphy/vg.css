@@ -316,3 +316,13 @@ body.vg-dragging, body.vg-dragging * { cursor: grabbing !important; user-select:
   .vg-ig-row { grid-template-columns: 28px minmax(0, 1fr); gap: 8px 10px; }
   .vg-ig-body { grid-column: 2; }
 }
+
+/* 상자 접기 (261019) — 우측 상단 버튼, 접으면 제목 줄만 */
+.vg-fold-r { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.vg-fold { flex: none; height: 26px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--vg-wine); background: var(--paper); border: 1px solid var(--vg-lilac); cursor: pointer; white-space: nowrap; }
+.vg-fold:hover { background: var(--vg-wine); border-color: var(--vg-wine); color: #fff; }
+.vg-kw-group .vg-fold { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.vg-kw-group .vg-fold:hover { background: #fff; color: var(--vg-deep); }
+.vg-group.vg-folded > :not(.vg-group-head) { display: none !important; }
+.vg-group.vg-folded { padding-bottom: 18px; }
+@media (max-width: 760px) { .vg-fold-r { flex-wrap: wrap; justify-content: flex-end; } }
