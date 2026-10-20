@@ -1847,3 +1847,45 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   .table-wrap > .table th:first-child, .table-wrap > .table tr:not(.weekrow) > td:first-child { position: sticky; left: 0; z-index: 1; background: var(--paper); box-shadow: 1px 0 0 var(--gray-200); }
   .table-wrap > .table tr.clickable:hover > td:first-child { background: var(--gray-100); }
 }
+
+/* WORK › 노션 스케줄 가져오기 (261020) — 연결 줄 · 팝업 · N 배지 */
+.ws-flag.fl-notion { background: var(--black); border-color: var(--black); color: #fff; }
+.ws-notion-btn::before { content: 'N'; display: inline-block; font-weight: 700; font-size: 10px; line-height: 1; padding: 2px 4px; margin-right: 6px; background: var(--black); color: #fff; vertical-align: 1px; }
+.ws-notion-strip { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; }
+.ws-notion-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--gray-200); border-left: 3px solid var(--black); padding: 10px 12px; }
+.ws-notion-row.err { border-left-color: var(--red); }
+.ws-notion-row.err .meta { color: var(--red); }
+.ws-notion-row.note { margin: 4px 0 12px; }
+.ws-notion-n { flex: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: var(--black); color: #fff; font-weight: 700; font-size: 12px; }
+.ws-notion-text { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.ws-notion-text b { font-weight: 600; font-size: 13px; }
+.ws-notion-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.nt-panel { width: min(760px, 100%); border-top-color: var(--black); }
+.nt-panel .sm-kicker { color: var(--black); }
+.nt-urlrow { display: flex; gap: 8px; }
+.nt-url { flex: 1; min-width: 0; }
+.nt-body { display: flex; flex-direction: column; gap: 10px; }
+.nt-body:empty { display: none; }
+.nt-sum { margin: 0; font-size: 14px; }
+.nt-warn { margin: 0; color: var(--red); font-size: 12px; }
+.nt-shapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; }
+.nt-shape { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: start; border: 1px solid var(--gray-200); padding: 8px 10px; cursor: pointer; }
+.nt-shape input { grid-row: span 2; margin-top: 3px; }
+.nt-shape.on { border-color: var(--black); box-shadow: inset 0 0 0 1px var(--black); }
+.nt-groups { display: flex; flex-direction: column; gap: 6px; }
+.nt-group { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 8px; align-items: center; }
+.nt-props { display: flex; flex-direction: column; border: 1px solid var(--gray-200); }
+.nt-prop { display: grid; grid-template-columns: 1fr auto minmax(170px, 220px); gap: 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--gray-200); }
+.nt-prop:first-child { border-top: 0; }
+.nt-pname { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nt-pname .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-arrow { color: var(--gray-600); }
+.nt-fixed { font-size: 13px; }
+.nt-preview { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+.nt-ptop { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nt-preview ul { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: var(--gray-600); }
+@media (max-width: 760px) {
+  .nt-prop { grid-template-columns: 1fr; gap: 4px; }
+  .nt-arrow { display: none; }
+  .nt-urlrow { flex-direction: column; }
+}
