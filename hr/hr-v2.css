@@ -1909,3 +1909,13 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   .tl-bar.tl-subbar { font-size: 12px; font-weight: 500; top: 50%; bottom: auto; height: 24px; }
   .tl-bar-out.sub { font-size: 12px; color: var(--gray-800); }
 }
+
+/* WORK 타임라인 — 왼쪽 목록 글씨 키움 (PC, 261020): 이름 · 날짜 줄 · 서브 버튼 */
+@media (min-width: 761px) {
+  .tl-label .tl-name { font-size: 14px; }
+  .tl-subname-t { font-size: 13.5px; }
+  .tl-sub, .tl-subdesc { font-size: 12.5px; }
+  .tl-subtoggle, .tl-subadd, .tl-subsort { font-size: 11.5px; padding-top: 1px; padding-bottom: 1px; }
+  .tl-head .tl-label, .tl-month { font-size: 12.5px; }
+  .tl-group .tl-label { font-size: 14px; }
+}
