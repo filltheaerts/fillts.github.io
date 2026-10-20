@@ -1919,3 +1919,7 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
   .tl-head .tl-label, .tl-month { font-size: 12.5px; }
   .tl-group .tl-label { font-size: 14px; }
 }
+
+/* WORK 타임라인 — 짧은 막대 이름표를 막대 끝(오른쪽)이 아니라 시작점부터, 글씨는 검은색 그대로 (261020) */
+.tl-track .tl-bar-out { margin-left: 0; padding-left: 6px; color: var(--black); cursor: pointer; z-index: 3 !important; }
+.tl-track .tl-bar-out.sub { color: var(--black); }
