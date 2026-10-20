@@ -19,6 +19,7 @@
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
+    { id: 'vgcrm', name: 'VINEGRAPHY CRM', path: '/vinegraphy_crm/', desc: '바인그라피 재구매 CRM — 플랫폼 · 알림톡 · 고객별 메시지 순서(첫 구매 → 두 번째 구매)' },
     { id: 'vgv', name: 'VINEGRAPHY View', path: '/vinegraphy_view/', viewOnly: true, desc: '바인그라피 보기 전용 — 브랜드 · 클렌징 젤 제품 사양 · 상세페이지 · 소구점 요약 (수정 불가)' },
     { id: 'odc', name: '필츠원', path: '/one_data_control/', adminOnly: true, desc: 'One Data Control — 자동화 결과 피드 · 항목별 켜기/끄기 · 한판 정리 (관리자 전용)' }
   ];

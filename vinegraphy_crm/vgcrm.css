@@ -1,0 +1,95 @@
+/* VINEGRAPHY CRM — 화면 스타일 (내용은 비공개 vgcrm.js) */
+.vc-lead { font-size: 14px; line-height: 1.75; margin: 4px 0 18px; max-width: 860px; color: var(--gray-800); }
+.vc-lead b { font-weight: 600; }
+.vc-sec { margin: 28px 0 10px; font-size: 15px; font-weight: 600; }
+.vc-sec small { font-weight: 400; color: var(--gray-600); margin-left: 8px; font-size: 12px; }
+.vc-note { font-size: 12px; line-height: 1.6; color: var(--gray-600); margin: 8px 0 0; }
+.vc-red { color: var(--red); }
+
+/* 원칙 카드 */
+.vc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.vc-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vc-card { border: 1px solid var(--gray-200); background: var(--paper); padding: 16px 18px; min-width: 0; }
+.vc-card-n { font-size: 11px; font-weight: 600; color: var(--red); letter-spacing: .04em; }
+.vc-card-t { font-size: 15px; font-weight: 600; margin: 6px 0 8px; line-height: 1.45; }
+.vc-card-d { font-size: 13px; line-height: 1.7; color: var(--gray-800); margin: 0; }
+.vc-card ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.vc-card.dark { background: var(--black); color: var(--white); border-color: var(--black); }
+.vc-card.dark .vc-card-d, .vc-card.dark li { color: var(--gray-200); }
+
+/* 고객 탭 */
+.vc-tabs { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--gray-200); margin: 6px 0 18px; }
+.vc-tabs a { flex: 1 1 auto; padding: 11px 14px; font-size: 13px; text-align: center; border-left: 1px solid var(--gray-200); color: var(--gray-800); text-decoration: none; white-space: nowrap; }
+.vc-tabs a:first-child { border-left: none; }
+.vc-tabs a.active { background: var(--black); color: var(--white); font-weight: 600; }
+.vc-tabs a:hover:not(.active) { background: var(--gray-100); }
+.vc-tabs .vc-tabs-sep { flex: 0 0 auto; padding: 11px 10px; font-size: 11px; color: var(--gray-400); border-left: 1px solid var(--gray-200); align-self: center; }
+
+/* 대상 상자 */
+.vc-who { border-left: 3px solid var(--red); background: var(--gray-100); padding: 12px 16px; margin: 0 0 18px; font-size: 13px; line-height: 1.7; }
+.vc-who b { font-weight: 600; }
+
+/* 순서 (타임라인) */
+.vc-flow { list-style: none; margin: 0; padding: 0; position: relative; }
+.vc-flow::before { content: ''; position: absolute; left: 47px; top: 6px; bottom: 6px; width: 1px; background: var(--gray-200); }
+.vc-step { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; margin: 0 0 14px; position: relative; }
+.vc-day { align-self: start; text-align: center; background: var(--paper); position: relative; z-index: 1; padding: 6px 0; border: 1px solid var(--black); }
+.vc-day b { display: block; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vc-day span { display: block; font-size: 10px; color: var(--gray-600); margin-top: 2px; line-height: 1.3; }
+.vc-step.ad .vc-day { border-color: var(--red); }
+.vc-step.ad .vc-day b { color: var(--red); }
+.vc-step.stop .vc-day { border-style: dashed; border-color: var(--gray-400); }
+.vc-box { border: 1px solid var(--gray-200); background: var(--paper); padding: 14px 16px; min-width: 0; }
+.vc-box-h { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; justify-content: space-between; }
+.vc-box-t { font-size: 15px; font-weight: 600; line-height: 1.45; }
+.vc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vc-chip { display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border: 1px solid var(--gray-400); color: var(--gray-800); white-space: nowrap; }
+.vc-chip.at { background: var(--black); border-color: var(--black); color: var(--white); }
+.vc-chip.bm { border-color: var(--red); color: var(--red); }
+.vc-chip.ad { background: var(--red); border-color: var(--red); color: var(--white); }
+.vc-chip.info { border-color: var(--black); color: var(--black); }
+.vc-chip.mute { color: var(--gray-600); border-style: dashed; }
+.vc-kv { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 12px; margin: 10px 0 0; font-size: 13px; line-height: 1.65; }
+.vc-kv dt { color: var(--gray-600); font-size: 12px; padding-top: 1px; }
+.vc-kv dd { margin: 0; }
+.vc-msg { margin: 12px 0 0; border: 1px solid var(--gray-200); background: var(--gray-100); }
+.vc-msg-h { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--gray-200); font-size: 11px; color: var(--gray-600); }
+.vc-msg pre { margin: 0; padding: 12px 14px; font-family: var(--font-sans); font-size: 13px; line-height: 1.75; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.vc-copy { border: 1px solid var(--gray-400); background: var(--paper); font-size: 11px; padding: 3px 9px; cursor: pointer; font-family: inherit; }
+.vc-copy:hover { border-color: var(--black); }
+.vc-copy.done { border-color: var(--red); color: var(--red); }
+
+/* 표 */
+.vc-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--paper); }
+.vc-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--gray-600); padding: 9px 12px; border-bottom: 1px solid var(--black); white-space: nowrap; }
+.vc-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: top; line-height: 1.6; }
+.vc-table td.n { white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vc-table tr.pick td { background: var(--gray-100); }
+.vc-table tr.pick td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.vc-wrap { overflow-x: auto; border: 1px solid var(--gray-200); }
+.vc-wrap .vc-table { min-width: 720px; }
+
+/* 전체 지도 */
+.vc-map { display: grid; grid-template-columns: 96px repeat(3, minmax(0, 1fr)) 116px; border: 1px solid var(--gray-200); font-size: 12px; background: var(--paper); min-width: 860px; }
+.vc-map > div { padding: 8px 10px; border-left: 1px solid var(--gray-100); border-top: 1px solid var(--gray-100); line-height: 1.5; min-width: 0; }
+.vc-map .h { font-weight: 600; font-size: 11px; color: var(--gray-600); background: var(--gray-100); border-top: none; }
+.vc-map .r { font-weight: 600; border-left: none; }
+.vc-map .c { display: block; margin: 0 0 4px; padding: 3px 6px; border: 1px solid var(--gray-200); }
+.vc-map .c.at { border-color: var(--black); }
+.vc-map .c.bm { border-color: var(--red); color: var(--red); }
+.vc-map .c.cp { background: var(--red); border-color: var(--red); color: var(--white); }
+
+/* 출처 */
+.vc-src { margin: 6px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: var(--gray-600); }
+.vc-src a { color: var(--gray-800); word-break: break-all; }
+.vc-cite { font-size: 11px; color: var(--gray-600); }
+.vc-cite a { color: var(--gray-600); }
+
+@media (max-width: 860px) {
+  .vc-grid, .vc-grid.two { grid-template-columns: 1fr; }
+  .vc-step { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+  .vc-flow::before { left: 34px; }
+  .vc-tabs a { flex: 1 1 45%; border-top: 1px solid var(--gray-200); }
+  .vc-kv { grid-template-columns: 1fr; gap: 0 0; }
+  .vc-kv dt { margin-top: 6px; }
+}
