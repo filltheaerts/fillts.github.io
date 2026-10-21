@@ -320,7 +320,8 @@ body.mx-ro .mx-grip { display: none; }
 .nav-newpj:hover { background: var(--red); border-color: var(--red); }
 body.mx-ro .nav-newpj { display: none; }
 .nav-pjdd { position: relative; display: inline-flex; align-items: center; gap: 2px; }
-.nav-pjbtn { background: none; border: 0; font: inherit; cursor: pointer; padding: 4px 4px; color: var(--black); display: inline-flex; align-items: center; }
+.nav-pjbtn { background: none; border: 0; font: inherit; cursor: pointer; padding: 6px 8px; margin-right: -8px; color: var(--black); display: inline-flex; align-items: center; }
+.nav-pjbtn .nav-caret { font-size: 13px; }
 .nav-pjbtn:hover { opacity: 0.6; }
 .nav-pjdd.open .nav-caret { transform: rotate(180deg); }
 .nav-pjdd.on > a::after { width: 100%; }
