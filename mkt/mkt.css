@@ -289,8 +289,6 @@ body.mx-ro .mx-grip { display: none; }
 @media (max-width: 560px) { .mx-tl-row { grid-template-columns: 150px 1fr; min-width: 560px; } }
 
 /* 메뉴: 프로젝트 01 · 02 · 03 + 우측 끝 MAP ▾ 펼침 */
-.nav-links li.nav-pjs { display: flex; gap: 18px; align-items: center; }
-.nav-links li.nav-pjs:empty { display: none; }
 .nav-links a.nav-pj { display: inline-flex; gap: 5px; align-items: baseline; text-transform: none; letter-spacing: 0; }
 .nav-links a.nav-pj b { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 .nav-pj-t { max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-600); }
@@ -309,11 +307,54 @@ body.mx-ro .mx-grip { display: none; }
 .nav-mapmenu li a::after { display: none; }
 .nav-mapmenu li a.active { color: var(--red); }
 @media (max-width: 900px) {
-  .nav-links li.nav-pjs { flex-direction: column; align-items: stretch; gap: 0; }
   .nav-pj-t { max-width: none; }
   .nav-mapbtn { padding: 14px 0; width: 100%; }
   .nav-mapmenu { position: static; box-shadow: none; border: 0; border-left: 2px solid var(--gray-200); padding: 0 0 0 12px; min-width: 0; }
   .nav-mapmenu li a { padding: 10px 0 10px 12px; }
   .nav-mapmenu li a.nav-map { padding-left: 23px; }
   .nav-mapmenu li a.nav-map::before { left: 12px; }
+}
+
+/* 261021 메뉴: + 프로젝트 생성 · 프로젝트 ▾(전체 + 01 · 02 · 03 펼침) · > WORK가기(파랑 굵게) */
+.nav-newpj { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border: 1px solid var(--black); background: var(--black); color: var(--paper); cursor: pointer; white-space: nowrap; }
+.nav-newpj:hover { background: var(--red); border-color: var(--red); }
+body.mx-ro .nav-newpj { display: none; }
+.nav-pjdd { position: relative; display: inline-flex; align-items: center; gap: 2px; }
+.nav-pjbtn { background: none; border: 0; font: inherit; cursor: pointer; padding: 4px 4px; color: var(--black); display: inline-flex; align-items: center; }
+.nav-pjbtn:hover { opacity: 0.6; }
+.nav-pjdd.open .nav-caret { transform: rotate(180deg); }
+.nav-pjdd.on > a::after { width: 100%; }
+.nav-pjmenu { left: 0; right: auto; min-width: 240px; max-height: 70vh; overflow-y: auto; }
+.nav-pjdd.open .nav-pjmenu { display: block; }
+.nav-pjmenu li a.nav-pj { display: flex; gap: 8px; }
+.nav-pjmenu .nav-pj-t { max-width: 18em; }
+.nav-pjmenu li a.nav-pj-all { border-bottom: 1px solid var(--gray-100); margin-bottom: 4px; padding-bottom: 10px; }
+.nav-pjmenu li a.active .nav-pj-t { color: var(--red); }
+.nav-links a.nav-work { color: #1d4ed8; font-weight: 700; text-transform: none; }
+.nav-links a.nav-work:hover { color: #1e3a8a; opacity: 1; }
+@media (max-width: 900px) {
+  .nav-newpj { margin: 10px 0 4px; }
+  .nav-pjdd { display: flex; flex-wrap: wrap; justify-content: space-between; }
+  .nav-pjdd > a { flex: 1; }
+  .nav-pjbtn { padding: 14px 8px; }
+  .nav-pjmenu { flex-basis: 100%; max-height: none; }
+  .nav-pjmenu .nav-pj-t { max-width: none; }
+}
+
+/* 역대 프로젝트 표 */
+.mx-arcp .panel-head { flex-wrap: wrap; gap: 8px; }
+.mx-arc { display: flex; flex-direction: column; }
+.mx-arc-year { display: flex; align-items: baseline; gap: 8px; padding: 14px 0 6px; border-bottom: 1px solid var(--black); font-variant-numeric: tabular-nums; }
+.mx-arc-year:first-child { padding-top: 0; }
+.mx-arc-row { display: grid; grid-template-columns: 34px 64px minmax(0, 1fr) 150px 84px 64px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--gray-100); color: var(--black); text-decoration: none; }
+.mx-arc-row:hover .mx-arc-t { color: var(--red); }
+.mx-arc-row .tag { justify-self: start; }
+.mx-arc-no { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gray-600); }
+.mx-arc-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mx-arc-sp, .mx-arc-sub, .mx-arc-ws { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mx-arc-row.st-hold .mx-arc-t { color: var(--gray-400); }
+@media (max-width: 760px) {
+  .mx-arc-row { grid-template-columns: 30px auto minmax(0, 1fr); row-gap: 2px; }
+  .mx-arc-sp { grid-column: 3; }
+  .mx-arc-sub, .mx-arc-ws { display: none; }
 }

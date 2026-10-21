@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../hr/hr.css?v=2610075500">
   <link rel="stylesheet" href="../hr/hr-v2.css?v=2610162100">
-  <link rel="stylesheet" href="mkt.css?v=2610151640">
+  <link rel="stylesheet" href="mkt.css?v=2610211000">
   <link rel="icon" type="image/png" sizes="192x192" href="../hr/icons/icon-192.png">
   <link rel="apple-touch-icon" href="../hr/icons/apple-touch-icon.png">
 </head>
@@ -49,9 +49,13 @@
         <button class="nav-toggle" id="navToggle" aria-label="메뉴" aria-expanded="false"><span></span><span></span></button>
       </div>
       <ul class="nav-links" id="navLinks">
-        <li><a href="#project" data-menu="project" class="nav-strong">프로젝트</a></li>
-        <li class="nav-pjs" id="navPjs"></li>
-        <li class="nav-sep"><a href="/hr/#ws">HR</a></li>
+        <li><button type="button" class="nav-newpj" id="navNewPj">+ 프로젝트 생성</button></li>
+        <li class="nav-pjdd" id="navPjDd">
+          <a href="#project" data-menu="project" class="nav-strong">프로젝트</a>
+          <button type="button" class="nav-pjbtn" id="navPjBtn" aria-label="프로젝트 목록 펼치기" aria-haspopup="true" aria-expanded="false"><span class="nav-caret" aria-hidden="true">&#9662;</span></button>
+          <ul class="nav-mapmenu nav-pjmenu" id="navPjs"></ul>
+        </li>
+        <li class="nav-sep"><a href="/hr/#ws" class="nav-work">&gt; WORK가기</a></li>
         <li class="nav-user"><span id="navUser"></span><a href="#" class="js-logout">Logout</a></li>
         <li class="nav-sep nav-mapdd" id="navMapDd">
           <button type="button" class="nav-mapbtn" id="navMapBtn" aria-haspopup="true" aria-expanded="false">MAP <span class="nav-caret" aria-hidden="true">&#9662;</span></button>
