@@ -389,3 +389,40 @@ body.mx-ro .nav-newpj { display: none; }
 .mx-pjone-in:hover { border-bottom-color: var(--gray-400); }
 .mx-pjone-in:focus { border-bottom: 1px solid var(--black); }
 .mx-pjone-in::placeholder { color: var(--gray-400); }
+/* 261021-3: 프로젝트 ▾ 펼침 박스를 가로로 (PC) */
+@media (min-width: 901px) {
+  .nav-pjdd.open .nav-pjmenu { flex-direction: row; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .nav-pjmenu { width: max-content; max-width: min(1200px, 80vw); min-width: 0; padding: 12px; }
+  .nav-pjmenu li { display: flex; }
+  .nav-pjmenu li a.nav-pj, .nav-pjmenu .nav-pj-new { width: 170px; min-height: 64px; justify-content: flex-start; }
+  .nav-pjmenu li a.nav-pj-all { flex-direction: column; align-items: flex-start; gap: 3px; border-bottom: 1px solid var(--gray-200); }
+  .nav-pjmenu .nav-pj-new { justify-content: center; align-items: center; }
+  .nav-pjmenu li a.nav-pj .nav-pj-t { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+/* 261021-4: 프로젝트 ▾ = 판(프로젝트 01 · 02 …)을 가로 칸으로, 칸 아래에 그 판의 항목 01 · 02 · 03 */
+.nav-pjmenu li.nav-spcol { display: flex; flex-direction: column; gap: 6px; width: 200px; padding: 12px; border: 1px solid var(--gray-200); background: var(--paper); }
+.nav-pjmenu li.nav-spcol a.nav-sp-h { display: flex; flex-direction: column; gap: 2px; padding: 0 0 8px; border-bottom: 1px solid var(--black); text-transform: none; letter-spacing: 0; }
+.nav-pjmenu li.nav-spcol a.nav-sp-h b { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+.nav-pjmenu li.nav-spcol a.nav-sp-h .nav-pj-t { color: var(--black); font-size: 13px; }
+.nav-pjmenu li.nav-spcol a.nav-sp-h.active b { color: var(--red); }
+.nav-pjmenu .nav-sp-items { list-style: none; display: flex; flex-direction: column; }
+.nav-pjmenu .nav-sp-items li a.nav-pj { flex-direction: row; align-items: baseline; gap: 6px; width: auto; min-height: 0; padding: 5px 0; border: 0; background: none; }
+.nav-pjmenu .nav-sp-items li a.nav-pj b { font-size: 12px; color: var(--gray-600); }
+.nav-pjmenu .nav-sp-items li a.nav-pj .nav-pj-t { font-size: 13px; color: var(--black); }
+.nav-pjmenu .nav-sp-items li a.nav-pj:hover .nav-pj-t, .nav-pjmenu .nav-sp-items li a.nav-pj.active .nav-pj-t { color: var(--red); }
+.nav-pjmenu .nav-sp-items li a.nav-pj.active { box-shadow: none; }
+.nav-sp-empty { font-size: 12px; color: var(--gray-400); margin: 0; }
+.nav-pjmenu li.nav-spcol-all { background: var(--gray-100); width: 116px; }
+.nav-pjmenu li.nav-spcol-all a.nav-sp-h { border-bottom: 0; padding: 0; }
+.nav-pjmenu li.nav-spcol-all a.nav-sp-h .nav-pj-t { color: var(--gray-600); font-size: 12px; }
+.nav-pjmenu li.nav-spcol-new { border: 0; padding: 0; width: 124px; }
+.nav-pjmenu li.nav-spcol-new .nav-pj-new { width: 100%; height: 100%; min-height: 64px; display: flex; align-items: center; justify-content: center; }
+@media (max-width: 900px) { .nav-pjmenu li.nav-spcol, .nav-pjmenu li.nav-spcol-all, .nav-pjmenu li.nav-spcol-new { width: auto; } }
+/* 전체 화면: 판 머리줄은 링크 */
+a.mx-arc-year { color: var(--black); text-decoration: none; padding-top: 18px; }
+a.mx-arc-year:hover b { color: var(--red); }
+.mx-arc-none { padding: 10px 0; margin: 0; border-bottom: 1px solid var(--gray-100); }
+.mx-arc-row { grid-template-columns: 34px 64px minmax(0, 1fr) 150px 84px 64px; }
+@media (max-width: 760px) { .mx-arc-row { grid-template-columns: 30px auto minmax(0, 1fr); } }
+.mx-crumb { color: inherit; text-decoration: none; border-bottom: 1px solid var(--gray-200); }
+.mx-crumb:hover { color: var(--red); }
