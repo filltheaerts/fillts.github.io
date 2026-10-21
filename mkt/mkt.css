@@ -441,3 +441,9 @@ a.mx-arc-year:hover b { color: var(--red); }
   .nav-pjmenu li.nav-spcol-all a.nav-sp-h { width: auto; border-right: 0; flex-direction: row; align-items: baseline; gap: 8px; }
   .nav-pjmenu li.nav-spcol-new .nav-pj-new { min-height: 40px; }
 }
+/* 261021-6: 항목을 다른 프로젝트(판)로 옮기기 — 편집 창 · 전체 화면 줄마다 */
+.mx-spsel { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--gray-200); background: var(--paper); color: var(--black); max-width: 100%; cursor: pointer; }
+.mx-spsel:hover, .mx-spsel:focus { border-color: var(--black); outline: none; }
+.mx-arc-row { grid-template-columns: 34px 64px minmax(0, 1fr) 150px 84px 64px 150px; }
+.mx-arc-mv { display: flex; justify-content: flex-end; }
+@media (max-width: 760px) { .mx-arc-row { grid-template-columns: 30px auto minmax(0, 1fr); } .mx-arc-mv { grid-column: 3; justify-content: flex-start; } }
