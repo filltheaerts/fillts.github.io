@@ -674,7 +674,7 @@
   // ---------- 비공개 화면 코드 로더 (261009) — functions/appsrc.js · manifest.json ----------
   var PRIV_FN = 'https://asia-northeast3-fillts-web.cloudfunctions.net/appsrc';
   function loadPriv() {
-    var dir = (location.pathname.match(/^\/([a-z0-9_]+)\//) || [0, 'hr'])[1];
+    var dir = APP.src || (location.pathname.match(/^\/([a-z0-9_]+)\//) || [0, 'hr'])[1];   // APP.src: 하위 폴더 앱(/vinegraphy/membership)은 묶음 이름을 직접 지정
     return auth.currentUser.getIdToken().then(function (t) {
       return fetch(PRIV_FN, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t }, body: JSON.stringify({ app: dir }) });
     }).then(function (r) {
