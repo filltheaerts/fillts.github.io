@@ -23,7 +23,7 @@
     { id: 'wedding_child', name: '결혼 - 자녀', mode: 'request', days: 3, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가 · 1회 3일' },
     { id: 'condolence_1', name: '조의 - 부모/배우자/자녀', mode: 'request', days: 5, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
     { id: 'condolence_2', name: '조의 - 조부모/형제/자매', mode: 'request', days: 3, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가' },
-    { id: 'kin_event', name: '경조 - 4촌 이내 친족', mode: 'request', days: 1, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가 · 위에 없는 4촌 이내 친족(친가·외가·인척 포함)' },
+    { id: 'kin_event', name: '조의 - 4촌 이내 친족', mode: 'request', days: 1, paid: true, half: false, hours: false, cat: 'family_event', note: '회사 경조휴가 · 위에 없는 4촌 이내 친족(친가·외가·인척 포함)' },
     // 가족 · 출산
     { id: 'paternity', name: '배우자 출산휴가', mode: 'request', days: 20, paid: true, half: false, hours: false, cat: 'family', note: '남녀고용평등법 제18조의2 · 유급 20일, 출산 후 120일 내, 3회 분할' },
     { id: 'maternity', name: '출산전후휴가', mode: 'request', days: 90, paid: true, half: false, hours: false, cat: 'family', note: '근로기준법 제74조 · 90일(다태아 120일), 출산 후 45일 이상' },
