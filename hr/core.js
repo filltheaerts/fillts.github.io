@@ -12,6 +12,7 @@
   // 앱 목록 — 접근권한 대상(HR 설정 › 앱 접근)이자 /map 사이트맵의 원본. open: 구성원 전원 / 그 외: 관리자 + 권한 받은 계정
   var APPS = [
     { id: 'hr', name: 'HR', path: '/hr/', open: true, desc: '출퇴근 · 휴가 · 공지 · 구성원 · 목표 · WORK · +AI · 입금요청' },
+    { id: 'hr_rule', name: 'HR규정', path: '/hr_rule/', desc: '근무 · 휴가 · 임금 · 복리후생 규정 — [현재] / [2028] 판본 · 검색' },
     { id: 'fin', name: 'Finance', path: '/fin/', desc: '자금조달 계획 · 런웨이 · 현금흐름 · 지출예정 · 통장 거래내역 · 세무사 전달' },
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 유튜브 · 인스타 통합 리스팅(소구점별 선택) + 세부: /inf_youtube 비슷한 채널 탐색 · /inf_insta 비슷한 계정 탐색 → 컨택 · 메일/DM · 계약 · 시딩 · 업로드 관리' },
