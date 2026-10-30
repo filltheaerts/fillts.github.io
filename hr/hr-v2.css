@@ -98,9 +98,12 @@
 /* 조직도 */
 .org-wrap { overflow-x: auto; }
 .org-tree, .org-children { list-style: none; }
-.org-children { margin-left: 22px; padding-left: 22px; border-left: 1px solid var(--gray-200); display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.org-children { margin-left: 22px; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .org-node { position: relative; }
 .org-children > .org-node::before { content: ""; position: absolute; left: -22px; top: 26px; width: 18px; height: 1px; background: var(--gray-200); }
+/* 세로선은 마지막 가지에서 멈춘다 (ul 전체 border-left 는 마지막 칸 아래로 꼬리가 남아 깨져 보였음) */
+.org-children > .org-node::after { content: ""; position: absolute; left: -22px; top: -12px; bottom: 0; width: 1px; background: var(--gray-200); }
+.org-children > .org-node:last-child::after { bottom: auto; height: 39px; }
 .org-box { background: var(--paper); border: 1px solid var(--gray-200); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
 .org-node.d0 > .org-box { background: var(--black); color: var(--white); border-color: var(--black); }
 .org-node.d0 > .org-box .meta { color: var(--gray-400); }
