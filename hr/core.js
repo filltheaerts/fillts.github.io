@@ -23,7 +23,7 @@
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
     { id: 'vgv', name: 'VINEGRAPHY View', path: '/vinegraphy_view/', viewOnly: true, desc: '바인그라피 보기 전용 — 브랜드 · 클렌징 젤 제품 사양 · 상세페이지 · 소구점 요약 (수정 불가)' },
     { id: 'odc', name: '필츠원', path: '/one_data_control/', adminOnly: true, desc: 'One Data Control — 자동화 결과 피드 · 항목별 켜기/끄기 · 한판 정리 (관리자 전용)' },
-    { id: 'english', name: 'English', path: '/english/', desc: '영어 — 오늘 · 듀오링고식 복습 · 나의 패턴 · 핵심 구문 · 학습 방향 · 보강 도구' }
+    { id: 'english', name: 'English', path: '/english/', desc: '영어 — 오늘 · 빈칸 복습(어휘 · 문장 · 듣고 빈칸) · 대화 로그 · 나의 패턴 · 어휘 · 구문 · 학습 방향 · 보강 도구' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
@@ -477,6 +477,9 @@
   });
   function logout() { stopAll(); try { sessionStorage.setItem('hrSilentTried', '1'); } catch (e) { /* 무시 */ } auth.signOut(); }
   // HR에서 새 창으로 연 앱: 로그인 상태가 넘어오지 않았으면 Google에 조용히(prompt=none) 한 번만 다녀온다
+  function saveNext() {   // 잠긴 앱에서 /hr로 보낼 때 — 로그인하면 HR이 15분 안에 이 주소로 돌려보낸다 (start()의 hrNext)
+    try { localStorage.setItem('hrNext', JSON.stringify({ to: location.pathname + (location.hash || ''), at: Date.now() })); } catch (e) { /* 무시 */ }
+  }
   function trySilent() {
     var hint = '', tried = true;
     try { hint = localStorage.getItem('hrHint') || ''; tried = sessionStorage.getItem('hrSilentTried') === '1'; } catch (e) { return false; }
@@ -493,7 +496,7 @@
     if (!u && APP.id !== 'hr' && trySilent()) return;
     if (!u && APP.id !== 'hr' && OWNER_ONLY && !LOCK_FREE[APP.id]) {   // 잠금 중: 대표 기기가 아니면 이 앱의 로그인 화면도 보여 주지 않는다
       var hint = ''; try { hint = (localStorage.getItem('hrHint') || '').toLowerCase(); } catch (e) { /* 무시 */ }
-      if (hint !== OWNER_ONLY) { location.replace('/hr/'); return; }
+      if (hint !== OWNER_ONLY) { if (!hint || BOOTSTRAP_ADMINS.indexOf(hint) >= 0) saveNext(); location.replace('/hr/'); return; }   // 261031: 대표 기기면 로그인 뒤 이 앱으로 돌아오게(다른 구성원 기기엔 흔적 없음)
     }
     if (!u) { stopAll(); S.user = null; S.mid = null; showAuth('login'); setAuthMode('login'); return; }
     if (!u.emailVerified) {
@@ -706,11 +709,11 @@
     // /mkt 등 다른 화면에서 로그인하러 왔으면 로그인 직후 그 화면으로 돌려보낸다 (15분 안, 같은 사이트 경로만)
     try {
       var nx = JSON.parse(localStorage.getItem('hrNext') || 'null'); localStorage.removeItem('hrNext');
-      if (nx && /^\/mkt\/[#a-z\/]*$/.test(nx.to) && Date.now() - nx.at < 15 * 60000) {
+      if (nx && /^\/[a-z0-9_]+\/[a-z0-9_\/]*(#[a-z0-9_\/-]*)?$/.test(nx.to) && nx.to.indexOf('/hr/') !== 0 && Date.now() - nx.at < 15 * 60000) {   // 261031: /mkt만 → 잠긴 앱 전부
         // 무한 왕복 방지 (261015): 30초 안에 이미 한 번 보냈는데 또 돌아왔으면 /mkt가 못 연 것 → HR에 머물고 알린다
         var jumped = 0; try { jumped = +sessionStorage.getItem('hrNextJump') || 0; } catch (e2) { /* 무시 */ }
         if (Date.now() - jumped > 30000) { try { sessionStorage.setItem('hrNextJump', String(Date.now())); } catch (e2) { /* 무시 */ } location.replace(nx.to); return; }
-        setTimeout(function () { toast('Marketing 화면을 열지 못해 HR에 머뭅니다 — 상단 ↻ 새로고침 뒤 다시 열어 보고, 계속되면 관리자에게 알려 주세요.'); }, 800);
+        setTimeout(function () { toast('요청한 화면을 열지 못해 HR에 머뭅니다 — 상단 ↻ 새로고침 뒤 다시 열어 보고, 계속되면 관리자에게 알려 주세요.'); }, 800);
       }
     } catch (e) { /* 무시 */ }
     stopAll();
@@ -731,7 +734,16 @@
       S.viewMid = as.mid; S.mid = as.mid; S.viewName = as.name; S.viewRole = as.role; S.viewEmail = as.email; S.viewState = as.state; S.apps = as.apps || {};
     }
     try { if (/@fillts\.com$/i.test(S.user.email || '')) localStorage.setItem('hrHint', S.user.email.toLowerCase()); sessionStorage.removeItem('hrSilentTried'); } catch (e) { /* 무시 */ }
-    if (APP.id !== 'hr' && ownerLocked() && !LOCK_FREE[APP.id]) { location.replace('/hr/'); return; }
+    if (APP.id !== 'hr' && ownerLocked() && !LOCK_FREE[APP.id]) {
+      // 261031: 대표의 다른 관리자 계정(info@ 등)으로 들어왔으면 말없이 튕기지 말고 이유를 보여 준다 — 다른 구성원은 그대로 /hr
+      if (BOOTSTRAP_ADMINS.indexOf((S.user.email || '').toLowerCase()) >= 0) {
+        S.mid = null; showAuth('noaccess'); $('bootstrapForm').hidden = true;
+        $('noAccessTitle').textContent = OWNER_ONLY + ' 계정 전용입니다';
+        $('noAccessText').textContent = '지금 로그인한 계정: ' + S.user.email + ' — 로그아웃 후 ' + OWNER_ONLY + '로 다시 로그인하세요.';
+        return;
+      }
+      location.replace('/hr/'); return;
+    }
     if (APP.id !== 'hr' && !HR.canApp(APP.id)) {
       S.mid = null; showAuth('noaccess'); $('bootstrapForm').hidden = true;
       $('noAccessTitle').textContent = '접근 권한이 없습니다';
