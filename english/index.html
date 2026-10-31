@@ -38,6 +38,7 @@
       <form class="auth-form" id="loginForm" novalidate>
         <div class="label" id="authMode">Sign in · English</div>
         <button class="btn btn-line" type="button" id="googleBtn">Google 회사 계정으로 로그인</button>
+        <label class="check" for="loginKeep"><input id="loginKeep" type="checkbox" checked> 이 기기에서 30일 유지 (개인 폰에서만)</label>
         <div class="or"><span>또는 이메일</span></div>
         <div class="field">
           <label for="loginEmail">회사 이메일</label>
@@ -47,7 +48,6 @@
           <label for="loginPw">비밀번호</label>
           <input id="loginPw" type="password" autocomplete="current-password" required minlength="10">
         </div>
-        <label class="check" for="loginKeep"><input id="loginKeep" type="checkbox"> 이 기기에서 로그인 유지 (개인 기기에서만)</label>
         <p class="form-msg" id="loginMsg" role="alert"></p>
         <button class="btn" type="submit" id="loginBtn">로그인</button>
         <div class="auth-links">
@@ -121,6 +121,6 @@
   <script src="app.js?v=2611011000"></script>
   <script src="../hr/firebase-config.js?v=2610071600"></script>
   <script src="../hr/labor.js?v=2610281600"></script>
-  <script src="../hr/core.js?v=2611011100"></script>
+  <script src="../hr/core.js?v=2611011300"></script>
 </body>
 </html>

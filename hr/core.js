@@ -392,7 +392,7 @@
       return;
     }
     var keep = $('loginKeep').checked;
-    try { localStorage.setItem('hrKeep', keep ? '1' : ''); } catch (x) { /* 무시 */ }
+    setKeep(keep);
     auth.setPersistence(keep ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION)
       .then(function () { return auth.signInWithEmailAndPassword(email, pw); })
       .then(function () { done(); $('loginPw').value = ''; }).catch(err);
@@ -414,7 +414,8 @@
     var st = rnd(), nonce = rnd();
     // 다른 앱(/fin 등)에서 누르면 Google은 등록된 /hr/ 로 돌려주고, /hr/ 이 로그인만 마친 뒤 같은 탭에서 원래 앱으로 되돌린다 (OAuth 설정 추가 불필요)
     var next = APP.id !== 'hr' ? location.pathname + (location.hash || '') : '';
-    try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now(), next: next })); } catch (e) { /* 무시 */ }
+    var keep = o.silent ? (function () { try { return localStorage.getItem('hrKeep') === '1'; } catch (e) { return false; } })() : !!($('loginKeep') && $('loginKeep').checked);   // 「이 기기에서 유지」 체크를 Google 로그인에도
+    try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now(), next: next, keep: keep })); } catch (e) { /* 무시 */ }
     var q = { client_id: GCID, redirect_uri: GRET, response_type: 'id_token token', scope: 'openid email profile' + (o.calendar ? ' ' + CAL : ''),
       nonce: nonce, state: st, hd: 'fillts.com', prompt: o.silent ? 'none' : o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
     if (o.hint) q.login_hint = o.hint;
@@ -438,9 +439,11 @@
       HR.gcalFresh = true;
     }
     HR.pendingCred = firebase.auth.GoogleAuthProvider.credential(p.id_token, p.access_token);
+    HR.pendingKeep = !!saved.keep;
   })();
   if (HR.pendingCred) {
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+    setKeep(HR.pendingKeep);
+    auth.setPersistence(HR.pendingKeep ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION)   // 유지 = 창을 닫아도 남는 로그인
       .then(function () { return auth.signInWithCredential(HR.pendingCred); })
       .then(function () { if (HR.oauthNext) location.replace(HR.oauthNext); })   // 세션 로그인은 같은 탭 sessionStorage라 원래 앱에서도 그대로 유지된다
       .catch(function (x) { HR.oauthNext = ''; document.documentElement.style.visibility = ''; throw x; })
@@ -477,7 +480,10 @@
     var a = e.target.closest && e.target.closest('.js-logout');
     if (a) { e.preventDefault(); logout(); }
   });
-  function logout() { stopAll(); try { sessionStorage.setItem('hrSilentTried', '1'); } catch (e) { /* 무시 */ } auth.signOut(); }
+  function setKeep(on) {   // 「이 기기에서 유지」 = 30일 뒤 자동 로그아웃 (261101) · 위쪽 Google 복귀 처리에서도 불리므로 상수 변수 없이
+    try { localStorage.setItem('hrKeep', on ? '1' : ''); if (on) localStorage.setItem('hrKeepUntil', String(Date.now() + 30 * 864e5)); else localStorage.removeItem('hrKeepUntil'); } catch (e) { /* 무시 */ } }
+  function keepExpired() { try { var t = +localStorage.getItem('hrKeepUntil') || 0; return localStorage.getItem('hrKeep') === '1' && t > 0 && Date.now() > t; } catch (e) { return false; } }
+  function logout() { stopAll(); setKeep(false); try { sessionStorage.setItem('hrSilentTried', '1'); } catch (e) { /* 무시 */ } auth.signOut(); }
   // HR에서 새 창으로 연 앱: 로그인 상태가 넘어오지 않았으면 Google에 조용히(prompt=none) 한 번만 다녀온다
   function saveNext() {   // 잠긴 앱에서 /hr로 보낼 때 — 로그인하면 HR이 15분 안에 이 주소로 돌려보낸다 (start()의 hrNext)
     try { localStorage.setItem('hrNext', JSON.stringify({ to: location.pathname + (location.hash || ''), at: Date.now() })); } catch (e) { /* 무시 */ }
@@ -495,6 +501,7 @@
 
   auth.onAuthStateChanged(function (u) {
     if (u && HR.oauthNext) return;   // 원래 앱으로 이동 중
+    if (u && keepExpired()) { setKeep(false); auth.signOut(); return; }   // 유지 30일이 지나면 다시 로그인
     if (!u && APP.id !== 'hr' && trySilent()) return;
     if (!u && APP.id !== 'hr' && OWNER_ONLY && !LOCK_FREE[APP.id]) {   // 잠금 중: 대표 기기가 아니면 이 앱의 로그인 화면도 보여 주지 않는다
       var hint = ''; try { hint = (localStorage.getItem('hrHint') || '').toLowerCase(); } catch (e) { /* 무시 */ }
