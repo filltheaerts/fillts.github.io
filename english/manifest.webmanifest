@@ -1,0 +1,18 @@
+{
+  "name": "fillts English",
+  "short_name": "fillts English",
+  "description": "fillts English — 단어 · 시제 · 문장 빈칸 복습",
+  "id": "/english/",
+  "start_url": "/english/#today",
+  "scope": "/english/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
