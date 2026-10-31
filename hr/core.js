@@ -27,6 +27,7 @@
     { id: 'english', name: 'English', path: '/english/', desc: '영어 — 오늘 · 빈칸 복습(오늘 · 지난) · 단어장 · 대화 로그 · 나의 패턴 · 어휘 · 구문 · 학습 방향 · 보강 도구' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
+  var OWN_GATE = { english: 1 };   // 잠긴 앱이지만 처음 보는 기기(홈 화면 바로가기 등)에서도 /hr 대신 자기 대문(로그인 화면)을 보여 준다 (261101 대표)
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
   // 공개할 때 '' 로 비우고 firestore.rules의 isOwner() 조건도 같이 뺀다
   var OWNER_ONLY = 'kjw@fillts.com';
@@ -426,7 +427,7 @@
     var saved = null; try { saved = JSON.parse(localStorage.getItem('hrOAuth') || 'null'); localStorage.removeItem('hrOAuth'); } catch (e) { /* 무시 */ }
     history.replaceState(null, '', location.pathname + location.search + '#info');
     if (!saved || p.state !== saved.st || Date.now() - saved.at > 15 * 60000) { HR.oauthErr = '로그인 요청을 확인하지 못했습니다. 다시 눌러 주세요.'; return; }
-    if (saved.next && /^\/[a-z0-9_]+\//.test(saved.next)) HR.oauthNext = saved.next;   // 앱 경로에 숫자 허용 (/d2c/)
+    if (saved.next && /^\/[a-z0-9_]+\//.test(saved.next)) { HR.oauthNext = saved.next; document.documentElement.style.visibility = 'hidden'; }   // 앱 경로에 숫자 허용 (/d2c/) · 원래 앱으로 넘어가는 동안 HR 대문을 가린다 (261101)
     if (p.error && HR.oauthNext) { location.replace(HR.oauthNext); return; }   // 자동 로그인(prompt=none) 실패 → 원래 앱의 로그인 화면으로
     if (p.error) { HR.oauthErr = p.error === 'access_denied' ? 'Google 로그인을 취소했습니다.' : 'Google 로그인 오류 (' + p.error + ')'; return; }
     var claims = {};
@@ -442,10 +443,10 @@
     auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
       .then(function () { return auth.signInWithCredential(HR.pendingCred); })
       .then(function () { if (HR.oauthNext) location.replace(HR.oauthNext); })   // 세션 로그인은 같은 탭 sessionStorage라 원래 앱에서도 그대로 유지된다
-      .catch(function (x) { HR.oauthNext = ''; throw x; })
+      .catch(function (x) { HR.oauthNext = ''; document.documentElement.style.visibility = ''; throw x; })
       .catch(function (x) { var t = x.code === 'auth/invalid-credential' ? 'Google 로그인 정보를 확인하지 못했습니다. 다시 눌러 주세요.' : authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; HR.loginNotice = t; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   }
-  if (HR.oauthErr) HR.loginNotice = HR.oauthErr;
+  if (HR.oauthErr) { HR.loginNotice = HR.oauthErr; document.documentElement.style.visibility = ''; }   // 가렸던 HR 화면을 다시 보이게
   // redirect로 돌아왔을 때 실패 사유를 로그인 화면에 보여 준다 (성공은 onAuthStateChanged가 처리)
   auth.getRedirectResult().then(function (r) { HR.redirectResult = r || null; if (HR.onRedirectResult) HR.onRedirectResult(HR.redirectResult); }).catch(function (x) { var t = authErr(x); if (x.code && t.indexOf(x.code) < 0) t += ' (' + x.code + ')'; if ($('loginMsg')) ui.err($('loginMsg'), t); });
   $('googleBtn').addEventListener('click', function () {
@@ -497,7 +498,8 @@
     if (!u && APP.id !== 'hr' && trySilent()) return;
     if (!u && APP.id !== 'hr' && OWNER_ONLY && !LOCK_FREE[APP.id]) {   // 잠금 중: 대표 기기가 아니면 이 앱의 로그인 화면도 보여 주지 않는다
       var hint = ''; try { hint = (localStorage.getItem('hrHint') || '').toLowerCase(); } catch (e) { /* 무시 */ }
-      if (hint !== OWNER_ONLY) { if (!hint || BOOTSTRAP_ADMINS.indexOf(hint) >= 0) saveNext(); location.replace('/hr/'); return; }   // 261031: 대표 기기면 로그인 뒤 이 앱으로 돌아오게(다른 구성원 기기엔 흔적 없음)
+      var ownGate = OWN_GATE[APP.id] && (!hint || BOOTSTRAP_ADMINS.indexOf(hint) >= 0);   // 다른 구성원 기기는 그대로 /hr
+      if (hint !== OWNER_ONLY && !ownGate) { if (!hint || BOOTSTRAP_ADMINS.indexOf(hint) >= 0) saveNext(); location.replace('/hr/'); return; }   // 261031: 대표 기기면 로그인 뒤 이 앱으로 돌아오게(다른 구성원 기기엔 흔적 없음)
     }
     if (!u) { stopAll(); S.user = null; S.mid = null; showAuth('login'); setAuthMode('login'); return; }
     if (!u.emailVerified) {
