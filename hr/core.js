@@ -22,7 +22,8 @@
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
     { id: 'vgv', name: 'VINEGRAPHY View', path: '/vinegraphy_view/', viewOnly: true, desc: '바인그라피 보기 전용 — 브랜드 · 클렌징 젤 제품 사양 · 상세페이지 · 소구점 요약 (수정 불가)' },
-    { id: 'odc', name: '필츠원', path: '/one_data_control/', adminOnly: true, desc: 'One Data Control — 자동화 결과 피드 · 항목별 켜기/끄기 · 한판 정리 (관리자 전용)' }
+    { id: 'odc', name: '필츠원', path: '/one_data_control/', adminOnly: true, desc: 'One Data Control — 자동화 결과 피드 · 항목별 켜기/끄기 · 한판 정리 (관리자 전용)' },
+    { id: 'english', name: 'English', path: '/english/', desc: '영어 — 오늘 · 듀오링고식 복습 · 나의 패턴 · 핵심 구문 · 학습 방향 · 보강 도구' }
   ];
   var BOOTSTRAP_ADMINS = ['kjw@fillts.com', 'info@fillts.com']; // firestore.rules와 동일
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
