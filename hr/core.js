@@ -19,6 +19,7 @@
     { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 로드맵 · LTV' },
     { id: 'vgcrm', name: 'CRM', path: '/vinegraphy_crm/', desc: '재구매 CRM — 플랫폼 · 알림톡 · 고객별 메시지 순서(첫 구매 → 두 번째 구매)' },
     { id: 'cs', name: 'CS', path: '/cs/', desc: 'CS — 주문 · 취소 · 교환 · 반품 규정 · CS 대행사 요청 플로우 · 주요 가이드 · 고객 Q&A' },
+    { id: 'geo', name: 'GEO', path: '/geo/', desc: 'GEO — AI 답변(네이버 AI 브리핑 · 구글 AI 개요 · ChatGPT · Gemini · Perplexity)에 바인그라피가 인용되게 · 전략 · 카페24 세팅 · 공신력 · 키워드 · 측정' },
     { id: 'rnd', name: 'R&D', path: '/rnd/', desc: '기보 · 벤처 체크리스트 + 연구개발전담부서(R&D센터) — Quick · 현황 · 연구 · 기한 · 서류 · 검증' },
     { id: 'logis', name: 'Logistics', path: '/logis/', desc: '물류 — 재고 실사 · 제품별 재발주 주기 · 발주 메일 · 입고 사양 · 발주 현황' },
     { id: 'vg', name: 'VINEGRAPHY', path: '/vinegraphy/', open: true, desc: '브랜드 에셋 — 브랜드 · 제품 사양 · 상세페이지 · 패키지 문안 · 검수' },
