@@ -284,6 +284,12 @@
       if (m.status === '휴직') return { st: 'rest' };
       var away = S.away.filter(function (a) { return a.memberId === m.id && a.start <= t && a.end >= t && (!a.unit || a.unit === 'day'); })[0];
       if (away) return { st: 'away', away: away };
+      // 승인된 근태 정정(서버가 hr_presence에 fix·outAt 기록) — 정정한 출근~퇴근 시각 그대로
+      if (p && p.fix && p.dk === fmt.dk(t) && p.outAt && p.outAt.toDate) {
+        var fo = p.outAt.toDate().getTime();
+        if (p.state === 'in' && nowMs < fo) return { st: 'in', fix: true, since: p.at && p.at.toDate ? p.at.toDate().getTime() : nowMs, mode: p.mode, dk: p.dk, until: fo };
+        return { st: 'out', fix: true, at: fo, dk: p.dk, today: true };
+      }
       if (p && p.state === 'in' && p.dk && L.daysBetween(fmt.dkToDate(p.dk), t) <= 1) {
         var since = p.at && p.at.toDate ? p.at.toDate().getTime() : nowMs, lim = HR.att.limit(m.id, fmt.dkToDate(p.dk), since);
         if (!lim.blocked && lim.end > nowMs) return { st: 'in', since: since, mode: p.mode, dk: p.dk, until: lim.end };
