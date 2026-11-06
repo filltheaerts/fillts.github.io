@@ -32,7 +32,7 @@
   // 검토 기간 잠금 (261009 대표 지시): HR 밖 앱(/map 포함)은 이 계정만 — 다른 계정에는 링크·화면이 아예 없고 주소로 와도 /hr/로 보낸다.
   // 공개할 때 '' 로 비우고 firestore.rules의 isOwner() 조건도 같이 뺀다
   var OWNER_ONLY = 'kjw@fillts.com';
-  function ownerLocked() { return !!OWNER_ONLY && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }
+  function ownerLocked() { return !!OWNER_ONLY && !S.ownerAlt && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }   // S.ownerAlt: hr_users.owner — 서버 규칙이 이메일로 다시 확인
   // 잠금 예외 (261013): 지정한 사람에게만 여는 보기 전용 앱 — 잠금 중에도 관리자 + hr_users.apps[id] 받은 계정도 들어온다
   // (functions/appsrc.js LOCK_FREE · firestore.rules vgvView()와 같이)
   var LOCK_FREE = { vgv: 1, vg: 1, mkt: 1, inf: 1, map: 1 };   // vg · mkt (261015) · inf (261019): apps[앱]을 직접 받은 계정만 사용 · map (261105): 구성원 전원 — 자기가 열 수 있는 앱만 목록으로 보여 줌(길 찾기)
@@ -424,7 +424,8 @@
     var keep = o.silent ? (function () { try { return localStorage.getItem('hrKeep') === '1'; } catch (e) { return false; } })() : !!($('loginKeep') && $('loginKeep').checked);   // 「이 기기에서 유지」 체크를 Google 로그인에도
     try { localStorage.setItem('hrOAuth', JSON.stringify({ st: st, nonce: nonce, cal: !!o.calendar, at: Date.now(), next: next, keep: keep })); } catch (e) { /* 무시 */ }
     var q = { client_id: GCID, redirect_uri: GRET, response_type: 'id_token token', scope: 'openid email profile' + (o.calendar ? ' ' + CAL : ''),
-      nonce: nonce, state: st, hd: 'fillts.com', prompt: o.silent ? 'none' : o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
+      nonce: nonce, state: st, prompt: o.silent ? 'none' : o.calendar ? 'consent' : 'select_account', include_granted_scopes: 'true' };
+    if (o.silent) q.hd = 'fillts.com';   // 직접 로그인은 계정 고르기 제한 없음 — 권한은 hr_users · 서버 규칙이 판정
     if (o.hint) q.login_hint = o.hint;
     location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   };
@@ -734,7 +735,7 @@
       }
     } catch (e) { /* 무시 */ }
     stopAll();
-    S.mid = hu.memberId; S.role = hu.role || 'employee'; S.apps = hu.apps || {};
+    S.mid = hu.memberId; S.role = hu.role || 'employee'; S.apps = hu.apps || {}; S.ownerAlt = hu.owner === true;
     S.isAdmin = S.role === 'admin'; S.isLead = S.isAdmin || S.role === 'manager';
     S.realAdmin = S.isAdmin; S.realLead = S.isLead;
     // view_이름: 그 구성원의 계정 정보(권한·앱 권한)를 먼저 읽은 뒤 그 사람 기준으로 다시 시작한다
@@ -750,7 +751,7 @@
       }
       S.viewMid = as.mid; S.mid = as.mid; S.viewName = as.name; S.viewRole = as.role; S.viewEmail = as.email; S.viewState = as.state; S.apps = as.apps || {};
     }
-    try { if (/@fillts\.com$/i.test(S.user.email || '')) localStorage.setItem('hrHint', S.user.email.toLowerCase()); sessionStorage.removeItem('hrSilentTried'); } catch (e) { /* 무시 */ }
+    try { if (S.ownerAlt) localStorage.setItem('hrHint', OWNER_ONLY); else if (/@fillts\.com$/i.test(S.user.email || '')) localStorage.setItem('hrHint', S.user.email.toLowerCase()); sessionStorage.removeItem('hrSilentTried'); } catch (e) { /* 무시 */ }
     if (APP.id !== 'hr' && ownerLocked() && !LOCK_FREE[APP.id]) {
       // 261031: 대표의 다른 관리자 계정(info@ 등)으로 들어왔으면 말없이 튕기지 말고 이유를 보여 준다 — 다른 구성원은 그대로 /hr
       if (BOOTSTRAP_ADMINS.indexOf((S.user.email || '').toLowerCase()) >= 0) {
