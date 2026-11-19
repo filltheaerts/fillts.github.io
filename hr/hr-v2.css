@@ -1948,3 +1948,11 @@ body.tl-resizing, body.tl-resizing * { cursor: ew-resize !important; }
 /* WORK 타임라인 — 짧은 막대 이름표를 막대 끝(오른쪽)이 아니라 시작점부터, 글씨는 검은색 그대로 (261020) */
 .tl-track .tl-bar-out { margin-left: 0; padding-left: 6px; color: var(--black); cursor: pointer; z-index: 3 !important; }
 .tl-track .tl-bar-out.sub { color: var(--black); }
+
+/* 증명서 검토 · 승인 (261119) — 자동 생성 PDF 미리보기 */
+.cert-review { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.cert-review-panel { background: #ffffff; color: #0a0a0a; width: min(640px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; gap: 10px; padding: 16px; box-sizing: border-box; }
+.cert-review-head { display: flex; flex-direction: column; gap: 2px; }
+.cert-review-body { overflow: auto; border: 1px solid #d4d4d4; background: #f5f5f5; flex: 1; min-height: 0; }
+.cert-review-img { display: block; width: 100%; height: auto; }
+.cert-review-warn { color: #b91c1c; font-size: 13px; margin: 0; }
