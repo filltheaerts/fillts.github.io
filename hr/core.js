@@ -17,6 +17,7 @@
     { id: 'mkt', name: 'Marketing', path: '/mkt/', desc: '마케팅 설계 맵 — 목표 · 타깃 · 소구점 · 전략 · 플랜 · 실행 보드를 함께 채우는 공동 보드' },
     { id: 'inf', name: 'Influencer', path: '/inf/', desc: '인플루언서 — 유튜브 · 인스타 통합 리스팅(소구점별 선택) + 세부: /inf_youtube 비슷한 채널 탐색 · /inf_insta 비슷한 계정 탐색 → 컨택 · 메일/DM · 계약 · 시딩 · 업로드 관리' },
     { id: 'd2c', name: 'D2C', path: '/d2c/', desc: 'D2C 성장 전략 — 재구매 · CS · 크로스/업셀 · 코호트 · CRM · 로드맵 · LTV' },
+    { id: 'utm', name: 'UTM', path: '/utm/', desc: 'UTM 생성기 — 네이버 · 카카오 · 구글 · 메타 · 인플루언서 · 자체 채널 3단계(채널 · 캠페인 · 소재) 링크 만들기 · 복사 · 공용 저장 목록' },
     { id: 'vgcrm', name: 'CRM', path: '/vinegraphy_crm/', desc: '재구매 CRM — 플랫폼 · 알림톡 · 고객별 메시지 순서(첫 구매 → 두 번째 구매)' },
     { id: 'cs', name: 'CS', path: '/cs/', desc: 'CS — 주문 · 취소 · 교환 · 반품 규정 · CS 대행사 요청 플로우 · 주요 가이드 · 고객 Q&A' },
     { id: 'geo', name: 'GEO', path: '/geo/', desc: 'GEO — AI 답변(네이버 AI 브리핑 · 구글 AI 개요 · ChatGPT · Gemini · Perplexity)에 바인그라피가 인용되게 · 전략 · 카페24 세팅 · 공신력 · 키워드 · 측정' },
@@ -35,7 +36,7 @@
   function ownerLocked() { return !!OWNER_ONLY && !S.ownerAlt && ((S.user && S.user.email) || '').toLowerCase() !== OWNER_ONLY; }   // S.ownerAlt: hr_users.owner — 서버 규칙이 이메일로 다시 확인
   // 잠금 예외 (261013): 지정한 사람에게만 여는 보기 전용 앱 — 잠금 중에도 관리자 + hr_users.apps[id] 받은 계정도 들어온다
   // (functions/appsrc.js LOCK_FREE · firestore.rules vgvView()와 같이)
-  var LOCK_FREE = { vgv: 1, vg: 1, mkt: 1, inf: 1, map: 1 };   // vg · mkt (261015) · inf (261019): apps[앱]을 직접 받은 계정만 사용 · map (261105): 구성원 전원 — 자기가 열 수 있는 앱만 목록으로 보여 줌(길 찾기)
+  var LOCK_FREE = { vgv: 1, vg: 1, mkt: 1, inf: 1, map: 1, utm: 1 };   // vg · mkt (261015) · inf (261019): apps[앱]을 직접 받은 계정만 사용 · map (261105): 구성원 전원 — 자기가 열 수 있는 앱만 목록으로 보여 줌(길 찾기)
   var IDLE_LIMIT_MS = 2 * 60 * 60 * 1000;   // 무활동 자동 로그아웃 2시간 (261008 대표 지시, 이전 30분)
 
   firebase.initializeApp(window.FILLTS_FIREBASE);
